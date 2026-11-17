@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.22.0 Downloaded-song Namespace
+## Current milestone: v0.23.0 Standard MIDI Reference
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -237,6 +237,10 @@ Version 0.22.0 identifies the custom-song namespace as
 `pc/songs_download/<shortname>/`, adds bounded VFS prefix listing to the runtime
 probe, and records namespace coverage per package. Binary DTA payloads remain
 opaque until their transformation is verified.
+
+Version 0.23.0 adds a strict standard-MIDI header parser and probe for known
+source charts. This creates a trustworthy input-side reference for future
+MIDI-to-RBMID correlation; it does not yet decode `.rbmid_pc`.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

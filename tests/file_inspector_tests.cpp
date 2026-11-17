@@ -17,6 +17,7 @@
 #include "rb4pc/runtime/gameplay_timing.hpp"
 #include "rb4pc/runtime/shell.hpp"
 #include "rb4pc/runtime/shell_render.hpp"
+#include "rb4pc/runtime/midi_parser.hpp"
 
 #include <array>
 #include <filesystem>
@@ -106,6 +107,8 @@ int main() {
     write_file(directory / "main_ps4_2.ark", "two");
     write_file(directory / "patch_main_ps4_0.ark", "two");
     write_test_hdr(path);
+    const auto midi_path = directory / "notes.mid";
+    write_file(midi_path, std::string("MThd\0\0\0\6\0\1\0\2\x01\xe0", 14));
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -130,6 +133,7 @@ int main() {
     const auto build_plan_json = rb4pc::builder::format_json(build_plan);
     const auto package_paths = rb4pc::builder::custom_song_package_paths("example");
     const auto custom_song_catalog = rb4pc::builder::scan_custom_songs(directory);
+    const auto midi_header = rb4pc::runtime::parse_standard_midi_header(midi_path);
     const rb4pc::runtime::ArchiveFileSystem vfs(set_report);
     const auto vfs_bytes = vfs.read("test/file.bin", 1, 2);
     const auto vfs_paths = vfs.list_paths("test/", 10);
@@ -170,6 +174,8 @@ int main() {
                          !custom_song_catalog.songs[0].ready &&
                          !custom_song_catalog.songs[0].core_content_complete,
                      "custom-song installation scan mismatch");
+    passed &= expect(midi_header.format == 1 && midi_header.track_count == 2 && midi_header.division == 480,
+                     "standard MIDI header parse mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&
