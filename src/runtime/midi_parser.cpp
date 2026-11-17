@@ -3,8 +3,25 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace rb4pc::runtime {
+namespace {
+std::uint32_t be32(const std::vector<unsigned char>& data, std::size_t p) {
+    return (static_cast<std::uint32_t>(data[p]) << 24) | (static_cast<std::uint32_t>(data[p + 1]) << 16) |
+           (static_cast<std::uint32_t>(data[p + 2]) << 8) | data[p + 3];
+}
+std::uint32_t vlq(const std::vector<unsigned char>& data, std::size_t& p, std::size_t end) {
+    std::uint32_t value = 0;
+    for (int count = 0; count < 4; ++count) {
+        if (p >= end) throw std::runtime_error("truncated MIDI variable-length value");
+        const auto byte = data[p++]; value = (value << 7) | (byte & 0x7f);
+        if ((byte & 0x80) == 0) return value;
+    }
+    throw std::runtime_error("MIDI variable-length value exceeds four bytes");
+}
+}
 MidiHeader parse_standard_midi_header(const std::filesystem::path& path) {
     if (!std::filesystem::is_regular_file(path)) throw std::runtime_error("MIDI path is not a file");
     std::ifstream input(path, std::ios::binary); std::array<unsigned char, 14> bytes{};
@@ -16,5 +33,49 @@ MidiHeader parse_standard_midi_header(const std::filesystem::path& path) {
                              (static_cast<std::uint32_t>(bytes[6]) << 8) | bytes[7];
     if (header_size != 6) throw std::runtime_error("unsupported MIDI header length");
     return {be16(8), be16(10), be16(12), std::filesystem::file_size(path)};
+}
+
+MidiFileSummary parse_standard_midi(const std::filesystem::path& path) {
+    MidiFileSummary result; result.header = parse_standard_midi_header(path);
+    std::ifstream input(path, std::ios::binary);
+    std::vector<unsigned char> data(static_cast<std::size_t>(result.header.file_size));
+    input.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(data.size()));
+    std::size_t position = 14;
+    for (std::uint16_t track_index = 0; track_index < result.header.track_count; ++track_index) {
+        if (position + 8 > data.size() || std::string(reinterpret_cast<const char*>(data.data() + position), 4) != "MTrk")
+            throw std::runtime_error("missing MIDI track chunk");
+        const auto length = be32(data, position + 4); position += 8;
+        if (length > data.size() - position) throw std::runtime_error("MIDI track exceeds file bounds");
+        const auto end = position + length; MidiTrackSummary track; std::uint8_t running = 0; std::uint64_t tick = 0;
+        while (position < end) {
+            tick += vlq(data, position, end); if (position >= end) throw std::runtime_error("truncated MIDI event");
+            auto status = data[position];
+            if (status < 0x80) { if (running == 0) throw std::runtime_error("MIDI running status without status byte"); status = running; }
+            else { ++position; if (status < 0xf0) running = status; }
+            ++track.event_count;
+            if (status == 0xff) {
+                running = 0;
+                if (position >= end) throw std::runtime_error("truncated MIDI meta event");
+                const auto type = data[position++]; const auto size = vlq(data, position, end);
+                if (size > end - position) throw std::runtime_error("MIDI meta event exceeds track");
+                if (type == 0x03 && track.name.empty()) track.name.assign(reinterpret_cast<const char*>(data.data() + position), size);
+                if (type == 0x51) ++result.tempo_events;
+                position += size;
+            } else if (status == 0xf0 || status == 0xf7) {
+                running = 0;
+                const auto size = vlq(data, position, end); if (size > end - position) throw std::runtime_error("MIDI SysEx exceeds track"); position += size;
+            } else {
+                if (status >= 0xf0) throw std::runtime_error("unsupported MIDI system event");
+                const auto kind = status & 0xf0; const auto bytes = (kind == 0xc0 || kind == 0xd0) ? 1U : 2U;
+                if (bytes > end - position) throw std::runtime_error("MIDI channel event exceeds track");
+                const auto first = data[position]; const auto second = bytes == 2 ? data[position + 1] : 0; (void)first;
+                if (kind == 0x90 && second != 0) ++track.note_on_count;
+                if (kind == 0x80 || (kind == 0x90 && second == 0)) ++track.note_off_count;
+                position += bytes;
+            }
+        }
+        track.end_tick = tick; result.tracks.push_back(std::move(track)); position = end;
+    }
+    return result;
 }
 } // namespace rb4pc::runtime

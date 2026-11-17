@@ -25,3 +25,16 @@ of those formats.
 Custom-song assets consistently use `pc/songs_download/<shortname>/`. The
 observed `.songdta_pc` and `.moggsong_dta_pc` payloads do not begin as readable
 DTA text, so v0.22.0 treats them as opaque compiled payloads.
+
+## Standard MIDI reference
+
+Version 0.24.0 parsed the known source `notes.mid` corresponding to the
+installed `angel3` custom-song package. The 76,571-byte format-1 file contains
+six tracks at 480 ticks per quarter note and 218 tempo events. Named gameplay
+tracks are `EVENTS`, `PART GUITAR`, `PART BASS`, `PART DRUMS`, and
+`PART VOCALS`; their respective note-on counts are 0, 4,556, 2,939, 3,067,
+and 497. The unnamed tempo track ends at tick 273,600.
+
+These measurements describe the user-supplied standard-MIDI input only. They do
+not establish the serialization, compression, or encryption used by the
+installed `angel3.rbmid_pc` payload.

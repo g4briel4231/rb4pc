@@ -109,6 +109,15 @@ int main() {
     write_test_hdr(path);
     const auto midi_path = directory / "notes.mid";
     write_file(midi_path, std::string("MThd\0\0\0\6\0\1\0\2\x01\xe0", 14));
+    const auto track_midi_path = directory / "track.mid";
+    const std::array<unsigned char, 43> track_midi = {
+        'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 1, 0xe0,
+        'M', 'T', 'r', 'k', 0, 0, 0, 21,
+        0, 0xff, 3, 4, 'T', 'e', 's', 't',
+        0, 0x90, 0x3c, 0x64,
+        0x83, 0x60, 0x80, 0x3c, 0,
+        0, 0xff, 0x2f, 0};
+    write_file(track_midi_path, std::string(track_midi.begin(), track_midi.end()));
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -134,6 +143,7 @@ int main() {
     const auto package_paths = rb4pc::builder::custom_song_package_paths("example");
     const auto custom_song_catalog = rb4pc::builder::scan_custom_songs(directory);
     const auto midi_header = rb4pc::runtime::parse_standard_midi_header(midi_path);
+    const auto track_midi_summary = rb4pc::runtime::parse_standard_midi(track_midi_path);
     const rb4pc::runtime::ArchiveFileSystem vfs(set_report);
     const auto vfs_bytes = vfs.read("test/file.bin", 1, 2);
     const auto vfs_paths = vfs.list_paths("test/", 10);
@@ -176,6 +186,11 @@ int main() {
                      "custom-song installation scan mismatch");
     passed &= expect(midi_header.format == 1 && midi_header.track_count == 2 && midi_header.division == 480,
                      "standard MIDI header parse mismatch");
+    passed &= expect(track_midi_summary.tracks.size() == 1 && track_midi_summary.tracks[0].name == "Test" &&
+                         track_midi_summary.tracks[0].note_on_count == 1 &&
+                         track_midi_summary.tracks[0].note_off_count == 1 &&
+                         track_midi_summary.tracks[0].end_tick == 480,
+                     "standard MIDI track parse mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

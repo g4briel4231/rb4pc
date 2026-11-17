@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.23.0 Standard MIDI Reference
+## Current milestone: v0.24.0 MIDI Track Analysis
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -241,6 +241,10 @@ opaque until their transformation is verified.
 Version 0.23.0 adds a strict standard-MIDI header parser and probe for known
 source charts. This creates a trustworthy input-side reference for future
 MIDI-to-RBMID correlation; it does not yet decode `.rbmid_pc`.
+
+Version 0.24.0 walks MIDI tracks, running status, channel/meta/SysEx events,
+track names, note counts, tempo events, and end ticks. This remains the known
+input side of the RBMID comparison.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `
