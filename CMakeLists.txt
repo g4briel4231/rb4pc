@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.3.3 LANGUAGES CXX)
+project(RB4PC VERSION 0.4.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -12,6 +12,7 @@ add_library(rb4pc_inspection
     src/inspector/murmur_hash3.cpp
     src/inspector/payload_catalog.cpp
     src/inspector/record_extractor.cpp
+    src/inspector/riff_parser.cpp
     src/inspector/sha256.cpp
 )
 target_include_directories(rb4pc_inspection PUBLIC include)

@@ -1,6 +1,7 @@
 #include "rb4pc/inspector/payload_catalog.hpp"
 
 #include "rb4pc/inspector/file_inspector.hpp"
+#include "rb4pc/inspector/riff_parser.hpp"
 
 #include <algorithm>
 #include <array>
@@ -104,6 +105,28 @@ PayloadCatalog catalog_payloads(const HeaderSetReport& report) {
         ++catalog.signatures[signature];
         auto& examples = catalog.signature_examples[signature];
         if (examples.size() < 3) examples.push_back(record.path);
+        if (signature == "riff") {
+            const auto riff = analyze_riff(input, location.local_offset, record.size);
+            if (riff.structure_valid) {
+                ++catalog.riff_valid_records;
+                if (!riff.size_matches_record) {
+                    ++catalog.riff_size_mismatches;
+                    if (riff.trailing_bytes_zero) ++catalog.riff_zero_trailing_records;
+                    else ++catalog.riff_nonzero_trailing_records;
+                }
+                ++catalog.riff_form_types[riff.form_type];
+                for (const auto& [chunk_id, count] : riff.chunk_ids) {
+                    catalog.riff_chunk_ids[chunk_id] += count;
+                }
+            } else {
+                ++catalog.riff_invalid_records;
+                if (!riff.size_matches_record) ++catalog.riff_size_mismatches;
+                else ++catalog.riff_malformed_records;
+                if (catalog.riff_invalid_examples.size() < 5) {
+                    catalog.riff_invalid_examples.push_back(record.path);
+                }
+            }
+        }
     }
     return catalog;
 }
@@ -128,6 +151,26 @@ std::string format_report(const PayloadCatalog& catalog) {
             output << ')';
         }
         output << '\n';
+    }
+    output << "  RIFF structural analysis:\n";
+    output << "    valid: " << catalog.riff_valid_records << '\n';
+    output << "    invalid: " << catalog.riff_invalid_records << '\n';
+    output << "    size mismatches: " << catalog.riff_size_mismatches << '\n';
+    output << "    zero trailing regions: " << catalog.riff_zero_trailing_records << '\n';
+    output << "    nonzero trailing records: " << catalog.riff_nonzero_trailing_records << '\n';
+    output << "    malformed chunk tables: " << catalog.riff_malformed_records << '\n';
+    if (!catalog.riff_invalid_examples.empty()) {
+        output << "    invalid examples:";
+        for (const auto& path : catalog.riff_invalid_examples) output << " " << path;
+        output << '\n';
+    }
+    output << "    form types:\n";
+    for (const auto& [name, count] : sorted_counts(catalog.riff_form_types)) {
+        output << "      " << name << ": " << count << '\n';
+    }
+    output << "    top-level chunk IDs:\n";
+    for (const auto& [name, count] : sorted_counts(catalog.riff_chunk_ids)) {
+        output << "      " << name << ": " << count << '\n';
     }
     output << "  Extension groups (top 25):\n";
     const auto extensions = sorted_counts(catalog.extensions);

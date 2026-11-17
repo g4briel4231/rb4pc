@@ -17,6 +17,15 @@ struct PayloadCatalog {
     std::map<std::string, std::size_t> extensions;
     std::map<std::string, std::size_t> signatures;
     std::map<std::string, std::vector<std::string>> signature_examples;
+    std::size_t riff_valid_records = 0;
+    std::size_t riff_invalid_records = 0;
+    std::size_t riff_size_mismatches = 0;
+    std::size_t riff_malformed_records = 0;
+    std::size_t riff_zero_trailing_records = 0;
+    std::size_t riff_nonzero_trailing_records = 0;
+    std::vector<std::string> riff_invalid_examples;
+    std::map<std::string, std::size_t> riff_form_types;
+    std::map<std::string, std::size_t> riff_chunk_ids;
 };
 
 [[nodiscard]] std::string classify_payload_signature(const unsigned char* data, std::size_t size);

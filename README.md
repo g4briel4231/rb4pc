@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.3.3 Selective Extraction
+## Current milestone: v0.4.0 Internal Format Analysis
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -104,6 +104,12 @@ markers are excluded. The destination directory must not already exist, and
 the completed directory contains `rb4pc-manifest.json` with each internal path,
 relative output path, size, and SHA-256. Absolute paths, drive-qualified names,
 empty components, `.` and `..` components are rejected.
+
+Version 0.4.0 begins structural parsing of payload formats with RIFF. During
+`--catalog`, every RIFF record's logical size is compared with its HDR record
+size and its top-level chunk table is walked with alignment and boundary
+validation. Reports include valid/invalid counts, form types, chunk identifiers,
+and whether any trailing allocation region is zero or nonzero.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as

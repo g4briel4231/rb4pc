@@ -2,12 +2,14 @@
 #include "rb4pc/inspector/archive_layout.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
+#include "rb4pc/inspector/riff_parser.hpp"
 
 #include <array>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <string>
 
 namespace {
@@ -183,6 +185,27 @@ int main() {
     passed &= expect(rb4pc::inspector::classify_payload_signature(
                          png_signature.data(), png_signature.size()) == "png",
                      "PNG signature was not classified");
+    std::vector<unsigned char> riff_bytes = {'R', 'I', 'F', 'F'};
+    append_u32(riff_bytes, 12);
+    riff_bytes.insert(riff_bytes.end(), {'W', 'A', 'V', 'E', 'f', 'm', 't', ' '});
+    append_u32(riff_bytes, 0);
+    std::stringstream riff_stream(std::string(riff_bytes.begin(), riff_bytes.end()),
+                                  std::ios::in | std::ios::binary);
+    const auto riff_analysis = rb4pc::inspector::analyze_riff(riff_stream, 0, riff_bytes.size());
+    passed &= expect(riff_analysis.structure_valid && riff_analysis.size_matches_record &&
+                         riff_analysis.form_type == "WAVE" && riff_analysis.chunk_count == 1 &&
+                         riff_analysis.chunk_ids.at("fmt ") == 1,
+                     "RIFF structure analysis mismatch");
+    auto padded_riff_bytes = riff_bytes;
+    padded_riff_bytes.insert(padded_riff_bytes.end(), 4, 0);
+    std::stringstream padded_riff_stream(std::string(padded_riff_bytes.begin(), padded_riff_bytes.end()),
+                                         std::ios::in | std::ios::binary);
+    const auto padded_riff_analysis = rb4pc::inspector::analyze_riff(
+        padded_riff_stream, 0, padded_riff_bytes.size());
+    passed &= expect(padded_riff_analysis.structure_valid && !padded_riff_analysis.size_matches_record &&
+                         padded_riff_analysis.trailing_bytes_size == 4 &&
+                         padded_riff_analysis.trailing_bytes_zero,
+                     "RIFF zero trailing-region analysis mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};
     const auto first_location = rb4pc::inspector::resolve_archive_location(layout, 2, 1);

@@ -11,4 +11,5 @@ Verified format notes:
 
 - [`hdr-v10.md`](hdr-v10.md): stream transformation and decoded prefix
 - [`payload-catalog.md`](payload-catalog.md): bounded signature and extension census
+- [`riff-payloads.md`](riff-payloads.md): RIFF forms, chunks, and record-size validation
 
