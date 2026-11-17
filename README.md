@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.3.0 ARK Addressing
+## Current milestone: v0.3.1 Payload Catalog
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -32,6 +32,12 @@ Version 0.3.0 begins read-only ARK access by translating each record's global
 offset into a declared volume index and a local offset. A record is resolved
 only when its complete byte range stays inside one volume; cross-volume and
 out-of-range spans are rejected.
+
+Version 0.3.1 adds the optional payload catalog. It samples at most 16 bytes
+from each non-empty record, groups internal filename extensions, recognizes a
+small set of established magic values, and retains representative paths for
+each signature group. Short zlib and gzip matches are labeled as candidates
+rather than treated as proof of compression.
 
 ## Build
 
@@ -62,6 +68,16 @@ Look up an exact internal path through the HDR hash index and read a bounded
 
 This operation is read-only. It does not extract the complete record or alter
 the user's HDR/ARK files.
+
+Catalog extensions and recognized payload signatures using a maximum 16-byte
+sample from each non-empty record:
+
+```powershell
+./build/default/rb4pc-forge-inspector.exe "../path/to/main_ps4.hdr" --catalog
+```
+
+Unknown signatures remain explicitly labeled `unknown`; the tool does not infer
+compression or a file type solely from an internal filename extension.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as

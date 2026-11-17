@@ -10,4 +10,5 @@ Static executable research is kept separately in
 Verified format notes:
 
 - [`hdr-v10.md`](hdr-v10.md): stream transformation and decoded prefix
+- [`payload-catalog.md`](payload-catalog.md): bounded signature and extension census
 

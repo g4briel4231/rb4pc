@@ -1,5 +1,6 @@
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/archive_layout.hpp"
+#include "rb4pc/inspector/payload_catalog.hpp"
 
 #include <array>
 #include <filesystem>
@@ -87,6 +88,7 @@ int main() {
     const auto set_report = rb4pc::inspector::inspect_header_set(path);
     const auto record_preview = rb4pc::inspector::inspect_record(set_report, "test/file.bin");
     const auto missing_preview = rb4pc::inspector::inspect_record(set_report, "missing/file.bin");
+    const auto payload_catalog = rb4pc::inspector::catalog_payloads(set_report);
     const auto json = rb4pc::inspector::format_json(set_report);
     std::filesystem::remove_all(directory);
 
@@ -143,6 +145,15 @@ int main() {
                          std::to_integer<unsigned int>(record_preview->bytes[2]) == 'o',
                      "file record preview mismatch");
     passed &= expect(!missing_preview, "missing internal path unexpectedly matched");
+    passed &= expect(payload_catalog.total_records == 1 && payload_catalog.analyzed_records == 1 &&
+                         payload_catalog.empty_records == 0 && payload_catalog.unreadable_records == 0 &&
+                         payload_catalog.signatures.at("unknown") == 1 &&
+                         payload_catalog.extensions.at(".bin") == 1,
+                     "payload catalog mismatch");
+    const std::array<unsigned char, 8> png_signature = {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
+    passed &= expect(rb4pc::inspector::classify_payload_signature(
+                         png_signature.data(), png_signature.size()) == "png",
+                     "PNG signature was not classified");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};
     const auto first_location = rb4pc::inspector::resolve_archive_location(layout, 2, 1);
