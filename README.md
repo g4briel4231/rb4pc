@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.14.0 Controller Diagnostics
+## Current milestone: v0.15.0 Runtime Window
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -204,6 +204,11 @@ without copying or modifying the installed songs.
 Version 0.14.0 adds an XInput backend on Windows and `rb4pc-input-probe`, which
 reports four controller slots and raw button, trigger, and stick state. Device
 diagnostics are separate from gameplay mappings.
+
+Version 0.15.0 adds a platform-neutral 32-bit software framebuffer and an
+explicit Win32 window backend. `rb4pc-window` displays a generated diagnostic
+gradient; automated tests exercise only framebuffer memory and never open a
+window.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

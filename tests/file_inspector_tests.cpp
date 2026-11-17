@@ -12,6 +12,7 @@
 #include "rb4pc/runtime/pcm_stream.hpp"
 #include "rb4pc/runtime/runtime_session.hpp"
 #include "rb4pc/runtime/input.hpp"
+#include "rb4pc/runtime/window.hpp"
 
 #include <array>
 #include <filesystem>
@@ -287,6 +288,9 @@ int main() {
     const auto session_waves = runtime_session.discover_wave_assets("audio/", 5);
     const auto session_diagnostics = runtime_session.diagnostics_json();
     const auto controller_states = rb4pc::runtime::poll_controllers();
+    rb4pc::runtime::SoftwareFramebuffer framebuffer(2, 2);
+    framebuffer.clear(0xff102030);
+    framebuffer.set_pixel(1, 1, 0xffabcdef);
     const auto converted_path = directory / "converted.wav";
     const auto conversion = rb4pc::inspector::convert_riff_record(
         conversion_report, "audio/test.wav", converted_path);
@@ -309,7 +313,9 @@ int main() {
                          pcm_stream.remaining_frames() == 0 && runtime_session.plan().ready &&
                          runtime_session.plan().wave_records == 1 && session_waves.size() == 1 &&
                          session_diagnostics.find("\"gameplay\": false") != std::string::npos &&
-                         (!rb4pc::runtime::input_backend_available() || controller_states.size() == 4),
+                         (!rb4pc::runtime::input_backend_available() || controller_states.size() == 4) &&
+                         framebuffer.pixels().size() == 4 && framebuffer.pixels()[0] == 0xff102030 &&
+                         framebuffer.pixels()[3] == 0xffabcdef,
                      "runtime WAVE loader mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};
