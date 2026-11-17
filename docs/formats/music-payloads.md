@@ -96,3 +96,8 @@ Version 0.33.0 introduces a PCM-frame transport clock. A 48 kHz fixture advances
 exactly 24,000 completed frames to 0.500 seconds, drives the integrated session
 to the second chord, and remains fixed while paused. This establishes the clock
 contract that a streaming audio backend must report.
+
+Version 0.34.0 connects that contract to frame-aligned PCM reads from the archive
+VFS. The synthetic WAVE fixture submits its one available frame, completes it,
+reaches end-of-transport with no outstanding audio, and rejects a second
+completion report because no submitted frame remains.

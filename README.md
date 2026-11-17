@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.33.0 Audio Transport Clock
+## Current milestone: v0.34.0 PCM Playback Queue
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -287,6 +287,11 @@ Version 0.33.0 adds a sample-accurate transport clock driven by completed PCM
 frames. Five-fret sessions can advance to its monotonic timestamp, so gameplay
 follows audio progress instead of accumulating host-frame deltas. Backend queue
 completion reporting is not wired to `waveOut` yet.
+
+Version 0.34.0 connects validated PCM assets to a backend-neutral playback queue.
+It reads frame-aligned chunks through the archive VFS, tracks submitted versus
+completed frames, rejects impossible completion reports, and advances the audio
+transport only for frames confirmed as played.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

@@ -25,6 +25,7 @@
 #include "rb4pc/runtime/five_fret_input.hpp"
 #include "rb4pc/runtime/five_fret_session.hpp"
 #include "rb4pc/runtime/audio_transport.hpp"
+#include "rb4pc/runtime/pcm_playback_queue.hpp"
 
 #include <array>
 #include <filesystem>
@@ -32,6 +33,7 @@
 #include <iostream>
 #include <iterator>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 namespace {
@@ -414,6 +416,12 @@ int main() {
     const auto pcm_bytes = rb4pc::runtime::read_pcm(wave_vfs, wave_asset, 1, 2);
     rb4pc::runtime::PcmStream pcm_stream(wave_vfs, wave_asset);
     const auto pcm_frame = pcm_stream.read_frames(1);
+    rb4pc::runtime::PcmPlaybackQueue pcm_queue(wave_vfs, wave_asset);
+    pcm_queue.play();
+    const auto queued_pcm = pcm_queue.queue_next(8);
+    pcm_queue.mark_completed(queued_pcm.frame_count);
+    bool excessive_completion_rejected = false;
+    try { pcm_queue.mark_completed(1); } catch (const std::runtime_error&) { excessive_completion_rejected = true; }
     const auto runtime_session = rb4pc::runtime::RuntimeSession::from_report(conversion_report);
     const auto session_waves = runtime_session.discover_wave_assets("audio/", 5);
     const auto session_diagnostics = runtime_session.diagnostics_json();
@@ -450,7 +458,11 @@ int main() {
                          std::to_integer<unsigned int>(pcm_bytes[0]) == 0x22 &&
                          std::to_integer<unsigned int>(pcm_bytes[1]) == 0x33 &&
                          pcm_frame.size() == 4 && pcm_stream.frame_position() == 1 &&
-                         pcm_stream.remaining_frames() == 0 && runtime_session.plan().ready &&
+                         pcm_stream.remaining_frames() == 0 && queued_pcm.first_frame == 0 &&
+                         queued_pcm.frame_count == 1 && queued_pcm.bytes.size() == 4 &&
+                         pcm_queue.submitted_frames() == 1 && pcm_queue.outstanding_frames() == 0 &&
+                         pcm_queue.source_exhausted() && pcm_queue.transport().finished() && excessive_completion_rejected &&
+                         runtime_session.plan().ready &&
                          runtime_session.plan().wave_records == 1 && session_waves.size() == 1 &&
                          session_diagnostics.find("\"gameplay\": false") != std::string::npos &&
                          (!rb4pc::runtime::input_backend_available() || controller_states.size() == 4) &&
