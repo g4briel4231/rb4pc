@@ -6,6 +6,7 @@
 #include "rb4pc/inspector/record_extractor.hpp"
 #include "rb4pc/inspector/riff_parser.hpp"
 #include "rb4pc/runtime/archive_file_system.hpp"
+#include "rb4pc/runtime/wave_loader.hpp"
 
 #include <array>
 #include <filesystem>
@@ -202,18 +203,21 @@ int main() {
                          png_signature.data(), png_signature.size()) == "png",
                      "PNG signature was not classified");
     std::vector<unsigned char> riff_bytes = {'R', 'I', 'F', 'F'};
-    append_u32(riff_bytes, 28);
+    append_u32(riff_bytes, 40);
     riff_bytes.insert(riff_bytes.end(), {'W', 'A', 'V', 'E', 'f', 'm', 't', ' '});
     append_u32(riff_bytes, 16);
     riff_bytes.insert(riff_bytes.end(), {1, 0, 2, 0});
     append_u32(riff_bytes, 48000);
     append_u32(riff_bytes, 192000);
     riff_bytes.insert(riff_bytes.end(), {4, 0, 16, 0});
+    riff_bytes.insert(riff_bytes.end(), {'d', 'a', 't', 'a'});
+    append_u32(riff_bytes, 4);
+    riff_bytes.insert(riff_bytes.end(), {0x11, 0x22, 0x33, 0x44});
     std::stringstream riff_stream(std::string(riff_bytes.begin(), riff_bytes.end()),
                                   std::ios::in | std::ios::binary);
     const auto riff_analysis = rb4pc::inspector::analyze_riff(riff_stream, 0, riff_bytes.size());
     passed &= expect(riff_analysis.structure_valid && riff_analysis.size_matches_record &&
-                         riff_analysis.form_type == "WAVE" && riff_analysis.chunk_count == 1 &&
+                         riff_analysis.form_type == "WAVE" && riff_analysis.chunk_count == 2 &&
                          riff_analysis.chunk_ids.at("fmt ") == 1 && riff_analysis.wave_format &&
                          riff_analysis.wave_format->format_tag == 1 &&
                          riff_analysis.wave_format->channels == 2 &&
@@ -256,6 +260,9 @@ int main() {
     conversion_report.archives.push_back(
         {conversion_ark, static_cast<std::uint32_t>(conversion_source.size()), conversion_source.size(), true, true});
     conversion_report.record_locations.push_back(rb4pc::inspector::ArchiveLocation{0, 0});
+    const rb4pc::runtime::ArchiveFileSystem wave_vfs(conversion_report);
+    const auto wave_asset = rb4pc::runtime::load_wave(wave_vfs, "audio/test.wav");
+    const auto pcm_bytes = rb4pc::runtime::read_pcm(wave_vfs, wave_asset, 1, 2);
     const auto converted_path = directory / "converted.wav";
     const auto conversion = rb4pc::inspector::convert_riff_record(
         conversion_report, "audio/test.wav", converted_path);
@@ -269,6 +276,12 @@ int main() {
                          conversion_manifest.find("\"formType\": \"WAVE\"") != std::string::npos &&
                          conversion_manifest.find(conversion.sha256) != std::string::npos,
                      "format-aware RIFF conversion mismatch");
+    passed &= expect(wave_asset.channels == 2 && wave_asset.sample_rate == 48000 &&
+                         wave_asset.bits_per_sample == 16 && wave_asset.data_size == 4 &&
+                         wave_asset.frame_count == 1 && pcm_bytes.size() == 2 &&
+                         std::to_integer<unsigned int>(pcm_bytes[0]) == 0x22 &&
+                         std::to_integer<unsigned int>(pcm_bytes[1]) == 0x33,
+                     "runtime WAVE loader mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};
     const auto first_location = rb4pc::inspector::resolve_archive_location(layout, 2, 1);

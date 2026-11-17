@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.7.1 LANGUAGES CXX)
+project(RB4PC VERSION 0.8.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -17,6 +17,7 @@ add_library(rb4pc_inspection
     src/inspector/riff_parser.cpp
     src/inspector/sha256.cpp
     src/runtime/archive_file_system.cpp
+    src/runtime/wave_loader.cpp
 )
 target_include_directories(rb4pc_inspection PUBLIC include)
 target_compile_features(rb4pc_inspection PUBLIC cxx_std_20)
@@ -37,6 +38,9 @@ target_link_libraries(rb4pc-builder PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-runtime-probe src/runtime/main.cpp)
 target_link_libraries(rb4pc-runtime-probe PRIVATE rb4pc_inspection)
+
+add_executable(rb4pc-audio-probe src/runtime/audio_main.cpp)
+target_link_libraries(rb4pc-audio-probe PRIVATE rb4pc_inspection)
 
 if(RB4PC_BUILD_TESTS)
     enable_testing()
