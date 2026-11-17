@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.34.0 PCM Playback Queue
+## Current milestone: v0.35.0 WaveOut Progress Reporting
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -292,6 +292,11 @@ Version 0.34.0 connects validated PCM assets to a backend-neutral playback queue
 It reads frame-aligned chunks through the archive VFS, tracks submitted versus
 completed frames, rejects impossible completion reports, and advances the audio
 transport only for frames confirmed as played.
+
+Version 0.35.0 extends the Windows `waveOut` path with optional frame-progress
+callbacks based on `TIME_SAMPLES`. Reports are monotonic and clamped to the WAVE
+frame count, a final exact completion is emitted, and callback failures reset and
+clean up the device before propagating the error.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

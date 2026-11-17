@@ -101,3 +101,8 @@ Version 0.34.0 connects that contract to frame-aligned PCM reads from the archiv
 VFS. The synthetic WAVE fixture submits its one available frame, completes it,
 reaches end-of-transport with no outstanding audio, and rejects a second
 completion report because no submitted frame remains.
+
+Version 0.35.0 wires frame progress into the Windows `waveOut` backend through
+`TIME_SAMPLES`. The backend path compiles and the non-device test suite passes;
+automated tests deliberately do not open an audio device. A real-device playback
+run remains required before treating backend timing as hardware-validated.
