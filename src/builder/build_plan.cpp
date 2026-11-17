@@ -1,5 +1,6 @@
 #include "rb4pc/builder/build_plan.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
+#include "rb4pc/inspector/payload_catalog.hpp"
 
 #include <sstream>
 
@@ -22,6 +23,17 @@ BuildPlan create_build_plan(const inspector::HeaderSetReport& report) {
     return plan;
 }
 
+BuildPlan create_build_plan(const inspector::HeaderSetReport& report,
+                            const inspector::PayloadCatalog& catalog) {
+    auto plan = create_build_plan(report);
+    plan.convertible_riff_records = catalog.riff_valid_records;
+    const auto wave = catalog.riff_form_types.find("WAVE");
+    const auto fev = catalog.riff_form_types.find("FEV ");
+    if (wave != catalog.riff_form_types.end()) plan.wave_records = wave->second;
+    if (fev != catalog.riff_form_types.end()) plan.fev_records = fev->second;
+    return plan;
+}
+
 std::string format_json(const BuildPlan& plan) {
     std::ostringstream output;
     output << "{\n  \"schemaVersion\": 1,\n"
@@ -34,6 +46,8 @@ std::string format_json(const BuildPlan& plan) {
            << "  \"records\": {\"total\": " << plan.record_count
            << ", \"resolved\": " << plan.resolved_records << "},\n"
            << "  \"hashIndexValidated\": " << (plan.hash_index_validated ? "true" : "false") << ",\n"
+           << "  \"conversionInventory\": {\"validatedRiff\": " << plan.convertible_riff_records
+           << ", \"wave\": " << plan.wave_records << ", \"fev\": " << plan.fev_records << "},\n"
            << "  \"readyForConversionPlanning\": " << (plan.ready ? "true" : "false") << "\n}\n";
     return output.str();
 }

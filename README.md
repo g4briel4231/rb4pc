@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.6.0 Builder Planning Foundation
+## Current milestone: v0.6.1 Conversion Inventory
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -146,6 +146,10 @@ copy proprietary assets.
 ```powershell
 ./build/default/rb4pc-builder.exe "../path/to/main_ps4.hdr" --plan "./build-plan.json"
 ```
+
+Version 0.6.1 adds a conversion inventory to the plan: structurally validated
+RIFF records and their `WAVE`/`FEV ` split. This measures currently supported
+work without implying that unknown formats are convertible.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as

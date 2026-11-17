@@ -113,7 +113,7 @@ int main() {
     const auto selective_report = rb4pc::inspector::inspect_file(selective_path / "test" / "file.bin");
     const auto manifest_contents = read_file(selective.manifest);
     const auto json = rb4pc::inspector::format_json(set_report);
-    const auto build_plan = rb4pc::builder::create_build_plan(set_report);
+    const auto build_plan = rb4pc::builder::create_build_plan(set_report, payload_catalog);
     const auto build_plan_json = rb4pc::builder::format_json(build_plan);
     bool passed = true;
     passed &= expect(file_report.size == contents.size() && file_report.preview_size == contents.size(),
