@@ -189,6 +189,14 @@ int main() {
     passed &= expect(track_midi_summary.tracks.size() == 1 && track_midi_summary.tracks[0].name == "Test" &&
                          track_midi_summary.tracks[0].note_on_count == 1 &&
                          track_midi_summary.tracks[0].note_off_count == 1 &&
+                         track_midi_summary.tracks[0].notes.size() == 1 &&
+                         track_midi_summary.tracks[0].notes[0].channel == 0 &&
+                         track_midi_summary.tracks[0].notes[0].key == 60 &&
+                         track_midi_summary.tracks[0].notes[0].velocity == 100 &&
+                         track_midi_summary.tracks[0].notes[0].start_tick == 0 &&
+                         track_midi_summary.tracks[0].notes[0].end_tick == 480 &&
+                         track_midi_summary.tracks[0].unmatched_note_off_count == 0 &&
+                         track_midi_summary.tracks[0].dangling_note_on_count == 0 &&
                          track_midi_summary.tracks[0].end_tick == 480,
                      "standard MIDI track parse mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&

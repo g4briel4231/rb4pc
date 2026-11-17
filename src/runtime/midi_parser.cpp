@@ -1,5 +1,6 @@
 #include "rb4pc/runtime/midi_parser.hpp"
 #include <array>
+#include <deque>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -47,6 +48,8 @@ MidiFileSummary parse_standard_midi(const std::filesystem::path& path) {
         const auto length = be32(data, position + 4); position += 8;
         if (length > data.size() - position) throw std::runtime_error("MIDI track exceeds file bounds");
         const auto end = position + length; MidiTrackSummary track; std::uint8_t running = 0; std::uint64_t tick = 0;
+        struct ActiveNote { std::uint64_t start_tick; std::uint8_t velocity; };
+        std::array<std::array<std::deque<ActiveNote>, 128>, 16> active_notes;
         while (position < end) {
             tick += vlq(data, position, end); if (position >= end) throw std::runtime_error("truncated MIDI event");
             auto status = data[position];
@@ -68,12 +71,26 @@ MidiFileSummary parse_standard_midi(const std::filesystem::path& path) {
                 if (status >= 0xf0) throw std::runtime_error("unsupported MIDI system event");
                 const auto kind = status & 0xf0; const auto bytes = (kind == 0xc0 || kind == 0xd0) ? 1U : 2U;
                 if (bytes > end - position) throw std::runtime_error("MIDI channel event exceeds track");
-                const auto first = data[position]; const auto second = bytes == 2 ? data[position + 1] : 0; (void)first;
-                if (kind == 0x90 && second != 0) ++track.note_on_count;
-                if (kind == 0x80 || (kind == 0x90 && second == 0)) ++track.note_off_count;
+                const auto first = data[position]; const auto second = bytes == 2 ? data[position + 1] : 0;
+                if (first >= 0x80 || second >= 0x80) throw std::runtime_error("invalid MIDI channel data byte");
+                const auto channel = status & 0x0f;
+                if (kind == 0x90 && second != 0) {
+                    ++track.note_on_count;
+                    active_notes[channel][first].push_back({tick, static_cast<std::uint8_t>(second)});
+                }
+                if (kind == 0x80 || (kind == 0x90 && second == 0)) {
+                    ++track.note_off_count;
+                    auto& active = active_notes[channel][first];
+                    if (active.empty()) ++track.unmatched_note_off_count;
+                    else {
+                        const auto started = active.front(); active.pop_front();
+                        track.notes.push_back({static_cast<std::uint8_t>(channel), first, started.velocity, started.start_tick, tick});
+                    }
+                }
                 position += bytes;
             }
         }
+        for (const auto& channels : active_notes) for (const auto& notes : channels) track.dangling_note_on_count += notes.size();
         track.end_tick = tick; result.tracks.push_back(std::move(track)); position = end;
     }
     return result;

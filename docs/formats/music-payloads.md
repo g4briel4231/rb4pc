@@ -38,3 +38,15 @@ and 497. The unnamed tempo track ends at tick 273,600.
 These measurements describe the user-supplied standard-MIDI input only. They do
 not establish the serialization, compression, or encryption used by the
 installed `angel3.rbmid_pc` payload.
+
+Version 0.25.0 paired every note-on in the reference chart with a matching
+note-off on the same channel and key. Guitar produced 4,556 complete notes,
+bass 2,939, drums 3,067, and vocals 497, with no unmatched note-offs or
+dangling note-ons in any track. This validates the input-side note lifecycle
+needed by later instrument and difficulty mapping.
+
+The raw installed `angel3.rbmid_pc` record begins with `e7 81 1e b6`, not the
+little-endian RBVR format value `2f 00 00 00` expected by the public AmpForge
+[RBMID reader](https://github.com/SoffiMeower/AmpForge/blob/master/LibForge/LibForge/Midi/RBMidReader.cs).
+AmpForge 0.1.19 also rejects the extracted record at its first word. The
+observation is recorded without naming the unidentified outer layer.

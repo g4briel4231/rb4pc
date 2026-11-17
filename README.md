@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.24.0 MIDI Track Analysis
+## Current milestone: v0.25.0 MIDI Note Lifecycles
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -245,6 +245,11 @@ MIDI-to-RBMID correlation; it does not yet decode `.rbmid_pc`.
 Version 0.24.0 walks MIDI tracks, running status, channel/meta/SysEx events,
 track names, note counts, tempo events, and end ticks. This remains the known
 input side of the RBMID comparison.
+
+Version 0.25.0 pairs note-on and note-off events by channel and key, preserving
+start/end ticks and velocity while reporting unmatched releases and dangling
+notes. This produces bounded chart primitives without assigning instrument,
+difficulty, lane, or scoring semantics yet.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `
