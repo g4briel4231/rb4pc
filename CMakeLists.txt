@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.17.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.18.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -11,6 +11,7 @@ add_library(rb4pc_inspection
     src/builder/build_plan.cpp
     src/builder/song_layout.cpp
     src/builder/custom_song_catalog.cpp
+    src/builder/install_plan.cpp
     src/inspector/file_inspector.cpp
     src/inspector/hdr_decoder.cpp
     src/inspector/murmur_hash3.cpp

@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.17.0 Gameplay Timing Core
+## Current milestone: v0.18.0 Song Installation Planning
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -216,6 +216,10 @@ wrapping menu-selection model. Text and game assets are not rendered yet.
 Version 0.17.0 adds a deterministic pausable gameplay clock and provisional
 note-judgement windows. These synthetic rules are infrastructure, not recovered
 Rock Band scoring behavior and not yet connected to a chart format.
+
+Version 0.18.0 creates a dry-run installation plan for validated custom-song
+packages. It records source, root-level destination, size, total bytes, and
+collisions without copying any file.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `
