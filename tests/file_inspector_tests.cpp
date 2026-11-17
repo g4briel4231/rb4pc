@@ -47,8 +47,10 @@ void write_test_hdr(const std::filesystem::path& path) {
     append_u32(plain, 0x55667788);
     append_u32(plain, 0x11223344);
     append_string(plain, "test/file.bin");
-    append_u32(plain, 7);
+    append_u32(plain, 0xffffffff);
     append_u32(plain, 99);
+    append_u32(plain, 1);
+    append_u32(plain, 0);
 
     constexpr std::uint32_t seed = 12345;
     std::int64_t state = seed;
@@ -123,10 +125,12 @@ int main() {
     passed &= expect(set_report.metadata.file_records.size() == 1 &&
                          set_report.metadata.file_records[0].global_offset == 0x1122334455667788ULL &&
                          set_report.metadata.file_records[0].path == "test/file.bin" &&
-                         set_report.metadata.file_records[0].unknown_after_path == 7 &&
+                         set_report.metadata.file_records[0].previous_hash_index == 0xffffffff &&
                          set_report.metadata.file_records[0].size == 99,
                      "file record was not decoded");
-    passed &= expect(json.find("\"schemaVersion\": 3") != std::string::npos,
+    passed &= expect(set_report.metadata.hash_index_validated,
+                     "path hash index was not validated");
+    passed &= expect(json.find("\"schemaVersion\": 4") != std::string::npos,
                      "JSON schema version missing");
     passed &= expect(json.find("\"sha256\": \"") != std::string::npos,
                      "JSON hash field missing");
@@ -134,6 +138,8 @@ int main() {
                      "JSON analysis method missing");
     passed &= expect(json.find("\"version\": 10") != std::string::npos,
                      "JSON decoded HDR version missing");
+    passed &= expect(json.find("\"hashIndexValidated\": true") != std::string::npos,
+                     "JSON path hash validation missing");
 
     return passed ? 0 : 1;
 }

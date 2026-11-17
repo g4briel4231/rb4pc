@@ -1,4 +1,5 @@
 #include "rb4pc/inspector/hdr_decoder.hpp"
+#include "rb4pc/inspector/murmur_hash3.hpp"
 
 #include <fstream>
 #include <iomanip>
@@ -13,6 +14,7 @@ constexpr std::uint32_t maximum_archive_count = 4096;
 constexpr std::uint32_t maximum_name_length = 4096;
 constexpr std::uint32_t maximum_tags_per_archive = 4096;
 constexpr std::uint32_t maximum_file_records = 10'000'000;
+constexpr std::uint32_t path_hash_seed = 0x9520e3c4;
 
 class DecodedReader {
 public:
@@ -37,6 +39,7 @@ public:
         for (std::size_t index = 0; index < size; ++index) {
             destination[index] ^= next_byte();
         }
+        position_ += size;
     }
 
     [[nodiscard]] std::uint32_t read_u32() {
@@ -62,6 +65,10 @@ public:
         return value;
     }
 
+    [[nodiscard]] std::uint64_t position() const { return position_; }
+
+    [[nodiscard]] bool has_remaining_bytes() { return input_.peek() != std::char_traits<char>::eof(); }
+
 private:
     void read_raw(unsigned char* destination, std::size_t size) {
         input_.read(reinterpret_cast<char*>(destination), static_cast<std::streamsize>(size));
@@ -81,6 +88,7 @@ private:
     std::ifstream input_;
     std::uint32_t raw_seed_ = 0;
     std::int64_t state_ = 1;
+    std::uint64_t position_ = 0;
 };
 
 } // namespace
@@ -127,10 +135,43 @@ HdrMetadata decode_hdr_prefix(const std::filesystem::path& path) {
         HdrFileRecord record;
         record.global_offset = reader.read_u64();
         record.path = reader.read_string();
-        record.unknown_after_path = reader.read_u32();
+        record.previous_hash_index = reader.read_u32();
         record.size = reader.read_u32();
         metadata.file_records.push_back(std::move(record));
     }
+
+
+    const auto bucket_count = reader.read_u32();
+    if (bucket_count != record_count) throw std::runtime_error("HDR hash-bucket and file-record counts differ");
+    metadata.hash_bucket_heads.reserve(bucket_count);
+    for (std::uint32_t index = 0; index < bucket_count; ++index) {
+        const auto head = reader.read_u32();
+        if (head != std::numeric_limits<std::uint32_t>::max() && head >= record_count) {
+            throw std::runtime_error("HDR hash-bucket head is outside the file-record table");
+        }
+        metadata.hash_bucket_heads.push_back(head);
+    }
+    for (std::uint32_t index = 0; index < record_count; ++index) {
+        const auto previous = metadata.file_records[index].previous_hash_index;
+        if (previous != std::numeric_limits<std::uint32_t>::max() && previous >= index) {
+            throw std::runtime_error("HDR hash-chain link does not reference an earlier record");
+        }
+    }
+    std::vector<std::uint32_t> reconstructed_heads(record_count, std::numeric_limits<std::uint32_t>::max());
+    for (std::uint32_t index = 0; index < record_count; ++index) {
+        const auto hash = murmur_hash3_x64_128(metadata.file_records[index].path, path_hash_seed);
+        const auto bucket = static_cast<std::uint32_t>(hash.low % record_count);
+        if (metadata.file_records[index].previous_hash_index != reconstructed_heads[bucket]) {
+            throw std::runtime_error("HDR path hash-chain link does not match the reconstructed index");
+        }
+        reconstructed_heads[bucket] = index;
+    }
+    if (reconstructed_heads != metadata.hash_bucket_heads) {
+        throw std::runtime_error("HDR path hash-bucket table does not match the reconstructed index");
+    }
+    metadata.hash_index_validated = true;
+    metadata.decoded_payload_size = reader.position();
+    if (reader.has_remaining_bytes()) throw std::runtime_error("HDR contains unparsed trailing data");
     return metadata;
 }
 

@@ -17,7 +17,7 @@ struct HdrArchiveEntry {
 struct HdrFileRecord {
     std::uint64_t global_offset = 0;
     std::string path;
-    std::uint32_t unknown_after_path = 0;
+    std::uint32_t previous_hash_index = 0;
     std::uint32_t size = 0;
 };
 
@@ -28,6 +28,9 @@ struct HdrMetadata {
     std::array<unsigned char, 16> unknown_08{};
     std::vector<HdrArchiveEntry> archives;
     std::vector<HdrFileRecord> file_records;
+    std::vector<std::uint32_t> hash_bucket_heads;
+    bool hash_index_validated = false;
+    std::uint64_t decoded_payload_size = 0;
 };
 
 [[nodiscard]] HdrMetadata decode_hdr_prefix(const std::filesystem::path& path);

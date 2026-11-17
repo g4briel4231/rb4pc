@@ -32,7 +32,7 @@ RecordSummary summarize_records(const HeaderSetReport& report) {
         }
         if (record.size == 0) ++summary.zero_size_records;
         if (record.path.starts_with("__marker__") || record.path == "__split_ark__") ++summary.marker_records;
-        if (record.unknown_after_path == std::numeric_limits<std::uint32_t>::max()) {
+        if (record.previous_hash_index == std::numeric_limits<std::uint32_t>::max()) {
             ++summary.sentinel_value0_records;
         }
     }
@@ -186,7 +186,7 @@ std::string format_report(const HeaderSetReport& report) {
         const auto& record = report.metadata.file_records[index];
         output << "  record[" << index << "]: globalOffset=" << record.global_offset
                << ", path=" << record.path
-               << ", unknownAfterPath=" << record.unknown_after_path
+               << ", previousHashIndex=" << record.previous_hash_index
                << ", size=" << record.size << '\n';
     }
     return output.str();
@@ -196,7 +196,7 @@ std::string format_json(const HeaderSetReport& report) {
     std::ostringstream output;
     const auto record_summary = summarize_records(report);
     output << "{\n";
-    output << "  \"schemaVersion\": 3,\n";
+    output << "  \"schemaVersion\": 4,\n";
     output << "  \"platformHint\": \"" << escape_json(report.platform_hint) << "\",\n";
     output << "  \"platformHintSource\": \"filename\",\n";
     output << "  \"header\": {\n";
@@ -211,7 +211,11 @@ std::string format_json(const HeaderSetReport& report) {
     output << "    \"unknown04\": " << report.metadata.unknown_04 << ",\n";
     output << "    \"unknown08Hex\": \""
            << hex_string(report.metadata.unknown_08.data(), report.metadata.unknown_08.size()) << "\",\n";
-    output << "    \"fileRecordCount\": " << report.metadata.file_records.size() << "\n";
+    output << "    \"fileRecordCount\": " << report.metadata.file_records.size() << ",\n";
+    output << "    \"hashBucketCount\": " << report.metadata.hash_bucket_heads.size() << ",\n";
+    output << "    \"hashIndexValidated\": "
+           << (report.metadata.hash_index_validated ? "true" : "false") << ",\n";
+    output << "    \"decodedPayloadSize\": " << report.metadata.decoded_payload_size << "\n";
     output << "  },\n";
     output << "  \"fileRecordSamples\": [";
     const auto record_sample_count = std::min<std::size_t>(report.metadata.file_records.size(), 5);
@@ -220,7 +224,7 @@ std::string format_json(const HeaderSetReport& report) {
         output << (index == 0 ? "\n" : ",\n");
         output << "    {\"globalOffset\": " << record.global_offset
                << ", \"path\": \"" << escape_json(record.path)
-               << "\", \"unknownAfterPath\": " << record.unknown_after_path
+               << "\", \"previousHashIndex\": " << record.previous_hash_index
                << ", \"size\": " << record.size << "}";
     }
     if (record_sample_count != 0) output << '\n';
@@ -231,7 +235,7 @@ std::string format_json(const HeaderSetReport& report) {
     output << "    \"spansInRange\": " << record_summary.spans_in_range << ",\n";
     output << "    \"zeroSizeRecords\": " << record_summary.zero_size_records << ",\n";
     output << "    \"markerRecords\": " << record_summary.marker_records << ",\n";
-    output << "    \"sentinelUnknownAfterPathRecords\": " << record_summary.sentinel_value0_records << "\n";
+    output << "    \"sentinelPreviousHashIndexRecords\": " << record_summary.sentinel_value0_records << "\n";
     output << "  },\n";
     output << std::fixed << std::setprecision(6);
     output << "  \"analysis\": {\n";

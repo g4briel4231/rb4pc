@@ -189,3 +189,21 @@ Decoding the three available HDR prefixes with this algorithm produced coherent
 version, count, size, and filename data. The partial verified layout is recorded
 in [`../formats/hdr-v10.md`](../formats/hdr-v10.md).
 
+## File-path hash index
+
+The function at VA `0x14070A0F0` constructs the final index serialized after
+the file-record table. It allocates one bucket per record and initializes every
+bucket to `0xffffffff`. For each record, it hashes the path at record offset
+`+0x10`, stores the former bucket head in the record's first 32-bit field, and
+replaces the bucket head with the current record index.
+
+The path wrapper at VA `0x140C0F360` calls the hash implementation at VA
+`0x140C118A0` with seed `0x9520e3c4`, then reduces the first 64-bit output word
+modulo the bucket count. The implementation's block mixing, rotations, tail,
+and finalization constants identify it as MurmurHash3 x64 128. In particular,
+the finalizer uses `0xff51afd7ed558ccd` and `0xc4ceb9fe1a85ec53`.
+
+An independent implementation reconstructed every stored collision link and
+bucket head in all three available headers: 30,382 PC records, 35,337 PS4
+records, and 39,672 Xbox One records.
+

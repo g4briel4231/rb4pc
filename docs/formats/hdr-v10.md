@@ -1,4 +1,4 @@
-# Forge HDR version 10: verified prefix
+# Forge HDR version 10: verified layout
 
 This document describes only fields reproduced from the three available header
 sets. Integers observed so far are little-endian after decoding.
@@ -43,9 +43,8 @@ The seed itself is not part of the decoded payload.
 | variable | repeated | Per-ARK string tag lists | Examples include `launch`, `songs`, and `unordered` |
 | variable | 4 | File-record count | 30,382 PC; 35,337 PS4; 39,672 Xbox One |
 | variable | repeated | File records | Layout described below |
-
-The name-array location for the larger console samples follows the size array;
-full structural parsing has not yet been implemented in RB4PC.
+| variable | 4 | Path-hash bucket count | Same value as file-record count |
+| variable | `count * 4` | Path-hash bucket heads | Record index or `0xffffffff` sentinel |
 
 ## File-record layout
 
@@ -55,8 +54,22 @@ The serialization routine writes each record in this order:
 |---:|---:|---|
 | 0 | 8 | Global offset in the concatenated declared ARK space |
 | 1 | variable | Length-prefixed internal path |
-| 2 | 4 | Unknown; `0xffffffff` is a frequent sentinel |
+| 2 | 4 | Previous record index in the same path-hash collision chain, or `0xffffffff` |
 | 3 | 4 | File size in bytes |
+
+## Path-hash index
+
+The game hashes each path with MurmurHash3 x64 128 using the 32-bit seed
+`0x9520e3c4`. The low 64-bit result modulo the file-record count selects a
+bucket. Records are inserted in serialization order: the bucket's former head
+is stored in the record's collision-chain field, then the bucket head becomes
+the current record index.
+
+ForgeInspector reconstructs this index and requires every chain link and final
+bucket head to match. This validates all 105,391 paths across the PC, PS4, and
+Xbox One samples rather than merely checking that the stored indices are in
+range. The hash routine was identified in `rbvr.exe` at VA `0x140C118A0`; its
+caller at VA `0x140C0F360` supplies the seed and performs the modulo operation.
 
 The offset and size interpretation was checked across all 105,391 records from
 the three samples. Every offset is within the sum of declared ARK sizes, and
@@ -104,8 +117,5 @@ not silently ignore or remove them.
 
 - Meaning and byte order of the 16-byte value at `0x08`
 - Meaning of the value at `0x04`
-- Meaning of the 32-bit file-record field after each path
-- Structures following the file-record table
-- Additional path-table and hash/index structures, if present
 - Whether all version-10 headers use the same optional sections
 

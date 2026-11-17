@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.2.1 HDR File Records
+## Current milestone: v0.2.2 HDR Hash Index
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -25,8 +25,8 @@ report lists every ARK declared by the header—including patch volumes—and ch
 each declared size against the local file without modifying game data.
 
 The decoder also reads per-archive tags and the complete internal file-record
-table. Reports summarize global offsets and sizes while keeping the remaining
-unidentified record field explicitly labeled as unknown.
+table. Version 0.2.2 also decodes and validates the final path-hash bucket table
+and each record's collision-chain link.
 
 ## Build
 
