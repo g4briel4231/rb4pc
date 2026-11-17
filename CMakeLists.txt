@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.30.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.31.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -36,6 +36,7 @@ add_library(rb4pc_inspection
     src/runtime/timed_chart.cpp
     src/runtime/five_fret_gameplay.cpp
     src/runtime/note_highway.cpp
+    src/runtime/five_fret_input.cpp
 )
 target_include_directories(rb4pc_inspection PUBLIC include)
 target_compile_features(rb4pc_inspection PUBLIC cxx_std_20)

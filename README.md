@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.30.0 Five-Fret Note Highway
+## Current milestone: v0.31.0 Five-Fret Input Mapping
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -272,6 +272,11 @@ score. These are project-defined test rules, not recovered Rock Band scoring.
 Version 0.30.0 renders the timed chart as a five-lane software note highway with
 a hit line, lane-colored gems, chords, and sustain tails. Geometry is clipped to
 the framebuffer and uses generated colors rather than proprietary game assets.
+
+Version 0.31.0 maps a configurable controller profile into five held fret bits,
+edge-triggered strum, and edge-triggered pause. The default XInput profile uses
+face/shoulder buttons and the D-pad, so it is a fallback rather than a claim of
+device-specific guitar-controller compatibility.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

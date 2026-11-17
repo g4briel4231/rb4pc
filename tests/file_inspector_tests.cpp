@@ -22,6 +22,7 @@
 #include "rb4pc/runtime/timed_chart.hpp"
 #include "rb4pc/runtime/five_fret_gameplay.hpp"
 #include "rb4pc/runtime/note_highway.hpp"
+#include "rb4pc/runtime/five_fret_input.hpp"
 
 #include <array>
 #include <filesystem>
@@ -250,6 +251,19 @@ int main() {
                          highway_stats.rendered_sustains == 3 &&
                          highway_framebuffer.pixels().size() == 320U * 200U,
                      "note-highway rendering mismatch");
+    rb4pc::runtime::FiveFretInputMapper input_mapper;
+    rb4pc::runtime::ControllerState mapped_controller;
+    mapped_controller.connected = true; mapped_controller.buttons = 0x1000 | 0x2000 | 0x0001;
+    const auto first_input = input_mapper.sample(mapped_controller);
+    const auto held_input = input_mapper.sample(mapped_controller);
+    mapped_controller.buttons = 0;
+    (void)input_mapper.sample(mapped_controller);
+    mapped_controller.buttons = 0x0200 | 0x0002 | 0x0010;
+    const auto next_input = input_mapper.sample(mapped_controller);
+    passed &= expect(first_input.connected && first_input.lane_mask == 3 && first_input.strum_pressed &&
+                         !first_input.pause_pressed && held_input.lane_mask == 3 && !held_input.strum_pressed &&
+                         next_input.lane_mask == 16 && next_input.strum_pressed && next_input.pause_pressed,
+                     "five-fret input mapping mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

@@ -81,3 +81,8 @@ Version 0.30.0 renders the same timed chord model into a generated five-lane
 software highway. Automated coverage verifies that the two-chord fixture draws
 three gems and three sustain tails inside the requested visibility window. The
 renderer depends on no original textures, fonts, or other visual assets.
+
+Version 0.31.0 adds a platform-neutral input mapping layer over raw controller
+state. Tests verify simultaneous fret masks, one-shot strum edges, held-button
+suppression, release/retrigger behavior, and pause edges. Hardware-specific
+guitar identifiers and layouts remain future evidence work.
