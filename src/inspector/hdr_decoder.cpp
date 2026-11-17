@@ -11,6 +11,8 @@ namespace {
 
 constexpr std::uint32_t maximum_archive_count = 4096;
 constexpr std::uint32_t maximum_name_length = 4096;
+constexpr std::uint32_t maximum_tags_per_archive = 4096;
+constexpr std::uint32_t maximum_file_records = 10'000'000;
 
 class DecodedReader {
 public:
@@ -44,6 +46,12 @@ public:
                (static_cast<std::uint32_t>(bytes[1]) << 8) |
                (static_cast<std::uint32_t>(bytes[2]) << 16) |
                (static_cast<std::uint32_t>(bytes[3]) << 24);
+    }
+
+    [[nodiscard]] std::uint64_t read_u64() {
+        const auto low = static_cast<std::uint64_t>(read_u32());
+        const auto high = static_cast<std::uint64_t>(read_u32());
+        return low | (high << 32);
     }
 
     [[nodiscard]] std::string read_string() {
@@ -100,7 +108,28 @@ HdrMetadata decode_hdr_prefix(const std::filesystem::path& path) {
     if (name_count != archive_count) throw std::runtime_error("HDR archive and name counts differ");
     metadata.archives.reserve(archive_count);
     for (std::uint32_t index = 0; index < archive_count; ++index) {
-        metadata.archives.push_back({reader.read_string(), sizes[index]});
+        metadata.archives.push_back({reader.read_string(), sizes[index], {}});
+    }
+
+    const auto tag_set_count = reader.read_u32();
+    if (tag_set_count != archive_count) throw std::runtime_error("HDR archive and tag-set counts differ");
+    for (auto& archive : metadata.archives) {
+        const auto tag_count = reader.read_u32();
+        if (tag_count > maximum_tags_per_archive) throw std::runtime_error("HDR tag count exceeds safety limit");
+        archive.tags.reserve(tag_count);
+        for (std::uint32_t index = 0; index < tag_count; ++index) archive.tags.push_back(reader.read_string());
+    }
+
+    const auto record_count = reader.read_u32();
+    if (record_count > maximum_file_records) throw std::runtime_error("HDR file-record count exceeds safety limit");
+    metadata.file_records.reserve(record_count);
+    for (std::uint32_t index = 0; index < record_count; ++index) {
+        HdrFileRecord record;
+        record.global_offset = reader.read_u64();
+        record.path = reader.read_string();
+        record.unknown_after_path = reader.read_u32();
+        record.size = reader.read_u32();
+        metadata.file_records.push_back(std::move(record));
     }
     return metadata;
 }

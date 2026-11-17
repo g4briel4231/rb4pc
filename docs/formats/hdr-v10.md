@@ -39,9 +39,39 @@ The seed itself is not part of the decoded payload.
 | `0x20` | `count * 4` | ARK sizes as 32-bit integers | Values match actual files exactly |
 | variable | 4 | ARK-name array count | Same value as ARK count in PC sample |
 | variable | repeated | Length-prefixed ARK names | Includes strings such as `main_pc_0.ark` |
+| variable | 4 | Archive tag-set count | Matches ARK count in all three samples |
+| variable | repeated | Per-ARK string tag lists | Examples include `launch`, `songs`, and `unordered` |
+| variable | 4 | File-record count | 30,382 PC; 35,337 PS4; 39,672 Xbox One |
+| variable | repeated | File records | Layout described below |
 
 The name-array location for the larger console samples follows the size array;
 full structural parsing has not yet been implemented in RB4PC.
+
+## File-record layout
+
+The serialization routine writes each record in this order:
+
+| Relative order | Size | Meaning |
+|---:|---:|---|
+| 0 | 8 | Global offset in the concatenated declared ARK space |
+| 1 | variable | Length-prefixed internal path |
+| 2 | 4 | Unknown; `0xffffffff` is a frequent sentinel |
+| 3 | 4 | File size in bytes |
+
+The offset and size interpretation was checked across all 105,391 records from
+the three samples. Every offset is within the sum of declared ARK sizes, and
+every `offset + size` span remains in that range. All zero-size records are
+marker records in the current samples:
+
+| Set | Records | Zero-size records | Marker records |
+|---|---:|---:|---:|
+| PC | 30,382 | 4 | 4 |
+| PS4 | 35,337 | 204 | 204 |
+| Xbox One | 39,672 | 289 | 289 |
+
+Console marker offsets at the transition to patch content also equal the total
+size of preceding main volumes, providing an independent check of the global
+concatenated-offset interpretation.
 
 ## Cross-platform validation
 
@@ -74,7 +104,8 @@ not silently ignore or remove them.
 
 - Meaning and byte order of the 16-byte value at `0x08`
 - Meaning of the value at `0x04`
-- Fields following the archive-name array
-- File-record layout, offsets, path table, and hash/index structures
+- Meaning of the 32-bit file-record field after each path
+- Structures following the file-record table
+- Additional path-table and hash/index structures, if present
 - Whether all version-10 headers use the same optional sections
 

@@ -39,6 +39,16 @@ void write_test_hdr(const std::filesystem::path& path) {
     append_u32(plain, 2);
     append_string(plain, "main_ps4_2.ark");
     append_string(plain, "patch_main_ps4_0.ark");
+    append_u32(plain, 2);
+    append_u32(plain, 1);
+    append_string(plain, "launch");
+    append_u32(plain, 0);
+    append_u32(plain, 1);
+    append_u32(plain, 0x55667788);
+    append_u32(plain, 0x11223344);
+    append_string(plain, "test/file.bin");
+    append_u32(plain, 7);
+    append_u32(plain, 99);
 
     constexpr std::uint32_t seed = 12345;
     std::int64_t state = seed;
@@ -107,7 +117,16 @@ int main() {
     passed &= expect(set_report.archives.size() == 2 &&
                          set_report.archives[1].path.filename() == "patch_main_ps4_0.ark",
                      "patch archive declaration missing");
-    passed &= expect(json.find("\"schemaVersion\": 2") != std::string::npos,
+    passed &= expect(set_report.metadata.archives[0].tags.size() == 1 &&
+                         set_report.metadata.archives[0].tags[0] == "launch",
+                     "archive tags were not decoded");
+    passed &= expect(set_report.metadata.file_records.size() == 1 &&
+                         set_report.metadata.file_records[0].global_offset == 0x1122334455667788ULL &&
+                         set_report.metadata.file_records[0].path == "test/file.bin" &&
+                         set_report.metadata.file_records[0].unknown_after_path == 7 &&
+                         set_report.metadata.file_records[0].size == 99,
+                     "file record was not decoded");
+    passed &= expect(json.find("\"schemaVersion\": 3") != std::string::npos,
                      "JSON schema version missing");
     passed &= expect(json.find("\"sha256\": \"") != std::string::npos,
                      "JSON hash field missing");

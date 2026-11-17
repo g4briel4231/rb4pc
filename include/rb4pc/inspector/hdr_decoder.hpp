@@ -11,6 +11,14 @@ namespace rb4pc::inspector {
 struct HdrArchiveEntry {
     std::string name;
     std::uint32_t declared_size = 0;
+    std::vector<std::string> tags;
+};
+
+struct HdrFileRecord {
+    std::uint64_t global_offset = 0;
+    std::string path;
+    std::uint32_t unknown_after_path = 0;
+    std::uint32_t size = 0;
 };
 
 struct HdrMetadata {
@@ -19,6 +27,7 @@ struct HdrMetadata {
     std::uint32_t unknown_04 = 0;
     std::array<unsigned char, 16> unknown_08{};
     std::vector<HdrArchiveEntry> archives;
+    std::vector<HdrFileRecord> file_records;
 };
 
 [[nodiscard]] HdrMetadata decode_hdr_prefix(const std::filesystem::path& path);

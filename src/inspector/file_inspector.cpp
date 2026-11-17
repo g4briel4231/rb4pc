@@ -5,11 +5,39 @@
 #include <cctype>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 
 namespace rb4pc::inspector {
 namespace {
+
+struct RecordSummary {
+    std::uint64_t declared_archive_bytes = 0;
+    std::size_t offsets_in_range = 0;
+    std::size_t spans_in_range = 0;
+    std::size_t zero_size_records = 0;
+    std::size_t marker_records = 0;
+    std::size_t sentinel_value0_records = 0;
+};
+
+RecordSummary summarize_records(const HeaderSetReport& report) {
+    RecordSummary summary;
+    for (const auto& archive : report.metadata.archives) summary.declared_archive_bytes += archive.declared_size;
+    for (const auto& record : report.metadata.file_records) {
+        if (record.global_offset <= summary.declared_archive_bytes) ++summary.offsets_in_range;
+        if (record.global_offset <= summary.declared_archive_bytes &&
+            record.size <= summary.declared_archive_bytes - record.global_offset) {
+            ++summary.spans_in_range;
+        }
+        if (record.size == 0) ++summary.zero_size_records;
+        if (record.path.starts_with("__marker__") || record.path == "__split_ark__") ++summary.marker_records;
+        if (record.unknown_after_path == std::numeric_limits<std::uint32_t>::max()) {
+            ++summary.sentinel_value0_records;
+        }
+    }
+    return summary;
+}
 
 std::string platform_hint(const std::filesystem::path& path) {
     auto name = path.stem().string();
@@ -124,6 +152,7 @@ std::string format_report(const FileReport& report) {
 
 std::string format_report(const HeaderSetReport& report) {
     std::ostringstream output;
+    const auto record_summary = summarize_records(report);
     output << format_report(report.header);
     output << "Platform hint: " << report.platform_hint << " (filename only)\n";
     output << std::fixed << std::setprecision(6);
@@ -146,13 +175,28 @@ std::string format_report(const HeaderSetReport& report) {
         else output << " — verified";
         output << '\n';
     }
+    output << "Decoded file records: " << report.metadata.file_records.size() << '\n';
+    output << "Declared concatenated ARK bytes: " << record_summary.declared_archive_bytes << '\n';
+    output << "Record offsets in declared range: " << record_summary.offsets_in_range << '\n';
+    output << "Record offset+size spans in range: " << record_summary.spans_in_range << '\n';
+    output << "Zero-size records: " << record_summary.zero_size_records << '\n';
+    output << "Marker records: " << record_summary.marker_records << '\n';
+    const auto sample_count = std::min<std::size_t>(report.metadata.file_records.size(), 5);
+    for (std::size_t index = 0; index < sample_count; ++index) {
+        const auto& record = report.metadata.file_records[index];
+        output << "  record[" << index << "]: globalOffset=" << record.global_offset
+               << ", path=" << record.path
+               << ", unknownAfterPath=" << record.unknown_after_path
+               << ", size=" << record.size << '\n';
+    }
     return output.str();
 }
 
 std::string format_json(const HeaderSetReport& report) {
     std::ostringstream output;
+    const auto record_summary = summarize_records(report);
     output << "{\n";
-    output << "  \"schemaVersion\": 2,\n";
+    output << "  \"schemaVersion\": 3,\n";
     output << "  \"platformHint\": \"" << escape_json(report.platform_hint) << "\",\n";
     output << "  \"platformHintSource\": \"filename\",\n";
     output << "  \"header\": {\n";
@@ -166,7 +210,28 @@ std::string format_json(const HeaderSetReport& report) {
     output << "    \"version\": " << report.metadata.version << ",\n";
     output << "    \"unknown04\": " << report.metadata.unknown_04 << ",\n";
     output << "    \"unknown08Hex\": \""
-           << hex_string(report.metadata.unknown_08.data(), report.metadata.unknown_08.size()) << "\"\n";
+           << hex_string(report.metadata.unknown_08.data(), report.metadata.unknown_08.size()) << "\",\n";
+    output << "    \"fileRecordCount\": " << report.metadata.file_records.size() << "\n";
+    output << "  },\n";
+    output << "  \"fileRecordSamples\": [";
+    const auto record_sample_count = std::min<std::size_t>(report.metadata.file_records.size(), 5);
+    for (std::size_t index = 0; index < record_sample_count; ++index) {
+        const auto& record = report.metadata.file_records[index];
+        output << (index == 0 ? "\n" : ",\n");
+        output << "    {\"globalOffset\": " << record.global_offset
+               << ", \"path\": \"" << escape_json(record.path)
+               << "\", \"unknownAfterPath\": " << record.unknown_after_path
+               << ", \"size\": " << record.size << "}";
+    }
+    if (record_sample_count != 0) output << '\n';
+    output << "  ],\n";
+    output << "  \"fileRecordAnalysis\": {\n";
+    output << "    \"declaredArchiveBytes\": " << record_summary.declared_archive_bytes << ",\n";
+    output << "    \"offsetsInRange\": " << record_summary.offsets_in_range << ",\n";
+    output << "    \"spansInRange\": " << record_summary.spans_in_range << ",\n";
+    output << "    \"zeroSizeRecords\": " << record_summary.zero_size_records << ",\n";
+    output << "    \"markerRecords\": " << record_summary.marker_records << ",\n";
+    output << "    \"sentinelUnknownAfterPathRecords\": " << record_summary.sentinel_value0_records << "\n";
     output << "  },\n";
     output << std::fixed << std::setprecision(6);
     output << "  \"analysis\": {\n";
@@ -194,7 +259,14 @@ std::string format_json(const HeaderSetReport& report) {
                << "\", \"declaredSize\": " << archive.declared_size
                << ", \"exists\": " << (archive.exists ? "true" : "false")
                << ", \"actualSize\": " << archive.actual_size
-               << ", \"sizeMatches\": " << (archive.size_matches ? "true" : "false") << "}";
+               << ", \"sizeMatches\": " << (archive.size_matches ? "true" : "false")
+               << ", \"tags\": [";
+        const auto& tags = report.metadata.archives[index].tags;
+        for (std::size_t tag_index = 0; tag_index < tags.size(); ++tag_index) {
+            if (tag_index != 0) output << ", ";
+            output << "\"" << escape_json(tags[tag_index]) << "\"";
+        }
+        output << "]}";
     }
     if (!report.archives.empty()) output << '\n';
     output << "  ]\n";
