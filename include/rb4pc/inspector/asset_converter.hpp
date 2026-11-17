@@ -15,6 +15,8 @@ struct RiffConversionResult {
     std::string sha256;
     std::optional<std::filesystem::path> trailing_sidecar;
     std::optional<std::string> trailing_sha256;
+    std::filesystem::path manifest;
+    std::string form_type;
 };
 [[nodiscard]] RiffConversionResult convert_riff_record(
     const HeaderSetReport& report, std::string_view internal_path,

@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.5.0 Format-aware RIFF Conversion
+## Current milestone: v0.5.1 Verified RIFF Conversion
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -132,6 +132,10 @@ discarded.
 
 The destination and any sidecar must not already exist. Conversion is read-only
 with respect to the user's HDR/ARK source files.
+
+Version 0.5.1 re-parses every converted RIFF before reporting success and emits
+an adjacent `.rb4pc-conversion.json` manifest containing the internal source
+path, form type, logical and record sizes, output hash, and optional sidecar hash.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as

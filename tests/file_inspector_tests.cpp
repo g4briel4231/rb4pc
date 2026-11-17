@@ -244,10 +244,13 @@ int main() {
         conversion_report, "audio/test.wav", converted_path);
     const auto converted_report = rb4pc::inspector::inspect_file(converted_path);
     const auto sidecar_report = rb4pc::inspector::inspect_file(*conversion.trailing_sidecar);
+    const auto conversion_manifest = read_file(conversion.manifest);
     passed &= expect(conversion.record_size == conversion_source.size() &&
                          conversion.logical_size == riff_bytes.size() &&
                          converted_report.size == riff_bytes.size() && sidecar_report.size == 4 &&
-                         conversion.trailing_sha256 == sidecar_report.sha256,
+                         conversion.trailing_sha256 == sidecar_report.sha256 && conversion.form_type == "WAVE" &&
+                         conversion_manifest.find("\"formType\": \"WAVE\"") != std::string::npos &&
+                         conversion_manifest.find(conversion.sha256) != std::string::npos,
                      "format-aware RIFF conversion mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};

@@ -142,6 +142,8 @@ int main(int argc, char* argv[]) {
                       << "HDR record size: " << result.record_size << " bytes\n"
                       << "Logical RIFF size: " << result.logical_size << " bytes\n"
                       << "Converted SHA-256: " << result.sha256 << '\n';
+            std::cout << "RIFF form type: " << result.form_type << '\n'
+                      << "Conversion manifest: " << result.manifest.string() << '\n';
             if (result.trailing_sidecar) {
                 std::cout << "Trailing sidecar: " << result.trailing_sidecar->string() << '\n'
                           << "Trailing SHA-256: " << *result.trailing_sha256 << '\n';
