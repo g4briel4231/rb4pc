@@ -13,4 +13,5 @@ Verified format notes:
 - [`payload-catalog.md`](payload-catalog.md): bounded signature and extension census
 - [`riff-payloads.md`](riff-payloads.md): RIFF forms, chunks, and record-size validation
 - [`riff-conversion.md`](riff-conversion.md): lossless logical RIFF export policy
+- [`music-payloads.md`](music-payloads.md): compiled MIDI and MOGG header census
 

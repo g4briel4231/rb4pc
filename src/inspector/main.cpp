@@ -1,6 +1,7 @@
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/asset_converter.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
+#include "rb4pc/inspector/music_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
 
 #include <exception>
@@ -14,7 +15,7 @@ namespace {
 
 void print_usage(const char* program) {
     std::cerr << "Usage: " << program
-              << " <header.hdr> [--find <internal-path>] [--catalog]"
+              << " <header.hdr> [--find <internal-path>] [--catalog] [--music-catalog]"
                  " [--extract <internal-path> --destination <file>]"
                  " [--convert-riff <internal-path> --destination <file>]"
                  " [--extract-prefix <prefix>] [--extract-extension <extension>]"
@@ -33,6 +34,7 @@ int main(int argc, char* argv[]) {
     std::optional<std::filesystem::path> output_path;
     std::optional<std::string> find_path;
     bool catalog = false;
+    bool music_catalog = false;
     std::optional<std::string> extract_path;
     std::optional<std::filesystem::path> destination_path;
     std::optional<std::string> convert_riff_path;
@@ -58,6 +60,9 @@ int main(int argc, char* argv[]) {
                 return 2;
             }
             catalog = true;
+        } else if (argument == "--music-catalog") {
+            if (music_catalog) { print_usage(argv[0]); return 2; }
+            music_catalog = true;
         } else if (argument == "--extract") {
             if (++index >= argc || extract_path) {
                 print_usage(argv[0]);
@@ -129,6 +134,7 @@ int main(int argc, char* argv[]) {
             std::cout << rb4pc::inspector::format_report(report, *preview);
         }
         if (catalog) std::cout << rb4pc::inspector::format_report(rb4pc::inspector::catalog_payloads(report));
+        if (music_catalog) std::cout << rb4pc::inspector::format_report(rb4pc::inspector::catalog_music_payloads(report));
         if (extract_path) {
             const auto result = rb4pc::inspector::extract_record(report, *extract_path, *destination_path);
             std::cout << "Extracted record: " << result.destination.string() << '\n'

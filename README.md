@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.10.0 Runtime Diagnostics
+## Current milestone: v0.11.0 Music Payload Census
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -183,6 +183,10 @@ sample audio assets. It is an integration probe, not yet gameplay.
 
 Version 0.10.0 adds versioned runtime diagnostics that explicitly distinguish
 implemented capabilities from absent playback, rendering, and gameplay.
+
+Version 0.11.0 adds `--music-catalog`, a bounded header census for compiled MIDI,
+MIDI-song, RBMID, and MOGG records. It reports counts, size ranges, distinct
+four-byte prefixes, and whether standard `MThd` or `OggS` headers are exposed.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as
