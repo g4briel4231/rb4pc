@@ -1,5 +1,6 @@
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/archive_layout.hpp"
+#include "rb4pc/builder/build_plan.hpp"
 #include "rb4pc/inspector/asset_converter.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
@@ -112,6 +113,8 @@ int main() {
     const auto selective_report = rb4pc::inspector::inspect_file(selective_path / "test" / "file.bin");
     const auto manifest_contents = read_file(selective.manifest);
     const auto json = rb4pc::inspector::format_json(set_report);
+    const auto build_plan = rb4pc::builder::create_build_plan(set_report);
+    const auto build_plan_json = rb4pc::builder::format_json(build_plan);
     bool passed = true;
     passed &= expect(file_report.size == contents.size() && file_report.preview_size == contents.size(),
                      "unexpected report size");
@@ -135,6 +138,10 @@ int main() {
     }
 
     passed &= expect(set_report.platform_hint == "ps4", "platform hint mismatch");
+    passed &= expect(build_plan.ready && build_plan.archive_count == 2 &&
+                         build_plan.usable_size_archives == 2 && build_plan.resolved_records == 1 &&
+                         build_plan_json.find("\"readyForConversionPlanning\": true") != std::string::npos,
+                     "builder plan validation mismatch");
     passed &= expect(set_report.archives.size() == 2, "archive count mismatch");
     passed &= expect(set_report.metadata.version == 10 && set_report.metadata.unknown_04 == 1,
                      "decoded HDR fields mismatch");

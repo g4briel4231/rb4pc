@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.5.1 Verified RIFF Conversion
+## Current milestone: v0.6.0 Builder Planning Foundation
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -137,6 +137,16 @@ Version 0.5.1 re-parses every converted RIFF before reporting success and emits
 an adjacent `.rb4pc-conversion.json` manifest containing the internal source
 path, form type, logical and record sizes, output hash, and optional sidecar hash.
 
+Version 0.6.0 introduces `rb4pc-builder` as a separate executable. Its first
+operation is deliberately non-destructive: it validates HDR version 10, the
+path hash index, ARK presence and usable sizes, and complete record addressing,
+then writes a versioned JSON conversion plan. It does not yet build a runtime or
+copy proprietary assets.
+
+```powershell
+./build/default/rb4pc-builder.exe "../path/to/main_ps4.hdr" --plan "./build-plan.json"
+```
+
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as
 evidence about the file's internal format.
@@ -145,9 +155,11 @@ evidence about the file's internal format.
 
 - `include/rb4pc`: public C++ interfaces
 - `src/inspector`: ForgeInspector implementation and command-line application
+- `src/builder`: RB4PC Builder planning and command-line application
 - `tests`: automated tests using synthetic, non-proprietary data
 - `docs/formats`: evidence-backed format notes (planned)
 - `docs/research`: reproducible static-analysis notes without proprietary samples
+- `docs/builder-plan.md`: current Builder plan schema and readiness rules
 
 ## Legal notice
 
