@@ -68,6 +68,13 @@ RiffAnalysis analyze_riff(std::istream& input, std::uint64_t base_offset, std::u
                 read_u32_le(format.data() + 4), read_u32_le(format.data() + 8),
                 read_u16_le(format.data() + 12), read_u16_le(format.data() + 14)};
         }
+        if (analysis.form_type == "FEV " && chunk_id == "FMT " && chunk_size >= 8 &&
+            base_offset <= std::numeric_limits<std::uint64_t>::max() - position - 8) {
+            std::array<unsigned char, 8> format{};
+            if (!read_at(input, base_offset + position + 8, format.data(), format.size())) return analysis;
+            analysis.fev_format_prefix = FevFormatPrefix{
+                read_u32_le(format.data()), read_u32_le(format.data() + 4)};
+        }
         position += 8 + padded_size;
     }
     analysis.structure_valid = position == analysis.declared_file_size;

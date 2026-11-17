@@ -32,6 +32,9 @@ struct PayloadCatalog {
     std::map<std::string, std::size_t> wave_channels;
     std::map<std::string, std::size_t> wave_sample_rates;
     std::map<std::string, std::size_t> wave_bits_per_sample;
+    std::size_t fev_format_prefix_records = 0;
+    std::size_t fev_missing_format_prefix_records = 0;
+    std::map<std::string, std::size_t> fev_format_prefixes;
 };
 
 [[nodiscard]] std::string classify_payload_signature(const unsigned char* data, std::size_t size);

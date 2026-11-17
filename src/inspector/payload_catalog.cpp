@@ -127,6 +127,14 @@ PayloadCatalog catalog_payloads(const HeaderSetReport& report) {
                         ++catalog.wave_bits_per_sample[std::to_string(riff.wave_format->bits_per_sample)];
                     } else ++catalog.wave_missing_format_records;
                 }
+                if (riff.form_type == "FEV ") {
+                    if (riff.fev_format_prefix) {
+                        ++catalog.fev_format_prefix_records;
+                        const auto key = std::to_string(riff.fev_format_prefix->value_0) + "/" +
+                                         std::to_string(riff.fev_format_prefix->value_4);
+                        ++catalog.fev_format_prefixes[key];
+                    } else ++catalog.fev_missing_format_prefix_records;
+                }
             } else {
                 ++catalog.riff_invalid_records;
                 if (!riff.size_matches_record) ++catalog.riff_size_mismatches;
@@ -193,6 +201,14 @@ std::string format_report(const PayloadCatalog& catalog) {
     print_wave_counts("channels", catalog.wave_channels);
     print_wave_counts("sample rates", catalog.wave_sample_rates);
     print_wave_counts("bits per sample", catalog.wave_bits_per_sample);
+    output << "  FEV format analysis:\n";
+    output << "    decoded FMT prefixes: " << catalog.fev_format_prefix_records << '\n';
+    output << "    missing/short FMT prefixes: " << catalog.fev_missing_format_prefix_records << '\n';
+    output << "    unknown u32 pairs:";
+    for (const auto& [name, count] : sorted_counts(catalog.fev_format_prefixes)) {
+        output << ' ' << name << '=' << count;
+    }
+    output << '\n';
     output << "  Extension groups (top 25):\n";
     const auto extensions = sorted_counts(catalog.extensions);
     const auto limit = std::min<std::size_t>(extensions.size(), 25);

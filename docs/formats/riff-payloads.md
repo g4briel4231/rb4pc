@@ -46,3 +46,15 @@ All 5,061 WAVE files use format tag 1 (integer PCM) and 16 bits per sample.
 | Rock Band 4 Xbox One | 530 | 475 | 883 | 106 | 16 |
 
 No WAVE record had a missing or shorter-than-16-byte `fmt ` chunk.
+
+## FEV format prefix
+
+ForgeInspector v0.4.2 reads the first two little-endian 32-bit values of each
+`FEV `/`FMT ` payload without assigning names to them. Every FEV had the prefix:
+
+- Rock Band VR PC: `80, 70` in all 13 records.
+- Rock Band 4 PS4: `99, 99` in all 11 records.
+- Rock Band 4 Xbox One: `99, 99` in all 11 records.
+
+This is a reproducible platform/version distinction, but the fields' semantics
+are not yet established.

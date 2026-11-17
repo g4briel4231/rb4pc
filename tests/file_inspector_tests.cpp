@@ -214,6 +214,19 @@ int main() {
                          padded_riff_analysis.trailing_bytes_size == 4 &&
                          padded_riff_analysis.trailing_bytes_zero,
                      "RIFF zero trailing-region analysis mismatch");
+    std::vector<unsigned char> fev_bytes = {'R', 'I', 'F', 'F'};
+    append_u32(fev_bytes, 20);
+    fev_bytes.insert(fev_bytes.end(), {'F', 'E', 'V', ' ', 'F', 'M', 'T', ' '});
+    append_u32(fev_bytes, 8);
+    append_u32(fev_bytes, 80);
+    append_u32(fev_bytes, 70);
+    std::stringstream fev_stream(std::string(fev_bytes.begin(), fev_bytes.end()),
+                                 std::ios::in | std::ios::binary);
+    const auto fev_analysis = rb4pc::inspector::analyze_riff(fev_stream, 0, fev_bytes.size());
+    passed &= expect(fev_analysis.structure_valid && fev_analysis.fev_format_prefix &&
+                         fev_analysis.fev_format_prefix->value_0 == 80 &&
+                         fev_analysis.fev_format_prefix->value_4 == 70,
+                     "FEV FMT prefix analysis mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};
     const auto first_location = rb4pc::inspector::resolve_archive_location(layout, 2, 1);

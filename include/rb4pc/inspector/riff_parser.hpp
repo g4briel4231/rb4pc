@@ -18,12 +18,18 @@ struct WaveFormat {
     std::uint16_t bits_per_sample = 0;
 };
 
+struct FevFormatPrefix {
+    std::uint32_t value_0 = 0;
+    std::uint32_t value_4 = 0;
+};
+
 struct RiffAnalysis {
     std::string form_type;
     std::uint64_t declared_file_size = 0;
     std::size_t chunk_count = 0;
     std::map<std::string, std::size_t> chunk_ids;
     std::optional<WaveFormat> wave_format;
+    std::optional<FevFormatPrefix> fev_format_prefix;
     bool size_matches_record = false;
     std::uint64_t trailing_bytes_size = 0;
     bool trailing_bytes_zero = false;
