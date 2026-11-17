@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.4.2 FEV Structure Census
+## Current milestone: v0.5.0 Format-aware RIFF Conversion
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -118,6 +118,20 @@ and bits per sample without decoding or playing the audio payload.
 Version 0.4.2 records the first two little-endian 32-bit values in each FEV
 `FMT ` chunk and compares their distributions across platforms. Their semantics
 remain explicitly unknown until corroborated by additional evidence.
+
+Version 0.5.0 adds the first asset conversion operation. `--convert-riff`
+exports the structurally validated logical RIFF range to a new file. If the HDR
+record contains trailing bytes, they are preserved in an adjacent
+`.rb4pc-trailing.bin` sidecar with a separate SHA-256 instead of being silently
+discarded.
+
+```powershell
+./build/default/rb4pc-forge-inspector.exe "../path/to/main_ps4.hdr" `
+  --convert-riff "path/inside/archive.wav" --destination "./converted.wav"
+```
+
+The destination and any sidecar must not already exist. Conversion is read-only
+with respect to the user's HDR/ARK source files.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as

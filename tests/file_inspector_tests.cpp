@@ -1,5 +1,6 @@
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/archive_layout.hpp"
+#include "rb4pc/inspector/asset_converter.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
 #include "rb4pc/inspector/riff_parser.hpp"
@@ -111,8 +112,6 @@ int main() {
     const auto selective_report = rb4pc::inspector::inspect_file(selective_path / "test" / "file.bin");
     const auto manifest_contents = read_file(selective.manifest);
     const auto json = rb4pc::inspector::format_json(set_report);
-    std::filesystem::remove_all(directory);
-
     bool passed = true;
     passed &= expect(file_report.size == contents.size() && file_report.preview_size == contents.size(),
                      "unexpected report size");
@@ -227,6 +226,29 @@ int main() {
                          fev_analysis.fev_format_prefix->value_0 == 80 &&
                          fev_analysis.fev_format_prefix->value_4 == 70,
                      "FEV FMT prefix analysis mismatch");
+    auto conversion_source = riff_bytes;
+    conversion_source.insert(conversion_source.end(), {1, 2, 3, 4});
+    const auto conversion_ark = directory / "conversion.ark";
+    write_file(conversion_ark, std::string(conversion_source.begin(), conversion_source.end()));
+    rb4pc::inspector::HeaderSetReport conversion_report;
+    conversion_report.metadata.archives.push_back(
+        {"conversion.ark", static_cast<std::uint32_t>(conversion_source.size()), {}});
+    conversion_report.metadata.file_records.push_back(
+        {0, "audio/test.wav", 0xffffffff, static_cast<std::uint32_t>(conversion_source.size())});
+    conversion_report.metadata.hash_bucket_heads.push_back(0);
+    conversion_report.archives.push_back(
+        {conversion_ark, static_cast<std::uint32_t>(conversion_source.size()), conversion_source.size(), true, true});
+    conversion_report.record_locations.push_back(rb4pc::inspector::ArchiveLocation{0, 0});
+    const auto converted_path = directory / "converted.wav";
+    const auto conversion = rb4pc::inspector::convert_riff_record(
+        conversion_report, "audio/test.wav", converted_path);
+    const auto converted_report = rb4pc::inspector::inspect_file(converted_path);
+    const auto sidecar_report = rb4pc::inspector::inspect_file(*conversion.trailing_sidecar);
+    passed &= expect(conversion.record_size == conversion_source.size() &&
+                         conversion.logical_size == riff_bytes.size() &&
+                         converted_report.size == riff_bytes.size() && sidecar_report.size == 4 &&
+                         conversion.trailing_sha256 == sidecar_report.sha256,
+                     "format-aware RIFF conversion mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};
     const auto first_location = rb4pc::inspector::resolve_archive_location(layout, 2, 1);
@@ -253,6 +275,7 @@ int main() {
     passed &= expect(json.find("\"hashIndexValidated\": true") != std::string::npos,
                      "JSON path hash validation missing");
 
+    std::filesystem::remove_all(directory);
     return passed ? 0 : 1;
 }
 

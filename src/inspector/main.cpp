@@ -1,4 +1,5 @@
 #include "rb4pc/inspector/file_inspector.hpp"
+#include "rb4pc/inspector/asset_converter.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
 
@@ -15,6 +16,7 @@ void print_usage(const char* program) {
     std::cerr << "Usage: " << program
               << " <header.hdr> [--find <internal-path>] [--catalog]"
                  " [--extract <internal-path> --destination <file>]"
+                 " [--convert-riff <internal-path> --destination <file>]"
                  " [--extract-prefix <prefix>] [--extract-extension <extension>]"
                  " [--destination-dir <directory>] [--output <report.json>]\n";
 }
@@ -33,6 +35,7 @@ int main(int argc, char* argv[]) {
     bool catalog = false;
     std::optional<std::string> extract_path;
     std::optional<std::filesystem::path> destination_path;
+    std::optional<std::string> convert_riff_path;
     rb4pc::inspector::SelectiveExtractionOptions selective_options;
     std::optional<std::filesystem::path> destination_directory;
     for (int index = 1; index < argc; ++index) {
@@ -67,6 +70,12 @@ int main(int argc, char* argv[]) {
                 return 2;
             }
             destination_path = argv[index];
+        } else if (argument == "--convert-riff") {
+            if (++index >= argc || convert_riff_path) {
+                print_usage(argv[0]);
+                return 2;
+            }
+            convert_riff_path = argv[index];
         } else if (argument == "--extract-prefix") {
             if (++index >= argc || selective_options.prefix) {
                 print_usage(argv[0]);
@@ -97,7 +106,11 @@ int main(int argc, char* argv[]) {
         print_usage(argv[0]);
         return 2;
     }
-    if (extract_path.has_value() != destination_path.has_value()) {
+    if (extract_path && convert_riff_path) {
+        print_usage(argv[0]);
+        return 2;
+    }
+    if ((extract_path.has_value() || convert_riff_path.has_value()) != destination_path.has_value()) {
         print_usage(argv[0]);
         return 2;
     }
@@ -121,6 +134,18 @@ int main(int argc, char* argv[]) {
             std::cout << "Extracted record: " << result.destination.string() << '\n'
                       << "Extracted size: " << result.size << " bytes\n"
                       << "Extracted SHA-256: " << result.sha256 << '\n';
+        }
+        if (convert_riff_path) {
+            const auto result = rb4pc::inspector::convert_riff_record(
+                report, *convert_riff_path, *destination_path);
+            std::cout << "Converted RIFF: " << result.destination.string() << '\n'
+                      << "HDR record size: " << result.record_size << " bytes\n"
+                      << "Logical RIFF size: " << result.logical_size << " bytes\n"
+                      << "Converted SHA-256: " << result.sha256 << '\n';
+            if (result.trailing_sidecar) {
+                std::cout << "Trailing sidecar: " << result.trailing_sidecar->string() << '\n'
+                          << "Trailing SHA-256: " << *result.trailing_sha256 << '\n';
+            }
         }
         if (destination_directory) {
             const auto result = rb4pc::inspector::extract_records(
