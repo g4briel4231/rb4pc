@@ -2,6 +2,7 @@
 #include "rb4pc/inspector/archive_layout.hpp"
 #include "rb4pc/builder/build_plan.hpp"
 #include "rb4pc/builder/song_layout.hpp"
+#include "rb4pc/builder/custom_song_catalog.hpp"
 #include "rb4pc/inspector/asset_converter.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
@@ -99,6 +100,7 @@ int main() {
     write_file(directory / "main_ps4_2.ark", "two");
     write_file(directory / "patch_main_ps4_0.ark", "two");
     write_test_hdr(path);
+    std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
     const auto set_report = rb4pc::inspector::inspect_header_set(path);
@@ -121,6 +123,7 @@ int main() {
     const auto build_plan = rb4pc::builder::create_build_plan(set_report, payload_catalog);
     const auto build_plan_json = rb4pc::builder::format_json(build_plan);
     const auto package_paths = rb4pc::builder::custom_song_package_paths("example");
+    const auto custom_song_catalog = rb4pc::builder::scan_custom_songs(directory);
     const rb4pc::runtime::ArchiveFileSystem vfs(set_report);
     const auto vfs_bytes = vfs.read("test/file.bin", 1, 2);
     const auto vfs_paths = vfs.list_paths("test/", 10);
@@ -155,6 +158,10 @@ int main() {
                          package_paths.header.generic_string() == "example_pc.hdr" &&
                          package_paths.archive.generic_string() == "example_pc_0.ark",
                      "custom-song package layout mismatch");
+    passed &= expect(custom_song_catalog.songs.size() == 1 &&
+                         custom_song_catalog.songs[0].short_name == "example" &&
+                         !custom_song_catalog.songs[0].ready,
+                     "custom-song installation scan mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

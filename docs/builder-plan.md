@@ -29,3 +29,8 @@ Band VR installation root as `<shortname>_pc.hdr` plus
 Internal assets may still use paths containing `/songs/`; that namespace must
 not be confused with the host installation layout. Builder short names accept
 only letters, digits, `_`, and `-` before package filenames are generated.
+
+Version 0.13.0 can scan this flat installation layout. A package is ready when
+its HDR is version 10, its hash index validates, it declares exactly the
+expected `<shortname>_pc_0.ark`, and that ARK is present with at least the
+declared size.

@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.12.1 Forge Custom-song Layout
+## Current milestone: v0.13.0 Custom-song Catalog
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -196,6 +196,15 @@ Version 0.12.1 corrects the custom-song installation model from real
 ForgeToolGUI output: each song is a flat root-level pair named
 `<shortname>_pc.hdr` and `<shortname>_pc_0.ark`. `songs/` remains an internal
 archive path, not a host installation directory.
+
+Version 0.13.0 scans a Rock Band VR installation for root-level custom-song
+package pairs, validates each HDR v10 and matching ARK, and writes a catalog
+without copying or modifying the installed songs.
+
+```powershell
+./build/default/rb4pc-builder.exe "../Rock Band VR" `
+  --scan-custom-songs "./custom-songs.json"
+```
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as
