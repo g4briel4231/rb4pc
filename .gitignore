@@ -1,0 +1,17 @@
+/build/
+/out/
+/.vs/
+/.vscode/
+/CMakeUserPresets.json
+*.user
+*.suo
+
+# Never commit game dumps or proprietary game content.
+*.ark
+*.hdr
+*.bin
+*.elf
+*.prx
+*.sprx
+*.xvd
+
