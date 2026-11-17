@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.19.0 Runtime Shell State
+## Current milestone: v0.20.0 Integrated Pre-alpha Shell
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -224,6 +224,10 @@ collisions without copying any file.
 Version 0.19.0 adds a deterministic shell state machine for boot, main menu,
 song browser, settings, diagnostics, and quit. It is tested without opening a
 window and does not yet display text or launch gameplay.
+
+Version 0.20.0 integrates source validation, runtime session, shell state,
+software UI rendering, and the Win32 window in `rb4pc-prealpha`. The visual
+panel is diagnostic and contains no text, charts, gameplay, or original assets.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

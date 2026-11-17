@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.19.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.20.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -30,6 +30,7 @@ add_library(rb4pc_inspection
     src/runtime/ui.cpp
     src/runtime/gameplay_timing.cpp
     src/runtime/shell.cpp
+    src/runtime/shell_render.cpp
 )
 target_include_directories(rb4pc_inspection PUBLIC include)
 target_compile_features(rb4pc_inspection PUBLIC cxx_std_20)
@@ -66,6 +67,9 @@ target_link_libraries(rb4pc-input-probe PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-window src/runtime/window_main.cpp)
 target_link_libraries(rb4pc-window PRIVATE rb4pc_inspection)
+
+add_executable(rb4pc-prealpha src/runtime/prealpha_main.cpp)
+target_link_libraries(rb4pc-prealpha PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-runtime src/runtime/session_main.cpp)
 target_link_libraries(rb4pc-runtime PRIVATE rb4pc_inspection)

@@ -16,6 +16,7 @@
 #include "rb4pc/runtime/ui.hpp"
 #include "rb4pc/runtime/gameplay_timing.hpp"
 #include "rb4pc/runtime/shell.hpp"
+#include "rb4pc/runtime/shell_render.hpp"
 
 #include <array>
 #include <filesystem>
@@ -301,6 +302,9 @@ int main() {
     const auto judgement = rb4pc::runtime::judge_note(1.0, 1.025);
     rb4pc::runtime::RuntimeShell shell;
     shell.source_ready(true); shell.dispatch(rb4pc::runtime::ShellAction::select);
+    rb4pc::runtime::SoftwareFramebuffer shell_framebuffer(320, 200);
+    rb4pc::runtime::RuntimeShell render_shell_model; render_shell_model.source_ready(true);
+    rb4pc::runtime::render_shell(shell_framebuffer, render_shell_model, {true, 100, 10});
     const auto converted_path = directory / "converted.wav";
     const auto conversion = rb4pc::inspector::convert_riff_record(
         conversion_report, "audio/test.wav", converted_path);
@@ -328,7 +332,8 @@ int main() {
                          framebuffer.pixels()[3] == 0xffabcdef && menu.selected_item() == "Quit" &&
                          gameplay_clock.seconds() == 1.0 &&
                          judgement.judgement == rb4pc::runtime::Judgement::perfect && judgement.score == 100 &&
-                         shell.screen() == rb4pc::runtime::ShellScreen::song_browser,
+                         shell.screen() == rb4pc::runtime::ShellScreen::song_browser &&
+                         shell_framebuffer.pixels()[0] == 0xff184f36,
                      "runtime WAVE loader mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};
