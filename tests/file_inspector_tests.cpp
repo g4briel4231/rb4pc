@@ -120,7 +120,7 @@ int main() {
     const auto json = rb4pc::inspector::format_json(set_report);
     const auto build_plan = rb4pc::builder::create_build_plan(set_report, payload_catalog);
     const auto build_plan_json = rb4pc::builder::format_json(build_plan);
-    const auto mapped_song = rb4pc::builder::song_output_path("ps4/songs/example/song.mogg");
+    const auto package_paths = rb4pc::builder::custom_song_package_paths("example");
     const rb4pc::runtime::ArchiveFileSystem vfs(set_report);
     const auto vfs_bytes = vfs.read("test/file.bin", 1, 2);
     const auto vfs_paths = vfs.list_paths("test/", 10);
@@ -151,8 +151,10 @@ int main() {
                          build_plan.usable_size_archives == 2 && build_plan.resolved_records == 1 &&
                          build_plan_json.find("\"readyForConversionPlanning\": true") != std::string::npos,
                      "builder plan validation mismatch");
-    passed &= expect(mapped_song && mapped_song->generic_string() == "songs/example/song.mogg",
-                     "canonical songs output layout mismatch");
+    passed &= expect(rb4pc::builder::is_internal_song_path("ps4/songs/example/song.mogg") &&
+                         package_paths.header.generic_string() == "example_pc.hdr" &&
+                         package_paths.archive.generic_string() == "example_pc_0.ark",
+                     "custom-song package layout mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

@@ -23,8 +23,9 @@ conversion, runtime generation, or source-file modification.
 
 ## Canonical song layout
 
-Starting with v0.12.0, Builder plans use `songs/` as the canonical output root,
-matching the Rock Band VR custom-song layout used by ForgeToolGUI. Platform
-prefixes are removed: for example, `ps4/songs/example/song.mogg` maps to
-`songs/example/song.mogg`. Absolute, empty, dot, parent, and drive-qualified
-components are rejected before any future materialization step.
+Observed ForgeToolGUI installations place each custom song directly in the Rock
+Band VR installation root as `<shortname>_pc.hdr` plus
+`<shortname>_pc_0.ark`. The HDR is version 10 and declares the matching ARK.
+Internal assets may still use paths containing `/songs/`; that namespace must
+not be confused with the host installation layout. Builder short names accept
+only letters, digits, `_`, and `-` before package filenames are generated.

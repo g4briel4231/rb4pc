@@ -19,7 +19,7 @@ BuildPlan create_build_plan(const inspector::HeaderSetReport& report) {
         if (archive.exists && archive.actual_size >= archive.declared_size) ++plan.usable_size_archives;
     }
     for (const auto& location : report.record_locations) if (location) ++plan.resolved_records;
-    for (const auto& record : report.metadata.file_records) if (song_output_path(record.path)) ++plan.song_records;
+    for (const auto& record : report.metadata.file_records) if (is_internal_song_path(record.path)) ++plan.song_records;
     plan.ready = plan.hdr_version == 10 && plan.hash_index_validated && plan.archive_count != 0 &&
                  plan.usable_size_archives == plan.archive_count && plan.resolved_records == plan.record_count;
     return plan;
@@ -50,7 +50,7 @@ std::string format_json(const BuildPlan& plan) {
            << "  \"hashIndexValidated\": " << (plan.hash_index_validated ? "true" : "false") << ",\n"
            << "  \"conversionInventory\": {\"validatedRiff\": " << plan.convertible_riff_records
            << ", \"wave\": " << plan.wave_records << ", \"fev\": " << plan.fev_records << "},\n"
-           << "  \"songLayout\": {\"root\": \"songs\", \"records\": " << plan.song_records << "},\n"
+           << "  \"songLayout\": {\"installRoot\": \".\", \"packagePattern\": \"<shortname>_pc.hdr + <shortname>_pc_0.ark\", \"internalSongRecords\": " << plan.song_records << "},\n"
            << "  \"readyForConversionPlanning\": " << (plan.ready ? "true" : "false") << "\n}\n";
     return output.str();
 }

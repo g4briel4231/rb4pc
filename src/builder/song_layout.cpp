@@ -1,32 +1,21 @@
 #include "rb4pc/builder/song_layout.hpp"
 
 #include <stdexcept>
-#include <string>
+#include <cctype>
 
 namespace rb4pc::builder {
-std::optional<std::filesystem::path> song_output_path(std::string_view internal_path) {
-    std::string normalized(internal_path);
-    for (auto& character : normalized) if (character == '\\') character = '/';
-    std::size_t start = 0;
-    if (normalized.starts_with("songs/")) start = 6;
-    else {
-        const auto marker = normalized.find("/songs/");
-        if (marker == std::string::npos || marker == 0) return std::nullopt;
-        start = marker + 7;
-    }
-    std::filesystem::path result{"songs"};
-    std::size_t position = start;
-    while (position < normalized.size()) {
-        const auto separator = normalized.find('/', position);
-        const auto component = normalized.substr(position, separator - position);
-        if (component.empty() || component == "." || component == ".." || component.find(':') != std::string::npos) {
-            throw std::runtime_error("unsafe song path component");
+bool is_internal_song_path(std::string_view path) {
+    return path.starts_with("songs/") || path.find("/songs/") != std::string_view::npos;
+}
+
+CustomSongPackagePaths custom_song_package_paths(std::string_view short_name) {
+    if (short_name.empty()) throw std::runtime_error("custom-song short name is empty");
+    for (const unsigned char character : short_name) {
+        if (!std::isalnum(character) && character != '_' && character != '-') {
+            throw std::runtime_error("custom-song short name contains an unsafe character");
         }
-        result /= component;
-        if (separator == std::string::npos) break;
-        position = separator + 1;
     }
-    if (position == normalized.size()) throw std::runtime_error("song path has no relative content");
-    return result;
+    const std::string base(short_name);
+    return {base + "_pc.hdr", base + "_pc_0.ark"};
 }
 } // namespace rb4pc::builder

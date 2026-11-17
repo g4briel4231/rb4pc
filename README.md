@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.12.0 Windows PCM Playback
+## Current milestone: v0.12.1 Forge Custom-song Layout
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -191,6 +191,11 @@ four-byte prefixes, and whether standard `MThd` or `OggS` headers are exposed.
 Version 0.12.0 adds explicit, blocking PCM playback through the Windows
 `waveOut` API. `rb4pc-audio-play` accepts one validated WAVE path; no sound is
 played during automated tests. Other platforms report that no backend exists.
+
+Version 0.12.1 corrects the custom-song installation model from real
+ForgeToolGUI output: each song is a flat root-level pair named
+`<shortname>_pc.hdr` and `<shortname>_pc_0.ark`. `songs/` remains an internal
+archive path, not a host installation directory.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as
