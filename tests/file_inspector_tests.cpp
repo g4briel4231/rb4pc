@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 
 namespace {
@@ -19,6 +20,11 @@ bool expect(bool condition, const std::string& message) {
 void write_file(const std::filesystem::path& path, const std::string& contents) {
     std::ofstream output(path, std::ios::binary);
     output.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+}
+
+std::string read_file(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    return {std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
 }
 
 void append_u32(std::vector<unsigned char>& output, std::uint32_t value) {
@@ -94,6 +100,14 @@ int main() {
     const auto extraction = rb4pc::inspector::extract_record(
         set_report, "test/file.bin", extraction_path);
     const auto extracted_report = rb4pc::inspector::inspect_file(extraction_path);
+    rb4pc::inspector::SelectiveExtractionOptions selective_options;
+    selective_options.prefix = "test/";
+    selective_options.extension = ".bin";
+    const auto selective_path = directory / "selective";
+    const auto selective = rb4pc::inspector::extract_records(
+        set_report, selective_options, selective_path);
+    const auto selective_report = rb4pc::inspector::inspect_file(selective_path / "test" / "file.bin");
+    const auto manifest_contents = read_file(selective.manifest);
     const auto json = rb4pc::inspector::format_json(set_report);
     std::filesystem::remove_all(directory);
 
@@ -160,6 +174,11 @@ int main() {
                              "3fc4ccfe745870e2c0d99f71f30ff0656c8dedd41cc1d7d3d376b0dbe685e2f3" &&
                          extracted_report.size == 3 && extracted_report.sha256 == extraction.sha256,
                      "individual extraction mismatch");
+    passed &= expect(selective.file_count == 1 && selective.total_size == 3 &&
+                         selective_report.sha256 == extraction.sha256 &&
+                         manifest_contents.find("\"internalPath\": \"test/file.bin\"") != std::string::npos &&
+                         manifest_contents.find(extraction.sha256) != std::string::npos,
+                     "selective extraction or manifest mismatch");
     const std::array<unsigned char, 8> png_signature = {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
     passed &= expect(rb4pc::inspector::classify_payload_signature(
                          png_signature.data(), png_signature.size()) == "png",

@@ -14,7 +14,9 @@ namespace {
 void print_usage(const char* program) {
     std::cerr << "Usage: " << program
               << " <header.hdr> [--find <internal-path>] [--catalog]"
-                 " [--extract <internal-path> --destination <file>] [--output <report.json>]\n";
+                 " [--extract <internal-path> --destination <file>]"
+                 " [--extract-prefix <prefix>] [--extract-extension <extension>]"
+                 " [--destination-dir <directory>] [--output <report.json>]\n";
 }
 
 } // namespace
@@ -31,6 +33,8 @@ int main(int argc, char* argv[]) {
     bool catalog = false;
     std::optional<std::string> extract_path;
     std::optional<std::filesystem::path> destination_path;
+    rb4pc::inspector::SelectiveExtractionOptions selective_options;
+    std::optional<std::filesystem::path> destination_directory;
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
         if (argument == "--output") {
@@ -63,6 +67,24 @@ int main(int argc, char* argv[]) {
                 return 2;
             }
             destination_path = argv[index];
+        } else if (argument == "--extract-prefix") {
+            if (++index >= argc || selective_options.prefix) {
+                print_usage(argv[0]);
+                return 2;
+            }
+            selective_options.prefix = argv[index];
+        } else if (argument == "--extract-extension") {
+            if (++index >= argc || selective_options.extension) {
+                print_usage(argv[0]);
+                return 2;
+            }
+            selective_options.extension = argv[index];
+        } else if (argument == "--destination-dir") {
+            if (++index >= argc || destination_directory) {
+                print_usage(argv[0]);
+                return 2;
+            }
+            destination_directory = argv[index];
         } else if (input.empty()) {
             input = argument;
         } else {
@@ -76,6 +98,11 @@ int main(int argc, char* argv[]) {
         return 2;
     }
     if (extract_path.has_value() != destination_path.has_value()) {
+        print_usage(argv[0]);
+        return 2;
+    }
+    const auto has_selective_filter = selective_options.prefix.has_value() || selective_options.extension.has_value();
+    if (has_selective_filter != destination_directory.has_value()) {
         print_usage(argv[0]);
         return 2;
     }
@@ -94,6 +121,13 @@ int main(int argc, char* argv[]) {
             std::cout << "Extracted record: " << result.destination.string() << '\n'
                       << "Extracted size: " << result.size << " bytes\n"
                       << "Extracted SHA-256: " << result.sha256 << '\n';
+        }
+        if (destination_directory) {
+            const auto result = rb4pc::inspector::extract_records(
+                report, selective_options, *destination_directory);
+            std::cout << "Extracted files: " << result.file_count << '\n'
+                      << "Extracted total size: " << result.total_size << " bytes\n"
+                      << "Extraction manifest: " << result.manifest.string() << '\n';
         }
         if (output_path) {
             std::ofstream output(*output_path, std::ios::binary);

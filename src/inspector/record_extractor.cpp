@@ -7,9 +7,55 @@
 #include <algorithm>
 #include <array>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
+#include <vector>
 
 namespace rb4pc::inspector {
+namespace {
+
+std::string escape_json(std::string_view value) {
+    std::ostringstream output;
+    for (const unsigned char character : value) {
+        if (character == '"' || character == '\\') output << '\\' << static_cast<char>(character);
+        else if (character < 0x20) {
+            output << "\\u00" << "0123456789abcdef"[character >> 4]
+                   << "0123456789abcdef"[character & 0x0f];
+        } else output << static_cast<char>(character);
+    }
+    return output.str();
+}
+
+std::filesystem::path safe_relative_path(std::string_view internal_path) {
+    if (internal_path.empty()) throw std::runtime_error("empty internal path cannot be extracted");
+    std::filesystem::path result;
+    std::string component;
+    const auto append_component = [&] {
+        if (component.empty() || component == "." || component == ".." || component.find(':') != std::string::npos) {
+            throw std::runtime_error("unsafe internal path: " + std::string(internal_path));
+        }
+        result /= component;
+        component.clear();
+    };
+    for (const char character : internal_path) {
+        if (character == '/' || character == '\\') append_component();
+        else component.push_back(character);
+    }
+    append_component();
+    if (result.is_absolute() || result.has_root_name() || result.has_root_directory()) {
+        throw std::runtime_error("unsafe absolute internal path: " + std::string(internal_path));
+    }
+    return result;
+}
+
+bool matches_options(const HdrFileRecord& record, const SelectiveExtractionOptions& options) {
+    if (record.size == 0) return false;
+    if (options.prefix && !record.path.starts_with(*options.prefix)) return false;
+    if (options.extension && !record.path.ends_with(*options.extension)) return false;
+    return true;
+}
+
+} // namespace
 
 ExtractionResult extract_record(const HeaderSetReport& report,
                                 std::string_view internal_path,
@@ -74,6 +120,76 @@ ExtractionResult extract_record(const HeaderSetReport& report,
     }
 
     return {destination, record.size, sha256_file(destination)};
+}
+
+SelectiveExtractionResult extract_records(const HeaderSetReport& report,
+                                           const SelectiveExtractionOptions& options,
+                                           const std::filesystem::path& destination_directory) {
+    if ((!options.prefix || options.prefix->empty()) && (!options.extension || options.extension->empty())) {
+        throw std::runtime_error("selective extraction requires a non-empty prefix or extension");
+    }
+    if (destination_directory.empty()) throw std::runtime_error("extraction directory is empty");
+    if (std::filesystem::exists(destination_directory)) {
+        throw std::runtime_error("extraction directory already exists: " + destination_directory.string());
+    }
+    const auto parent = destination_directory.has_parent_path()
+                            ? destination_directory.parent_path()
+                            : std::filesystem::path{"."};
+    if (!std::filesystem::is_directory(parent)) {
+        throw std::runtime_error("extraction parent directory does not exist: " + parent.string());
+    }
+    auto staging = destination_directory;
+    staging += ".rb4pc-part";
+    if (std::filesystem::exists(staging)) {
+        throw std::runtime_error("temporary extraction directory already exists: " + staging.string());
+    }
+
+    struct ManifestEntry {
+        std::string internal_path;
+        std::string relative_path;
+        ExtractionResult extraction;
+    };
+    std::vector<ManifestEntry> entries;
+    try {
+        std::filesystem::create_directory(staging);
+        for (const auto& record : report.metadata.file_records) {
+            if (!matches_options(record, options)) continue;
+            const auto relative = safe_relative_path(record.path);
+            const auto output_path = staging / relative;
+            std::filesystem::create_directories(output_path.parent_path());
+            const auto extraction = extract_record(report, record.path, output_path);
+            entries.push_back({record.path, relative.generic_string(), extraction});
+        }
+        if (entries.empty()) throw std::runtime_error("no non-empty records matched the extraction filters");
+
+        const auto manifest_path = staging / "rb4pc-manifest.json";
+        std::ofstream manifest(manifest_path, std::ios::binary | std::ios::trunc);
+        if (!manifest) throw std::runtime_error("could not create extraction manifest");
+        manifest << "{\n  \"schemaVersion\": 1,\n  \"files\": [";
+        for (std::size_t index = 0; index < entries.size(); ++index) {
+            const auto& entry = entries[index];
+            manifest << (index == 0 ? "\n" : ",\n")
+                     << "    {\"internalPath\": \"" << escape_json(entry.internal_path)
+                     << "\", \"relativePath\": \"" << escape_json(entry.relative_path)
+                     << "\", \"size\": " << entry.extraction.size
+                     << ", \"sha256\": \"" << entry.extraction.sha256 << "\"}";
+        }
+        manifest << "\n  ]\n}\n";
+        manifest.close();
+        if (!manifest) throw std::runtime_error("could not finalize extraction manifest");
+        std::filesystem::rename(staging, destination_directory);
+    } catch (...) {
+        std::error_code ignored;
+        std::filesystem::remove_all(staging, ignored);
+        throw;
+    }
+
+    SelectiveExtractionResult result;
+    result.destination_directory = destination_directory;
+    result.manifest = destination_directory / "rb4pc-manifest.json";
+    result.file_count = entries.size();
+    for (const auto& entry : entries) result.total_size += entry.extraction.size;
+    return result;
 }
 
 } // namespace rb4pc::inspector
