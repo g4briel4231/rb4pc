@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.27.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.28.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -33,6 +33,7 @@ add_library(rb4pc_inspection
     src/runtime/shell_render.cpp
     src/runtime/midi_parser.cpp
     src/runtime/five_fret_chart.cpp
+    src/runtime/timed_chart.cpp
 )
 target_include_directories(rb4pc_inspection PUBLIC include)
 target_compile_features(rb4pc_inspection PUBLIC cxx_std_20)

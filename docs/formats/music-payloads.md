@@ -66,3 +66,8 @@ Version 0.27.0 decodes all 218 tempo meta-events in the reference chart and
 integrates them over its 480-tick quarter-note division. Tick 273,600, the end
 of the tempo track, maps to 265.313 seconds. This timeline is calculated from
 standard MIDI only and is not yet synchronized to decoded song audio.
+
+Version 0.28.0 projects the expert five-fret charts onto the tempo timeline.
+The reference guitar chart spans 5.569–258.682 seconds and the bass chart spans
+42.789–240.013 seconds. Runtime window queries include upcoming chords and any
+sustain whose end remains inside the look-behind window.

@@ -19,6 +19,7 @@
 #include "rb4pc/runtime/shell_render.hpp"
 #include "rb4pc/runtime/midi_parser.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
+#include "rb4pc/runtime/timed_chart.hpp"
 
 #include <array>
 #include <filesystem>
@@ -222,6 +223,14 @@ int main() {
     changing_tempo.tempo_changes = {{480, 1'000'000}};
     passed &= expect(rb4pc::runtime::midi_tick_to_seconds(changing_tempo, 960) == 1.5,
                      "MIDI changing-tempo timeline mismatch");
+    const auto timed_five_fret = rb4pc::runtime::time_five_fret_chart(changing_tempo, expert_five_fret);
+    const auto visible_chords = rb4pc::runtime::visible_five_fret_chords(timed_five_fret, 0.5, 0.13, 0.25);
+    passed &= expect(timed_five_fret.chords.size() == 2 && timed_five_fret.chords[0].start_seconds == 0.125 &&
+                         timed_five_fret.chords[0].end_seconds == 0.375 &&
+                         timed_five_fret.chords[1].start_seconds == 0.5 &&
+                         timed_five_fret.chords[1].end_seconds == 0.75 &&
+                         visible_chords.size() == 2 && visible_chords[0] == 0 && visible_chords[1] == 1,
+                     "timed five-fret chart window mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

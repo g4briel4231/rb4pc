@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.27.0 MIDI Tempo Timeline
+## Current milestone: v0.28.0 Timed Gameplay Chart
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -259,6 +259,10 @@ not inferred by this mapper.
 Version 0.27.0 preserves standard-MIDI tempo changes and converts absolute ticks
 to seconds across the complete tempo map. The default 120 BPM applies before
 the first tempo event; zero tempos and unsupported SMPTE divisions are rejected.
+
+Version 0.28.0 projects five-fret chords onto that tempo timeline and exposes a
+deterministic visible-note query with configurable past and future windows.
+Sustains remain visible through their end time; negative time inputs are rejected.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `
