@@ -42,6 +42,16 @@ int main() {
                      "unexpected report size");
     passed &= expect(file_report.sha256 == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
                      "SHA-256 mismatch");
+    const std::array<unsigned char, 256> uniform = [] {
+        std::array<unsigned char, 256> values{};
+        for (std::size_t index = 0; index < values.size(); ++index) values[index] = static_cast<unsigned char>(index);
+        return values;
+    }();
+    const std::array<unsigned char, 4> zeros{};
+    passed &= expect(rb4pc::inspector::shannon_entropy(uniform.data(), uniform.size()) == 8.0,
+                     "uniform entropy mismatch");
+    passed &= expect(rb4pc::inspector::shannon_entropy(zeros.data(), zeros.size()) == 0.0,
+                     "zero entropy mismatch");
 
     for (std::size_t index = 0; index < contents.size(); ++index) {
         passed &= expect(std::to_integer<unsigned int>(file_report.preview[index]) ==
@@ -58,6 +68,8 @@ int main() {
                      "JSON schema version missing");
     passed &= expect(json.find("\"sha256\": \"ba7816bf") != std::string::npos,
                      "JSON hash missing");
+    passed &= expect(json.find("\"method\": \"shannon-byte-frequency\"") != std::string::npos,
+                     "JSON analysis method missing");
 
     return passed ? 0 : 1;
 }

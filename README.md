@@ -8,13 +8,17 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.1.1 File Reports
+## Current milestone: v0.1.2 Binary Analysis
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
 first 32 bytes, a filename-derived platform hint, and the ordered ARK volumes
 associated with an HDR file. Format parsing will only be added as findings are
 tested and documented.
+
+The report also records Shannon entropy globally and per 64 KiB block, zero-byte
+counts, and exactly repeated full blocks. These measurements describe byte
+distributions; they do not by themselves prove compression or encryption.
 
 ## Build
 

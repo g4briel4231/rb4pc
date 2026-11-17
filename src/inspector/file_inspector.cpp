@@ -84,6 +84,7 @@ HeaderSetReport inspect_header_set(const std::filesystem::path& path) {
     HeaderSetReport report;
     report.platform_hint = platform_hint(path);
     report.header = inspect_file(path);
+    report.analysis = analyze_binary(path);
 
     const auto directory = path.has_parent_path() ? path.parent_path() : std::filesystem::path{"."};
     const auto escaped_stem = std::regex_replace(path.stem().string(), std::regex{R"([.^$|()\[\]{}*+?\\])"}, R"(\$&)");
@@ -130,6 +131,12 @@ std::string format_report(const HeaderSetReport& report) {
     std::ostringstream output;
     output << format_report(report.header);
     output << "Platform hint: " << report.platform_hint << " (filename only)\n";
+    output << std::fixed << std::setprecision(6);
+    output << "Shannon entropy: " << report.analysis.entropy << " bits/byte\n";
+    output << "Zero bytes: " << report.analysis.zero_bytes << '\n';
+    output << "Analysis blocks: " << report.analysis.blocks.size() << " x up to "
+           << report.analysis.block_size << " bytes\n";
+    output << "Repeated full blocks: " << report.analysis.repeated_full_blocks << '\n';
     output << "Associated ARK volumes: " << report.archives.size() << '\n';
     for (const auto& archive : report.archives) {
         output << "  [" << archive.index << "] " << archive.path.filename().string()
@@ -149,6 +156,23 @@ std::string format_json(const HeaderSetReport& report) {
     output << "    \"size\": " << report.header.size << ",\n";
     output << "    \"sha256\": \"" << report.header.sha256 << "\",\n";
     output << "    \"firstBytesHex\": \"" << preview_hex(report.header) << "\"\n";
+    output << "  },\n";
+    output << std::fixed << std::setprecision(6);
+    output << "  \"analysis\": {\n";
+    output << "    \"method\": \"shannon-byte-frequency\",\n";
+    output << "    \"entropyBitsPerByte\": " << report.analysis.entropy << ",\n";
+    output << "    \"zeroBytes\": " << report.analysis.zero_bytes << ",\n";
+    output << "    \"blockSize\": " << report.analysis.block_size << ",\n";
+    output << "    \"repeatedFullBlocks\": " << report.analysis.repeated_full_blocks << ",\n";
+    output << "    \"blocks\": [";
+    for (std::size_t index = 0; index < report.analysis.blocks.size(); ++index) {
+        const auto& block = report.analysis.blocks[index];
+        output << (index == 0 ? "\n" : ",\n");
+        output << "      {\"offset\": " << block.offset << ", \"size\": " << block.size
+               << ", \"entropyBitsPerByte\": " << block.entropy << "}";
+    }
+    if (!report.analysis.blocks.empty()) output << '\n';
+    output << "    ]\n";
     output << "  },\n";
     output << "  \"archives\": [";
     for (std::size_t index = 0; index < report.archives.size(); ++index) {

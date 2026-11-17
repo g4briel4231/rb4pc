@@ -1,5 +1,7 @@
 #pragma once
 
+#include "rb4pc/inspector/binary_analysis.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -28,6 +30,7 @@ struct ArchiveReport {
 struct HeaderSetReport {
     std::string platform_hint;
     FileReport header;
+    BinaryAnalysis analysis;
     std::vector<ArchiveReport> archives;
 };
 
