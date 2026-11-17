@@ -8,12 +8,13 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.1.0 Foundation
+## Current milestone: v0.1.1 File Reports
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
-verifiable properties of candidate files. It currently reports the file size and
-the first 32 bytes in hexadecimal. Format parsing will only be added as findings
-are tested and documented.
+verifiable properties of candidate files. It reports the file size, SHA-256,
+first 32 bytes, a filename-derived platform hint, and the ordered ARK volumes
+associated with an HDR file. Format parsing will only be added as findings are
+tested and documented.
 
 ## Build
 
@@ -32,8 +33,12 @@ ctest --preset default
 Run the inspector against a file stored outside this repository:
 
 ```powershell
-./build/default/rb4pc-forge-inspector.exe "../path/to/main_ps4.hdr"
+./build/default/rb4pc-forge-inspector.exe "../path/to/main_ps4.hdr" --output report-ps4.json
 ```
+
+Reports use a versioned JSON schema so future research remains reproducible.
+The platform hint is based only on the filename suffix and is not presented as
+evidence about the file's internal format.
 
 ## Repository layout
 
