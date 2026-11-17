@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.15.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.16.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -26,6 +26,7 @@ add_library(rb4pc_inspection
     src/runtime/audio_output.cpp
     src/runtime/input.cpp
     src/runtime/window.cpp
+    src/runtime/ui.cpp
 )
 target_include_directories(rb4pc_inspection PUBLIC include)
 target_compile_features(rb4pc_inspection PUBLIC cxx_std_20)

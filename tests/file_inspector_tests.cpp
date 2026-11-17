@@ -13,6 +13,7 @@
 #include "rb4pc/runtime/runtime_session.hpp"
 #include "rb4pc/runtime/input.hpp"
 #include "rb4pc/runtime/window.hpp"
+#include "rb4pc/runtime/ui.hpp"
 
 #include <array>
 #include <filesystem>
@@ -291,6 +292,8 @@ int main() {
     rb4pc::runtime::SoftwareFramebuffer framebuffer(2, 2);
     framebuffer.clear(0xff102030);
     framebuffer.set_pixel(1, 1, 0xffabcdef);
+    rb4pc::runtime::MenuModel menu({"Play", "Settings", "Quit"});
+    menu.move(-1);
     const auto converted_path = directory / "converted.wav";
     const auto conversion = rb4pc::inspector::convert_riff_record(
         conversion_report, "audio/test.wav", converted_path);
@@ -315,7 +318,7 @@ int main() {
                          session_diagnostics.find("\"gameplay\": false") != std::string::npos &&
                          (!rb4pc::runtime::input_backend_available() || controller_states.size() == 4) &&
                          framebuffer.pixels().size() == 4 && framebuffer.pixels()[0] == 0xff102030 &&
-                         framebuffer.pixels()[3] == 0xffabcdef,
+                         framebuffer.pixels()[3] == 0xffabcdef && menu.selected_item() == "Quit",
                      "runtime WAVE loader mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};
