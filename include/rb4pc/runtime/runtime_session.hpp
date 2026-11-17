@@ -13,6 +13,7 @@ public:
     [[nodiscard]] const ArchiveFileSystem& vfs() const;
     [[nodiscard]] std::vector<WaveAsset> discover_wave_assets(
         std::string_view prefix, std::size_t limit) const;
+    [[nodiscard]] std::string diagnostics_json() const;
 private:
     RuntimeSession(builder::BuildPlan plan, ArchiveFileSystem vfs);
     builder::BuildPlan plan_;

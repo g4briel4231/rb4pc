@@ -3,6 +3,7 @@
 #include "rb4pc/inspector/payload_catalog.hpp"
 
 #include <utility>
+#include <sstream>
 
 namespace rb4pc::runtime {
 RuntimeSession::RuntimeSession(builder::BuildPlan plan, ArchiveFileSystem vfs)
@@ -30,5 +31,24 @@ std::vector<WaveAsset> RuntimeSession::discover_wave_assets(std::string_view pre
         if (result.size() == limit) break;
     }
     return result;
+}
+
+std::string RuntimeSession::diagnostics_json() const {
+    std::ostringstream output;
+    output << "{\n  \"schemaVersion\": 1,\n"
+           << "  \"sourceReady\": " << (plan_.ready ? "true" : "false") << ",\n"
+           << "  \"platform\": \"" << plan_.platform << "\",\n"
+           << "  \"mountedRecords\": " << vfs_.file_count() << ",\n"
+           << "  \"convertibleRiffRecords\": " << plan_.convertible_riff_records << ",\n"
+           << "  \"waveRecords\": " << plan_.wave_records << ",\n"
+           << "  \"fevRecords\": " << plan_.fev_records << ",\n"
+           << "  \"capabilities\": {\n"
+           << "    \"readOnlyVfs\": true,\n"
+           << "    \"pcmWaveLoading\": true,\n"
+           << "    \"pcmFrameStreaming\": true,\n"
+           << "    \"audioPlayback\": false,\n"
+           << "    \"rendering\": false,\n"
+           << "    \"gameplay\": false\n  }\n}\n";
+    return output.str();
 }
 } // namespace rb4pc::runtime

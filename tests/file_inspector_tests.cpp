@@ -271,6 +271,7 @@ int main() {
     const auto pcm_frame = pcm_stream.read_frames(1);
     const auto runtime_session = rb4pc::runtime::RuntimeSession::from_report(conversion_report);
     const auto session_waves = runtime_session.discover_wave_assets("audio/", 5);
+    const auto session_diagnostics = runtime_session.diagnostics_json();
     const auto converted_path = directory / "converted.wav";
     const auto conversion = rb4pc::inspector::convert_riff_record(
         conversion_report, "audio/test.wav", converted_path);
@@ -291,7 +292,8 @@ int main() {
                          std::to_integer<unsigned int>(pcm_bytes[1]) == 0x33 &&
                          pcm_frame.size() == 4 && pcm_stream.frame_position() == 1 &&
                          pcm_stream.remaining_frames() == 0 && runtime_session.plan().ready &&
-                         runtime_session.plan().wave_records == 1 && session_waves.size() == 1,
+                         runtime_session.plan().wave_records == 1 && session_waves.size() == 1 &&
+                         session_diagnostics.find("\"gameplay\": false") != std::string::npos,
                      "runtime WAVE loader mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};

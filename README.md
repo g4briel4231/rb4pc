@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.9.0 Integrated Runtime Session
+## Current milestone: v0.10.0 Runtime Diagnostics
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -180,6 +180,9 @@ sample audio assets. It is an integration probe, not yet gameplay.
 ```powershell
 ./build/default/rb4pc-runtime.exe "../path/to/main_ps4.hdr" "ps4/fusion/samples/"
 ```
+
+Version 0.10.0 adds versioned runtime diagnostics that explicitly distinguish
+implemented capabilities from absent playback, rendering, and gameplay.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as
