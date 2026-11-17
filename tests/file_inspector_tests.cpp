@@ -1,6 +1,7 @@
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/archive_layout.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
+#include "rb4pc/inspector/record_extractor.hpp"
 
 #include <array>
 #include <filesystem>
@@ -89,6 +90,10 @@ int main() {
     const auto record_preview = rb4pc::inspector::inspect_record(set_report, "test/file.bin");
     const auto missing_preview = rb4pc::inspector::inspect_record(set_report, "missing/file.bin");
     const auto payload_catalog = rb4pc::inspector::catalog_payloads(set_report);
+    const auto extraction_path = directory / "extracted.bin";
+    const auto extraction = rb4pc::inspector::extract_record(
+        set_report, "test/file.bin", extraction_path);
+    const auto extracted_report = rb4pc::inspector::inspect_file(extraction_path);
     const auto json = rb4pc::inspector::format_json(set_report);
     std::filesystem::remove_all(directory);
 
@@ -150,6 +155,11 @@ int main() {
                          payload_catalog.signatures.at("unknown") == 1 &&
                          payload_catalog.extensions.at(".bin") == 1,
                      "payload catalog mismatch");
+    passed &= expect(extraction.size == 3 && extraction.destination == extraction_path &&
+                         extraction.sha256 ==
+                             "3fc4ccfe745870e2c0d99f71f30ff0656c8dedd41cc1d7d3d376b0dbe685e2f3" &&
+                         extracted_report.size == 3 && extracted_report.sha256 == extraction.sha256,
+                     "individual extraction mismatch");
     const std::array<unsigned char, 8> png_signature = {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
     passed &= expect(rb4pc::inspector::classify_payload_signature(
                          png_signature.data(), png_signature.size()) == "png",

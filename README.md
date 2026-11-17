@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.3.1 Payload Catalog
+## Current milestone: v0.3.2 Safe Individual Extraction
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -78,6 +78,18 @@ sample from each non-empty record:
 
 Unknown signatures remain explicitly labeled `unknown`; the tool does not infer
 compression or a file type solely from an internal filename extension.
+
+Extract one exact internal path to an explicit new destination:
+
+```powershell
+./build/default/rb4pc-forge-inspector.exe "../path/to/main_ps4.hdr" `
+  --extract "path/inside/archive" --destination "./output.bin"
+```
+
+The extractor refuses to overwrite an existing destination, copies through a
+temporary file, validates the record against the actual ARK size, and reports
+the extracted size and SHA-256. The internal path is never used as a host
+filesystem destination.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as
