@@ -86,6 +86,23 @@ Console marker offsets at the transition to patch content also equal the total
 size of preceding main volumes, providing an independent check of the global
 concatenated-offset interpretation.
 
+## Mapping global offsets to ARK volumes
+
+Treat the declared ARK files as one concatenated address space in their header
+order. The start of a volume is the sum of all preceding declared sizes. A
+record belongs to the volume whose half-open range contains its global offset;
+its local offset is `global offset - volume start`.
+
+ForgeInspector v0.3.0 accepts a mapping only when the record's complete byte
+range remains within that volume. A zero-size marker at the final end of the
+concatenated space maps to the end of the final volume. This rule avoids
+silently treating a malformed cross-volume span as readable data.
+
+Exact-path lookup follows the serialized hash index instead of scanning the
+record table. The current read operation is deliberately bounded to the first
+32 bytes of the matched record, which is sufficient for initial payload-format
+identification without creating extracted copies of proprietary assets.
+
 ## Cross-platform validation
 
 | Set | Decoded version | Decoded ARK count | Files on disk |

@@ -10,7 +10,8 @@
 namespace {
 
 void print_usage(const char* program) {
-    std::cerr << "Usage: " << program << " <header.hdr> [--output <report.json>]\n";
+    std::cerr << "Usage: " << program
+              << " <header.hdr> [--find <internal-path>] [--output <report.json>]\n";
 }
 
 } // namespace
@@ -23,6 +24,7 @@ int main(int argc, char* argv[]) {
 
     std::filesystem::path input;
     std::optional<std::filesystem::path> output_path;
+    std::optional<std::string> find_path;
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
         if (argument == "--output") {
@@ -31,6 +33,12 @@ int main(int argc, char* argv[]) {
                 return 2;
             }
             output_path = argv[index];
+        } else if (argument == "--find") {
+            if (++index >= argc || find_path) {
+                print_usage(argv[0]);
+                return 2;
+            }
+            find_path = argv[index];
         } else if (input.empty()) {
             input = argument;
         } else {
@@ -47,6 +55,11 @@ int main(int argc, char* argv[]) {
     try {
         const auto report = rb4pc::inspector::inspect_header_set(input);
         std::cout << rb4pc::inspector::format_report(report);
+        if (find_path) {
+            const auto preview = rb4pc::inspector::inspect_record(report, *find_path);
+            if (!preview) throw std::runtime_error("internal path was not found: " + *find_path);
+            std::cout << rb4pc::inspector::format_report(report, *preview);
+        }
         if (output_path) {
             std::ofstream output(*output_path, std::ios::binary);
             if (!output) throw std::runtime_error("could not create report: " + output_path->string());

@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.2.2 HDR Hash Index
+## Current milestone: v0.3.0 ARK Addressing
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -27,6 +27,11 @@ each declared size against the local file without modifying game data.
 The decoder also reads per-archive tags and the complete internal file-record
 table. Version 0.2.2 also decodes and validates the final path-hash bucket table
 and each record's collision-chain link.
+
+Version 0.3.0 begins read-only ARK access by translating each record's global
+offset into a declared volume index and a local offset. A record is resolved
+only when its complete byte range stays inside one volume; cross-volume and
+out-of-range spans are rejected.
 
 ## Build
 
@@ -47,6 +52,16 @@ Run the inspector against a file stored outside this repository:
 ```powershell
 ./build/default/rb4pc-forge-inspector.exe "../path/to/main_ps4.hdr" --output report-ps4.json
 ```
+
+Look up an exact internal path through the HDR hash index and read a bounded
+32-byte preview directly from its ARK volume:
+
+```powershell
+./build/default/rb4pc-forge-inspector.exe "../path/to/main_ps4.hdr" --find "path/inside/archive"
+```
+
+This operation is read-only. It does not extract the complete record or alter
+the user's HDR/ARK files.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as

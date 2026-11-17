@@ -1,4 +1,5 @@
 #include "rb4pc/inspector/file_inspector.hpp"
+#include "rb4pc/inspector/archive_layout.hpp"
 
 #include <array>
 #include <filesystem>
@@ -44,11 +45,11 @@ void write_test_hdr(const std::filesystem::path& path) {
     append_string(plain, "launch");
     append_u32(plain, 0);
     append_u32(plain, 1);
-    append_u32(plain, 0x55667788);
-    append_u32(plain, 0x11223344);
+    append_u32(plain, 3);
+    append_u32(plain, 0);
     append_string(plain, "test/file.bin");
     append_u32(plain, 0xffffffff);
-    append_u32(plain, 99);
+    append_u32(plain, 3);
     append_u32(plain, 1);
     append_u32(plain, 0);
 
@@ -84,6 +85,8 @@ int main() {
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
     const auto set_report = rb4pc::inspector::inspect_header_set(path);
+    const auto record_preview = rb4pc::inspector::inspect_record(set_report, "test/file.bin");
+    const auto missing_preview = rb4pc::inspector::inspect_record(set_report, "missing/file.bin");
     const auto json = rb4pc::inspector::format_json(set_report);
     std::filesystem::remove_all(directory);
 
@@ -123,14 +126,39 @@ int main() {
                          set_report.metadata.archives[0].tags[0] == "launch",
                      "archive tags were not decoded");
     passed &= expect(set_report.metadata.file_records.size() == 1 &&
-                         set_report.metadata.file_records[0].global_offset == 0x1122334455667788ULL &&
+                         set_report.metadata.file_records[0].global_offset == 3 &&
                          set_report.metadata.file_records[0].path == "test/file.bin" &&
                          set_report.metadata.file_records[0].previous_hash_index == 0xffffffff &&
-                         set_report.metadata.file_records[0].size == 99,
+                         set_report.metadata.file_records[0].size == 3,
                      "file record was not decoded");
     passed &= expect(set_report.metadata.hash_index_validated,
                      "path hash index was not validated");
-    passed &= expect(json.find("\"schemaVersion\": 4") != std::string::npos,
+    passed &= expect(set_report.record_locations.size() == 1 && set_report.record_locations[0] &&
+                         set_report.record_locations[0]->archive_index == 1 &&
+                         set_report.record_locations[0]->local_offset == 0,
+                     "file record archive location was not resolved");
+    passed &= expect(record_preview && record_preview->size == 3 &&
+                         std::to_integer<unsigned int>(record_preview->bytes[0]) == 't' &&
+                         std::to_integer<unsigned int>(record_preview->bytes[1]) == 'w' &&
+                         std::to_integer<unsigned int>(record_preview->bytes[2]) == 'o',
+                     "file record preview mismatch");
+    passed &= expect(!missing_preview, "missing internal path unexpectedly matched");
+    const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
+        {"first.ark", 3, {}}, {"second.ark", 5, {}}};
+    const auto first_location = rb4pc::inspector::resolve_archive_location(layout, 2, 1);
+    const auto boundary_location = rb4pc::inspector::resolve_archive_location(layout, 3, 4);
+    const auto crossing_location = rb4pc::inspector::resolve_archive_location(layout, 2, 2);
+    const auto final_marker_location = rb4pc::inspector::resolve_archive_location(layout, 8, 0);
+    passed &= expect(first_location && first_location->archive_index == 0 && first_location->local_offset == 2,
+                     "first archive location mismatch");
+    passed &= expect(boundary_location && boundary_location->archive_index == 1 &&
+                         boundary_location->local_offset == 0,
+                     "archive boundary location mismatch");
+    passed &= expect(!crossing_location, "cross-volume record unexpectedly resolved");
+    passed &= expect(final_marker_location && final_marker_location->archive_index == 1 &&
+                         final_marker_location->local_offset == 5,
+                     "final marker location mismatch");
+    passed &= expect(json.find("\"schemaVersion\": 5") != std::string::npos,
                      "JSON schema version missing");
     passed &= expect(json.find("\"sha256\": \"") != std::string::npos,
                      "JSON hash field missing");

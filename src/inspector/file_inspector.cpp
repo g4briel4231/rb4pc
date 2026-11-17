@@ -19,6 +19,7 @@ struct RecordSummary {
     std::size_t zero_size_records = 0;
     std::size_t marker_records = 0;
     std::size_t sentinel_value0_records = 0;
+    std::size_t resolved_archive_locations = 0;
 };
 
 RecordSummary summarize_records(const HeaderSetReport& report) {
@@ -35,6 +36,9 @@ RecordSummary summarize_records(const HeaderSetReport& report) {
         if (record.previous_hash_index == std::numeric_limits<std::uint32_t>::max()) {
             ++summary.sentinel_value0_records;
         }
+    }
+    for (const auto& location : report.record_locations) {
+        if (location) ++summary.resolved_archive_locations;
     }
     return summary;
 }
@@ -122,7 +126,37 @@ HeaderSetReport inspect_header_set(const std::filesystem::path& path) {
         report.archives.push_back({archive_path, declared.declared_size, actual_size, exists,
                                    exists && actual_size == declared.declared_size});
     }
+    report.record_locations.reserve(report.metadata.file_records.size());
+    for (const auto& record : report.metadata.file_records) {
+        report.record_locations.push_back(resolve_archive_location(
+            report.metadata.archives, record.global_offset, record.size));
+    }
     return report;
+}
+
+std::optional<RecordPreview> inspect_record(const HeaderSetReport& report, std::string_view internal_path) {
+    const auto record_index = find_file_record(report.metadata, internal_path);
+    if (!record_index) return std::nullopt;
+    if (*record_index >= report.record_locations.size() || !report.record_locations[*record_index]) {
+        throw std::runtime_error("record does not resolve to one ARK volume");
+    }
+    const auto location = *report.record_locations[*record_index];
+    if (location.archive_index >= report.archives.size() || !report.archives[location.archive_index].exists) {
+        throw std::runtime_error("record's ARK volume is missing");
+    }
+
+    RecordPreview preview{*record_index, location};
+    const auto& record = report.metadata.file_records[*record_index];
+    preview.size = std::min<std::size_t>(preview.bytes.size(), record.size);
+    std::ifstream input(report.archives[location.archive_index].path, std::ios::binary);
+    if (!input) throw std::runtime_error("could not open record's ARK volume");
+    input.seekg(static_cast<std::streamoff>(location.local_offset));
+    if (!input) throw std::runtime_error("could not seek to record in ARK volume");
+    input.read(reinterpret_cast<char*>(preview.bytes.data()), static_cast<std::streamsize>(preview.size));
+    if (static_cast<std::size_t>(input.gcount()) != preview.size) {
+        throw std::runtime_error("unexpected end of ARK while reading record preview");
+    }
+    return preview;
 }
 
 std::string format_report(const FileReport& report) {
@@ -179,15 +213,24 @@ std::string format_report(const HeaderSetReport& report) {
     output << "Declared concatenated ARK bytes: " << record_summary.declared_archive_bytes << '\n';
     output << "Record offsets in declared range: " << record_summary.offsets_in_range << '\n';
     output << "Record offset+size spans in range: " << record_summary.spans_in_range << '\n';
+    output << "Records resolved to one ARK volume: " << record_summary.resolved_archive_locations << '\n';
     output << "Zero-size records: " << record_summary.zero_size_records << '\n';
     output << "Marker records: " << record_summary.marker_records << '\n';
     const auto sample_count = std::min<std::size_t>(report.metadata.file_records.size(), 5);
     for (std::size_t index = 0; index < sample_count; ++index) {
         const auto& record = report.metadata.file_records[index];
+        const auto& location = report.record_locations[index];
         output << "  record[" << index << "]: globalOffset=" << record.global_offset
                << ", path=" << record.path
                << ", previousHashIndex=" << record.previous_hash_index
-               << ", size=" << record.size << '\n';
+               << ", size=" << record.size;
+        if (location) {
+            output << ", archive=" << report.archives[location->archive_index].path.filename().string()
+                   << ", localOffset=" << location->local_offset;
+        } else {
+            output << ", archive=<unresolved>";
+        }
+        output << '\n';
     }
     return output.str();
 }
@@ -196,7 +239,7 @@ std::string format_json(const HeaderSetReport& report) {
     std::ostringstream output;
     const auto record_summary = summarize_records(report);
     output << "{\n";
-    output << "  \"schemaVersion\": 4,\n";
+    output << "  \"schemaVersion\": 5,\n";
     output << "  \"platformHint\": \"" << escape_json(report.platform_hint) << "\",\n";
     output << "  \"platformHintSource\": \"filename\",\n";
     output << "  \"header\": {\n";
@@ -222,10 +265,16 @@ std::string format_json(const HeaderSetReport& report) {
     for (std::size_t index = 0; index < record_sample_count; ++index) {
         const auto& record = report.metadata.file_records[index];
         output << (index == 0 ? "\n" : ",\n");
+        const auto& location = report.record_locations[index];
         output << "    {\"globalOffset\": " << record.global_offset
                << ", \"path\": \"" << escape_json(record.path)
                << "\", \"previousHashIndex\": " << record.previous_hash_index
-               << ", \"size\": " << record.size << "}";
+               << ", \"size\": " << record.size;
+        if (location) {
+            output << ", \"archiveIndex\": " << location->archive_index
+                   << ", \"localOffset\": " << location->local_offset;
+        }
+        output << "}";
     }
     if (record_sample_count != 0) output << '\n';
     output << "  ],\n";
@@ -233,6 +282,8 @@ std::string format_json(const HeaderSetReport& report) {
     output << "    \"declaredArchiveBytes\": " << record_summary.declared_archive_bytes << ",\n";
     output << "    \"offsetsInRange\": " << record_summary.offsets_in_range << ",\n";
     output << "    \"spansInRange\": " << record_summary.spans_in_range << ",\n";
+    output << "    \"resolvedArchiveLocations\": "
+           << record_summary.resolved_archive_locations << ",\n";
     output << "    \"zeroSizeRecords\": " << record_summary.zero_size_records << ",\n";
     output << "    \"markerRecords\": " << record_summary.marker_records << ",\n";
     output << "    \"sentinelPreviousHashIndexRecords\": " << record_summary.sentinel_value0_records << "\n";
@@ -275,6 +326,26 @@ std::string format_json(const HeaderSetReport& report) {
     if (!report.archives.empty()) output << '\n';
     output << "  ]\n";
     output << "}\n";
+    return output.str();
+}
+
+std::string format_report(const HeaderSetReport& report, const RecordPreview& preview) {
+    const auto& record = report.metadata.file_records[preview.record_index];
+    const auto& archive = report.archives[preview.location.archive_index];
+    std::ostringstream output;
+    output << "Matched record[" << preview.record_index << "]: " << record.path << '\n';
+    output << "ARK volume: " << archive.path.filename().string() << " (index "
+           << preview.location.archive_index << ")\n";
+    output << "Local offset: " << preview.location.local_offset << '\n';
+    output << "Record size: " << record.size << " bytes\n";
+    output << "First " << preview.size << " record bytes:";
+    if (preview.size == 0) return output.str() + " <empty>\n";
+    output << std::hex << std::setfill('0');
+    for (std::size_t index = 0; index < preview.size; ++index) {
+        output << (index % 16 == 0 ? "\n" : " ")
+               << std::setw(2) << std::to_integer<unsigned int>(preview.bytes[index]);
+    }
+    output << '\n';
     return output.str();
 }
 
