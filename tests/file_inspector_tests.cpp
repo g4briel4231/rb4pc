@@ -21,6 +21,7 @@
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
 #include "rb4pc/runtime/five_fret_gameplay.hpp"
+#include "rb4pc/runtime/note_highway.hpp"
 
 #include <array>
 #include <filesystem>
@@ -242,6 +243,13 @@ int main() {
                          five_fret_gameplay.states()[0] == rb4pc::runtime::ChordState::missed &&
                          five_fret_gameplay.states()[1] == rb4pc::runtime::ChordState::hit,
                      "five-fret gameplay lifecycle mismatch");
+    rb4pc::runtime::SoftwareFramebuffer highway_framebuffer(320, 200);
+    const auto highway_stats = rb4pc::runtime::render_note_highway(
+        highway_framebuffer, timed_five_fret, {0.5, 0.13, 0.25});
+    passed &= expect(highway_stats.visible_chords == 2 && highway_stats.rendered_gems == 3 &&
+                         highway_stats.rendered_sustains == 3 &&
+                         highway_framebuffer.pixels().size() == 320U * 200U,
+                     "note-highway rendering mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

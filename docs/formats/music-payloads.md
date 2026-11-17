@@ -76,3 +76,8 @@ Version 0.29.0 feeds the timed expert charts through the provisional gameplay
 cursor at their exact timestamps. Deterministic autoplay records 612/612 guitar
 hits for 61,200 points and 467/467 bass hits for 46,700 points, with zero misses.
 This validates lifecycle integration only; it does not validate official scoring.
+
+Version 0.30.0 renders the same timed chord model into a generated five-lane
+software highway. Automated coverage verifies that the two-chord fixture draws
+three gems and three sustain tails inside the requested visibility window. The
+renderer depends on no original textures, fonts, or other visual assets.
