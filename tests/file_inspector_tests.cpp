@@ -18,21 +18,59 @@ void write_file(const std::filesystem::path& path, const std::string& contents) 
     output.write(contents.data(), static_cast<std::streamsize>(contents.size()));
 }
 
+void append_u32(std::vector<unsigned char>& output, std::uint32_t value) {
+    for (int shift = 0; shift < 32; shift += 8) output.push_back(static_cast<unsigned char>(value >> shift));
+}
+
+void append_string(std::vector<unsigned char>& output, const std::string& value) {
+    append_u32(output, static_cast<std::uint32_t>(value.size()));
+    output.insert(output.end(), value.begin(), value.end());
+}
+
+void write_test_hdr(const std::filesystem::path& path) {
+    std::vector<unsigned char> plain;
+    append_u32(plain, 10);
+    append_u32(plain, 1);
+    for (unsigned char value = 0; value < 16; ++value) plain.push_back(value);
+    append_u32(plain, 2);
+    append_u32(plain, 2);
+    append_u32(plain, 3);
+    append_u32(plain, 3);
+    append_u32(plain, 2);
+    append_string(plain, "main_ps4_2.ark");
+    append_string(plain, "patch_main_ps4_0.ark");
+
+    constexpr std::uint32_t seed = 12345;
+    std::int64_t state = seed;
+    std::vector<unsigned char> encoded;
+    append_u32(encoded, seed);
+    for (const auto value : plain) {
+        const auto quotient = state / 127773;
+        auto next = 16807 * (state % 127773) - 2836 * quotient;
+        if (next <= 0) next += 2147483647;
+        state = next;
+        encoded.push_back(value ^ static_cast<unsigned char>(state & 0xff));
+    }
+    std::ofstream output(path, std::ios::binary);
+    output.write(reinterpret_cast<const char*>(encoded.data()), static_cast<std::streamsize>(encoded.size()));
+}
+
 } // namespace
 
 int main() {
     const auto directory = std::filesystem::temp_directory_path() / "rb4pc-inspector-tests";
     std::filesystem::remove_all(directory);
     std::filesystem::create_directory(directory);
+    const auto hash_path = directory / "hash-test.bin";
     const auto path = directory / "main_ps4.hdr";
     const std::string contents = "abc";
 
-    write_file(path, contents);
-    write_file(directory / "main_ps4_10.ark", "ten");
+    write_file(hash_path, contents);
     write_file(directory / "main_ps4_2.ark", "two");
-    write_file(directory / "patch_main_ps4_0.ark", "not associated");
+    write_file(directory / "patch_main_ps4_0.ark", "two");
+    write_test_hdr(path);
 
-    const auto file_report = rb4pc::inspector::inspect_file(path);
+    const auto file_report = rb4pc::inspector::inspect_file(hash_path);
     const auto set_report = rb4pc::inspector::inspect_header_set(path);
     const auto json = rb4pc::inspector::format_json(set_report);
     std::filesystem::remove_all(directory);
@@ -61,15 +99,22 @@ int main() {
 
     passed &= expect(set_report.platform_hint == "ps4", "platform hint mismatch");
     passed &= expect(set_report.archives.size() == 2, "archive count mismatch");
-    passed &= expect(set_report.archives.size() == 2 && set_report.archives[0].index == 2 &&
-                         set_report.archives[1].index == 10,
-                     "archives were not sorted numerically");
-    passed &= expect(json.find("\"schemaVersion\": 1") != std::string::npos,
+    passed &= expect(set_report.metadata.version == 10 && set_report.metadata.unknown_04 == 1,
+                     "decoded HDR fields mismatch");
+    passed &= expect(set_report.archives.size() == 2 && set_report.archives[0].size_matches &&
+                         set_report.archives[1].size_matches,
+                     "declared archives were not verified");
+    passed &= expect(set_report.archives.size() == 2 &&
+                         set_report.archives[1].path.filename() == "patch_main_ps4_0.ark",
+                     "patch archive declaration missing");
+    passed &= expect(json.find("\"schemaVersion\": 2") != std::string::npos,
                      "JSON schema version missing");
-    passed &= expect(json.find("\"sha256\": \"ba7816bf") != std::string::npos,
-                     "JSON hash missing");
+    passed &= expect(json.find("\"sha256\": \"") != std::string::npos,
+                     "JSON hash field missing");
     passed &= expect(json.find("\"method\": \"shannon-byte-frequency\"") != std::string::npos,
                      "JSON analysis method missing");
+    passed &= expect(json.find("\"version\": 10") != std::string::npos,
+                     "JSON decoded HDR version missing");
 
     return passed ? 0 : 1;
 }

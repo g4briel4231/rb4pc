@@ -5,7 +5,6 @@
 #include <cctype>
 #include <fstream>
 #include <iomanip>
-#include <regex>
 #include <sstream>
 #include <stdexcept>
 
@@ -85,20 +84,16 @@ HeaderSetReport inspect_header_set(const std::filesystem::path& path) {
     report.platform_hint = platform_hint(path);
     report.header = inspect_file(path);
     report.analysis = analyze_binary(path);
+    report.metadata = decode_hdr_prefix(path);
 
     const auto directory = path.has_parent_path() ? path.parent_path() : std::filesystem::path{"."};
-    const auto escaped_stem = std::regex_replace(path.stem().string(), std::regex{R"([.^$|()\[\]{}*+?\\])"}, R"(\$&)");
-    const std::regex pattern{"^" + escaped_stem + R"(_([0-9]+)\.ark$)", std::regex::icase};
-
-    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
-        if (!entry.is_regular_file()) continue;
-        std::smatch match;
-        const auto name = entry.path().filename().string();
-        if (!std::regex_match(name, match, pattern)) continue;
-        report.archives.push_back({entry.path(), entry.file_size(), std::stoull(match[1].str())});
+    for (const auto& declared : report.metadata.archives) {
+        const auto archive_path = directory / std::filesystem::path(declared.name);
+        const auto exists = std::filesystem::is_regular_file(archive_path);
+        const auto actual_size = exists ? std::filesystem::file_size(archive_path) : 0;
+        report.archives.push_back({archive_path, declared.declared_size, actual_size, exists,
+                                   exists && actual_size == declared.declared_size});
     }
-    std::sort(report.archives.begin(), report.archives.end(),
-              [](const ArchiveReport& left, const ArchiveReport& right) { return left.index < right.index; });
     return report;
 }
 
@@ -137,10 +132,19 @@ std::string format_report(const HeaderSetReport& report) {
     output << "Analysis blocks: " << report.analysis.blocks.size() << " x up to "
            << report.analysis.block_size << " bytes\n";
     output << "Repeated full blocks: " << report.analysis.repeated_full_blocks << '\n';
-    output << "Associated ARK volumes: " << report.archives.size() << '\n';
-    for (const auto& archive : report.archives) {
-        output << "  [" << archive.index << "] " << archive.path.filename().string()
-               << " — " << archive.size << " bytes\n";
+    output << "Decoded HDR version: " << report.metadata.version << '\n';
+    output << "Decoded unknown value at 0x04: " << report.metadata.unknown_04 << '\n';
+    output << "Decoded 16-byte value at 0x08: "
+           << hex_string(report.metadata.unknown_08.data(), report.metadata.unknown_08.size()) << '\n';
+    output << "Declared ARK volumes: " << report.archives.size() << '\n';
+    for (std::size_t index = 0; index < report.archives.size(); ++index) {
+        const auto& archive = report.archives[index];
+        output << "  [" << index << "] " << archive.path.filename().string()
+               << " — declared " << archive.declared_size << " bytes";
+        if (!archive.exists) output << " — missing";
+        else if (!archive.size_matches) output << " — actual " << archive.actual_size << " bytes — mismatch";
+        else output << " — verified";
+        output << '\n';
     }
     return output.str();
 }
@@ -148,7 +152,7 @@ std::string format_report(const HeaderSetReport& report) {
 std::string format_json(const HeaderSetReport& report) {
     std::ostringstream output;
     output << "{\n";
-    output << "  \"schemaVersion\": 1,\n";
+    output << "  \"schemaVersion\": 2,\n";
     output << "  \"platformHint\": \"" << escape_json(report.platform_hint) << "\",\n";
     output << "  \"platformHintSource\": \"filename\",\n";
     output << "  \"header\": {\n";
@@ -156,6 +160,13 @@ std::string format_json(const HeaderSetReport& report) {
     output << "    \"size\": " << report.header.size << ",\n";
     output << "    \"sha256\": \"" << report.header.sha256 << "\",\n";
     output << "    \"firstBytesHex\": \"" << preview_hex(report.header) << "\"\n";
+    output << "  },\n";
+    output << "  \"hdr\": {\n";
+    output << "    \"rawSeed\": " << report.metadata.raw_seed << ",\n";
+    output << "    \"version\": " << report.metadata.version << ",\n";
+    output << "    \"unknown04\": " << report.metadata.unknown_04 << ",\n";
+    output << "    \"unknown08Hex\": \""
+           << hex_string(report.metadata.unknown_08.data(), report.metadata.unknown_08.size()) << "\"\n";
     output << "  },\n";
     output << std::fixed << std::setprecision(6);
     output << "  \"analysis\": {\n";
@@ -178,9 +189,12 @@ std::string format_json(const HeaderSetReport& report) {
     for (std::size_t index = 0; index < report.archives.size(); ++index) {
         const auto& archive = report.archives[index];
         output << (index == 0 ? "\n" : ",\n");
-        output << "    {\"index\": " << archive.index
+        output << "    {\"index\": " << index
                << ", \"name\": \"" << escape_json(archive.path.filename().string())
-               << "\", \"size\": " << archive.size << "}";
+               << "\", \"declaredSize\": " << archive.declared_size
+               << ", \"exists\": " << (archive.exists ? "true" : "false")
+               << ", \"actualSize\": " << archive.actual_size
+               << ", \"sizeMatches\": " << (archive.size_matches ? "true" : "false") << "}";
     }
     if (!report.archives.empty()) output << '\n';
     output << "  ]\n";

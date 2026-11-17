@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rb4pc/inspector/binary_analysis.hpp"
+#include "rb4pc/inspector/hdr_decoder.hpp"
 
 #include <array>
 #include <cstddef>
@@ -23,14 +24,17 @@ struct FileReport {
 
 struct ArchiveReport {
     std::filesystem::path path;
-    std::uintmax_t size = 0;
-    std::uint64_t index = 0;
+    std::uint32_t declared_size = 0;
+    std::uintmax_t actual_size = 0;
+    bool exists = false;
+    bool size_matches = false;
 };
 
 struct HeaderSetReport {
     std::string platform_hint;
     FileReport header;
     BinaryAnalysis analysis;
+    HdrMetadata metadata;
     std::vector<ArchiveReport> archives;
 };
 

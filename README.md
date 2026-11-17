@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.1.2 Binary Analysis
+## Current milestone: v0.2.0 HDR Decoding
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -19,6 +19,10 @@ tested and documented.
 The report also records Shannon entropy globally and per 64 KiB block, zero-byte
 counts, and exactly repeated full blocks. These measurements describe byte
 distributions; they do not by themselves prove compression or encryption.
+
+Version 10 HDR files are decoded with the verified Park-Miller XOR stream. The
+report lists every ARK declared by the header—including patch volumes—and checks
+each declared size against the local file without modifying game data.
 
 ## Build
 

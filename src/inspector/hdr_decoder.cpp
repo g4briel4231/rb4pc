@@ -1,0 +1,115 @@
+#include "rb4pc/inspector/hdr_decoder.hpp"
+
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <sstream>
+#include <stdexcept>
+
+namespace rb4pc::inspector {
+namespace {
+
+constexpr std::uint32_t maximum_archive_count = 4096;
+constexpr std::uint32_t maximum_name_length = 4096;
+
+class DecodedReader {
+public:
+    explicit DecodedReader(const std::filesystem::path& path) : input_(path, std::ios::binary) {
+        if (!input_) throw std::runtime_error("could not open HDR: " + path.string());
+        std::array<unsigned char, 4> seed_bytes{};
+        read_raw(seed_bytes.data(), seed_bytes.size());
+        raw_seed_ = static_cast<std::uint32_t>(seed_bytes[0]) |
+                    (static_cast<std::uint32_t>(seed_bytes[1]) << 8) |
+                    (static_cast<std::uint32_t>(seed_bytes[2]) << 16) |
+                    (static_cast<std::uint32_t>(seed_bytes[3]) << 24);
+        const auto signed_seed = static_cast<std::int32_t>(raw_seed_);
+        if (signed_seed == 0) state_ = 1;
+        else if (signed_seed < 0) state_ = -static_cast<std::int64_t>(signed_seed);
+        else state_ = signed_seed;
+    }
+
+    [[nodiscard]] std::uint32_t raw_seed() const { return raw_seed_; }
+
+    void read(unsigned char* destination, std::size_t size) {
+        read_raw(destination, size);
+        for (std::size_t index = 0; index < size; ++index) {
+            destination[index] ^= next_byte();
+        }
+    }
+
+    [[nodiscard]] std::uint32_t read_u32() {
+        std::array<unsigned char, 4> bytes{};
+        read(bytes.data(), bytes.size());
+        return static_cast<std::uint32_t>(bytes[0]) |
+               (static_cast<std::uint32_t>(bytes[1]) << 8) |
+               (static_cast<std::uint32_t>(bytes[2]) << 16) |
+               (static_cast<std::uint32_t>(bytes[3]) << 24);
+    }
+
+    [[nodiscard]] std::string read_string() {
+        const auto size = read_u32();
+        if (size > maximum_name_length) throw std::runtime_error("HDR string length exceeds safety limit");
+        std::string value(size, '\0');
+        read(reinterpret_cast<unsigned char*>(value.data()), value.size());
+        return value;
+    }
+
+private:
+    void read_raw(unsigned char* destination, std::size_t size) {
+        input_.read(reinterpret_cast<char*>(destination), static_cast<std::streamsize>(size));
+        if (static_cast<std::size_t>(input_.gcount()) != size) {
+            throw std::runtime_error("unexpected end of HDR while decoding prefix");
+        }
+    }
+
+    [[nodiscard]] unsigned char next_byte() {
+        const auto quotient = state_ / 127773;
+        auto next = 16807 * (state_ % 127773) - 2836 * quotient;
+        if (next <= 0) next += 2147483647;
+        state_ = next;
+        return static_cast<unsigned char>(state_ & 0xff);
+    }
+
+    std::ifstream input_;
+    std::uint32_t raw_seed_ = 0;
+    std::int64_t state_ = 1;
+};
+
+} // namespace
+
+HdrMetadata decode_hdr_prefix(const std::filesystem::path& path) {
+    DecodedReader reader(path);
+    HdrMetadata metadata;
+    metadata.raw_seed = reader.raw_seed();
+    metadata.version = reader.read_u32();
+    metadata.unknown_04 = reader.read_u32();
+    reader.read(metadata.unknown_08.data(), metadata.unknown_08.size());
+
+    const auto archive_count = reader.read_u32();
+    const auto size_count = reader.read_u32();
+    if (archive_count > maximum_archive_count || size_count > maximum_archive_count) {
+        throw std::runtime_error("HDR archive count exceeds safety limit");
+    }
+    if (archive_count != size_count) throw std::runtime_error("HDR archive and size counts differ");
+
+    std::vector<std::uint32_t> sizes;
+    sizes.reserve(size_count);
+    for (std::uint32_t index = 0; index < size_count; ++index) sizes.push_back(reader.read_u32());
+
+    const auto name_count = reader.read_u32();
+    if (name_count != archive_count) throw std::runtime_error("HDR archive and name counts differ");
+    metadata.archives.reserve(archive_count);
+    for (std::uint32_t index = 0; index < archive_count; ++index) {
+        metadata.archives.push_back({reader.read_string(), sizes[index]});
+    }
+    return metadata;
+}
+
+std::string hex_string(const unsigned char* data, std::size_t size) {
+    std::ostringstream output;
+    output << std::hex << std::setfill('0');
+    for (std::size_t index = 0; index < size; ++index) output << std::setw(2) << static_cast<unsigned int>(data[index]);
+    return output.str();
+}
+
+} // namespace rb4pc::inspector

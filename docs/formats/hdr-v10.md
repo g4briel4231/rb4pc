@@ -55,6 +55,21 @@ The existing ForgeInspector discovery initially reported only `main_*` files.
 The decoded counts demonstrate that the patch volumes also belong to each
 console header's archive list.
 
+## File-size validation results
+
+ForgeInspector v0.2.0 compares each decoded 32-bit size with the corresponding
+local file without changing it.
+
+- PS4: all 62 declared files are present and match.
+- Xbox One: all 58 declared files are present and match.
+- Rock Band VR PC: all 5 files are present; 4 match.
+- `main_pc_1.ark` declares 1,784,806,831 bytes but the local file contains
+  1,784,806,891 bytes, a 60-byte excess.
+
+The final 60 local bytes were inspected only to characterize the discrepancy;
+they are not all zero. Their purpose and origin are unknown, so the parser does
+not silently ignore or remove them.
+
 ## Remaining unknowns
 
 - Meaning and byte order of the 16-byte value at `0x08`
