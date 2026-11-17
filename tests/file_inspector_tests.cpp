@@ -7,6 +7,7 @@
 #include "rb4pc/inspector/riff_parser.hpp"
 #include "rb4pc/runtime/archive_file_system.hpp"
 #include "rb4pc/runtime/wave_loader.hpp"
+#include "rb4pc/runtime/pcm_stream.hpp"
 
 #include <array>
 #include <filesystem>
@@ -263,6 +264,8 @@ int main() {
     const rb4pc::runtime::ArchiveFileSystem wave_vfs(conversion_report);
     const auto wave_asset = rb4pc::runtime::load_wave(wave_vfs, "audio/test.wav");
     const auto pcm_bytes = rb4pc::runtime::read_pcm(wave_vfs, wave_asset, 1, 2);
+    rb4pc::runtime::PcmStream pcm_stream(wave_vfs, wave_asset);
+    const auto pcm_frame = pcm_stream.read_frames(1);
     const auto converted_path = directory / "converted.wav";
     const auto conversion = rb4pc::inspector::convert_riff_record(
         conversion_report, "audio/test.wav", converted_path);
@@ -280,7 +283,9 @@ int main() {
                          wave_asset.bits_per_sample == 16 && wave_asset.data_size == 4 &&
                          wave_asset.frame_count == 1 && pcm_bytes.size() == 2 &&
                          std::to_integer<unsigned int>(pcm_bytes[0]) == 0x22 &&
-                         std::to_integer<unsigned int>(pcm_bytes[1]) == 0x33,
+                         std::to_integer<unsigned int>(pcm_bytes[1]) == 0x33 &&
+                         pcm_frame.size() == 4 && pcm_stream.frame_position() == 1 &&
+                         pcm_stream.remaining_frames() == 0,
                      "runtime WAVE loader mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};

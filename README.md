@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.8.0 PCM WAVE Loader
+## Current milestone: v0.8.1 PCM Frame Streaming
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -167,6 +167,10 @@ Version 0.8.0 adds the first runtime asset loader. It parses PCM WAVE metadata
 through VFS range reads, locates the `data` chunk, calculates frame count and
 duration, and exposes bounded PCM reads without extracting the source file.
 `rb4pc-audio-probe` reports this metadata; audio playback is not implemented yet.
+
+Version 0.8.1 adds a frame-aligned PCM stream cursor with bounded reads, seek,
+end-of-stream clamping, and overflow checks. It remains independent of any
+operating-system audio API.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as

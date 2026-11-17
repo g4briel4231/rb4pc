@@ -8,3 +8,6 @@ count, and duration.
 PCM bytes remain in the user's ARK files and are read only in caller-requested,
 record-bounded ranges. This milestone does not provide an audio device, mixer,
 resampling, streaming queue, MOGG decoding, or synchronization with gameplay.
+
+Version 0.8.1 adds `PcmStream`, which exposes frame-aligned reads and seek while
+tracking the current and remaining frame counts. Reads clamp at end of stream.
