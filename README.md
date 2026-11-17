@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.16.0 UI Primitives
+## Current milestone: v0.17.0 Gameplay Timing Core
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -212,6 +212,10 @@ window.
 
 Version 0.16.0 adds clipped filled/bordered rectangles and a deterministic,
 wrapping menu-selection model. Text and game assets are not rendered yet.
+
+Version 0.17.0 adds a deterministic pausable gameplay clock and provisional
+note-judgement windows. These synthetic rules are infrastructure, not recovered
+Rock Band scoring behavior and not yet connected to a chart format.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

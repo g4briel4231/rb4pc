@@ -14,6 +14,7 @@
 #include "rb4pc/runtime/input.hpp"
 #include "rb4pc/runtime/window.hpp"
 #include "rb4pc/runtime/ui.hpp"
+#include "rb4pc/runtime/gameplay_timing.hpp"
 
 #include <array>
 #include <filesystem>
@@ -294,6 +295,9 @@ int main() {
     framebuffer.set_pixel(1, 1, 0xffabcdef);
     rb4pc::runtime::MenuModel menu({"Play", "Settings", "Quit"});
     menu.move(-1);
+    rb4pc::runtime::GameplayClock gameplay_clock;
+    gameplay_clock.advance(1.0); gameplay_clock.set_paused(true); gameplay_clock.advance(1.0);
+    const auto judgement = rb4pc::runtime::judge_note(1.0, 1.025);
     const auto converted_path = directory / "converted.wav";
     const auto conversion = rb4pc::inspector::convert_riff_record(
         conversion_report, "audio/test.wav", converted_path);
@@ -318,7 +322,9 @@ int main() {
                          session_diagnostics.find("\"gameplay\": false") != std::string::npos &&
                          (!rb4pc::runtime::input_backend_available() || controller_states.size() == 4) &&
                          framebuffer.pixels().size() == 4 && framebuffer.pixels()[0] == 0xff102030 &&
-                         framebuffer.pixels()[3] == 0xffabcdef && menu.selected_item() == "Quit",
+                         framebuffer.pixels()[3] == 0xffabcdef && menu.selected_item() == "Quit" &&
+                         gameplay_clock.seconds() == 1.0 &&
+                         judgement.judgement == rb4pc::runtime::Judgement::perfect && judgement.score == 100,
                      "runtime WAVE loader mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};
