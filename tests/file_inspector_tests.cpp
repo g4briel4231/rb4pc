@@ -5,6 +5,7 @@
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
 #include "rb4pc/inspector/riff_parser.hpp"
+#include "rb4pc/runtime/archive_file_system.hpp"
 
 #include <array>
 #include <filesystem>
@@ -115,6 +116,8 @@ int main() {
     const auto json = rb4pc::inspector::format_json(set_report);
     const auto build_plan = rb4pc::builder::create_build_plan(set_report, payload_catalog);
     const auto build_plan_json = rb4pc::builder::format_json(build_plan);
+    const rb4pc::runtime::ArchiveFileSystem vfs(set_report);
+    const auto vfs_bytes = vfs.read("test/file.bin", 1, 2);
     bool passed = true;
     passed &= expect(file_report.size == contents.size() && file_report.preview_size == contents.size(),
                      "unexpected report size");
@@ -142,6 +145,11 @@ int main() {
                          build_plan.usable_size_archives == 2 && build_plan.resolved_records == 1 &&
                          build_plan_json.find("\"readyForConversionPlanning\": true") != std::string::npos,
                      "builder plan validation mismatch");
+    passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
+                         vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
+                         vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&
+                         std::to_integer<unsigned int>(vfs_bytes[1]) == 'o',
+                     "runtime VFS read mismatch");
     passed &= expect(set_report.archives.size() == 2, "archive count mismatch");
     passed &= expect(set_report.metadata.version == 10 && set_report.metadata.unknown_04 == 1,
                      "decoded HDR fields mismatch");

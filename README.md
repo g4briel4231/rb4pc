@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.6.1 Conversion Inventory
+## Current milestone: v0.7.0 Read-only Runtime VFS
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -150,6 +150,15 @@ copy proprietary assets.
 Version 0.6.1 adds a conversion inventory to the plan: structurally validated
 RIFF records and their `WAVE`/`FEV ` split. This measures currently supported
 work without implying that unknown formats are convertible.
+
+Version 0.7.0 introduces a runtime-facing virtual file system over the user's
+HDR/ARK set. It resolves exact internal paths through the verified hash index,
+reports logical record sizes, and performs bounded range reads without prior
+extraction. `rb4pc-runtime-probe` mounts a set and reads a 32-byte preview.
+
+```powershell
+./build/default/rb4pc-runtime-probe.exe "../path/to/main_ps4.hdr" "path/inside/archive"
+```
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as
