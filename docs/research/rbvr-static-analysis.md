@@ -95,3 +95,62 @@ does not prove that Forge archives use the same mechanism.
 4. The next useful step is to identify code references to the four HDR/ARK
    format strings and map the surrounding functions and calls.
 
+## HDR/ARK code references
+
+The following virtual addresses use image base `0x140000000`. They were obtained
+from RIP-relative targets printed by `llvm-objdump`.
+
+Corrected string starts and direct references:
+
+| String VA | Text | Direct reference sites found |
+|---:|---|---|
+| `0x140E0EF50` | `main_%s` | `0x14070717A` |
+| `0x140E0EF98` | `%s_0.ark` | `0x140709463` |
+| `0x140E0EFB0` | `%s_%d.ark` | `0x140707BDA`, `0x140708CA0`, `0x1407098AA` |
+| `0x140E0EFC0` | `%s/%s.hdr` | `0x140709D4F` |
+
+Reproduction examples:
+
+```powershell
+llvm-objdump -d rbvr.exe | Select-String '# 0x140e0ef'
+llvm-objdump -d --start-address=0x140709380 `
+  --stop-address=0x140709f00 rbvr.exe
+```
+
+### ARK path helper at `0x140707BC0`
+
+An `int3`-delimited function starts at `0x140707BC0`. It loads the
+`%s_%d.ark` format string at `0x140707BDA`, incorporates a string-like field at
+object offset `+0xA8`, and incorporates the other incoming argument. The calls
+around `0x1405FCB80` through `0x1405FD800` behave like string construction and
+formatting operations, but their exact types have not been established.
+
+### Large archive-processing function at `0x140709380`
+
+An `int3`-aligned function begins at `0x140709380`. Observed behavior includes:
+
+1. If an object collection at offsets `+0x68`/`+0x70` is not empty, processing
+   continues; otherwise it branches near the function's later exit path.
+2. When the ARK-path collection at object offset `+0x28` is empty, the function
+   constructs `%s_0.ark` at `0x140709463` using the field at `+0xA8`.
+3. Other paths construct `%s_%d.ark` at `0x140708CA0` and `0x1407098AA`.
+4. A virtual stream-like object is called repeatedly. A loop beginning near
+   `0x140709B70` requests chunks of `0x1000` bytes and passes the returned byte
+   count to `0x140607CE0`.
+5. The function constructs `%s/%s.hdr` at `0x140709D4F` from an incoming value
+   and the object field at `+0xA8`.
+6. The resulting path is passed to `0x140608130` with `r8d = 4` and `r9b = 1`.
+   Subsequent calls around `0x140607DC0` repeatedly operate on four-byte values.
+
+This establishes that one function coordinates numbered ARK paths, a header
+path, stream operations, and metadata-sized values. It is not yet safe to label
+the function solely as a parser: the observed operations may include loading,
+copying, rebuilding, debugging, or serialization paths.
+
+## Revised next step
+
+Map the callees around `0x140608130`, `0x140607770`, `0x140607CE0`, and
+`0x140607DC0`, then identify whether they implement file open, buffered I/O,
+byte-order conversion, serialization, or another abstraction. Function names
+must remain provisional until supported by call behavior or runtime evidence.
+
