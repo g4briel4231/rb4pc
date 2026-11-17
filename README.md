@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.11.0 Music Payload Census
+## Current milestone: v0.12.0 Windows PCM Playback
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -187,6 +187,10 @@ implemented capabilities from absent playback, rendering, and gameplay.
 Version 0.11.0 adds `--music-catalog`, a bounded header census for compiled MIDI,
 MIDI-song, RBMID, and MOGG records. It reports counts, size ranges, distinct
 four-byte prefixes, and whether standard `MThd` or `OggS` headers are exposed.
+
+Version 0.12.0 adds explicit, blocking PCM playback through the Windows
+`waveOut` API. `rb4pc-audio-play` accepts one validated WAVE path; no sound is
+played during automated tests. Other platforms report that no backend exists.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as

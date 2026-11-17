@@ -22,6 +22,7 @@ struct BuildPlan {
     std::size_t convertible_riff_records = 0;
     std::size_t wave_records = 0;
     std::size_t fev_records = 0;
+    std::size_t song_records = 0;
 };
 [[nodiscard]] BuildPlan create_build_plan(const inspector::HeaderSetReport& report);
 [[nodiscard]] BuildPlan create_build_plan(

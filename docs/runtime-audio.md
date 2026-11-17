@@ -11,3 +11,9 @@ resampling, streaming queue, MOGG decoding, or synchronization with gameplay.
 
 Version 0.8.1 adds `PcmStream`, which exposes frame-aligned reads and seek while
 tracking the current and remaining frame counts. Reads clamp at end of stream.
+
+Version 0.12.0 adds the first operating-system output backend. On Windows,
+`rb4pc-audio-play` submits one complete validated PCM WAVE buffer through
+`waveOut` and waits for completion. Playback is explicit and is never invoked by
+the automated test suite. Mixing, resampling, MOGG decoding, low-latency queues,
+and gameplay synchronization remain future work.

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.11.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.12.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -9,6 +9,7 @@ add_library(rb4pc_inspection
     src/inspector/archive_layout.cpp
     src/inspector/binary_analysis.cpp
     src/builder/build_plan.cpp
+    src/builder/song_layout.cpp
     src/inspector/file_inspector.cpp
     src/inspector/hdr_decoder.cpp
     src/inspector/murmur_hash3.cpp
@@ -21,6 +22,7 @@ add_library(rb4pc_inspection
     src/runtime/wave_loader.cpp
     src/runtime/pcm_stream.cpp
     src/runtime/runtime_session.cpp
+    src/runtime/audio_output.cpp
 )
 target_include_directories(rb4pc_inspection PUBLIC include)
 target_compile_features(rb4pc_inspection PUBLIC cxx_std_20)
@@ -44,6 +46,13 @@ target_link_libraries(rb4pc-runtime-probe PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-audio-probe src/runtime/audio_main.cpp)
 target_link_libraries(rb4pc-audio-probe PRIVATE rb4pc_inspection)
+
+add_executable(rb4pc-audio-play src/runtime/audio_play_main.cpp)
+target_link_libraries(rb4pc-audio-play PRIVATE rb4pc_inspection)
+
+if(WIN32)
+    target_link_libraries(rb4pc_inspection PRIVATE winmm)
+endif()
 
 add_executable(rb4pc-runtime src/runtime/session_main.cpp)
 target_link_libraries(rb4pc-runtime PRIVATE rb4pc_inspection)
