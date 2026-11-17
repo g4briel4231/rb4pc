@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.21.0 Custom-song Content Validation
+## Current milestone: v0.22.0 Downloaded-song Namespace
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -232,6 +232,11 @@ panel is diagnostic and contains no text, charts, gameplay, or original assets.
 Version 0.21.0 records the internal chart-related composition of every Forge
 custom-song package: compiled MIDI, MIDI-song, RBMID, MOGG, and song metadata.
 This validates required content without claiming those containers are decoded.
+
+Version 0.22.0 identifies the custom-song namespace as
+`pc/songs_download/<shortname>/`, adds bounded VFS prefix listing to the runtime
+probe, and records namespace coverage per package. Binary DTA payloads remain
+opaque until their transformation is verified.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

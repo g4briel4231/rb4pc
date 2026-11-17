@@ -21,6 +21,7 @@ struct CustomSongEntry {
     std::size_t mogg_records = 0;
     std::size_t song_metadata_records = 0;
     bool core_content_complete = false;
+    std::size_t download_namespace_records = 0;
     std::string error;
 };
 struct CustomSongCatalog {

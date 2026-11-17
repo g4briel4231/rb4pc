@@ -161,6 +161,7 @@ int main() {
                          build_plan_json.find("\"readyForConversionPlanning\": true") != std::string::npos,
                      "builder plan validation mismatch");
     passed &= expect(rb4pc::builder::is_internal_song_path("ps4/songs/example/song.mogg") &&
+                         rb4pc::builder::is_internal_song_path("pc/songs_download/example/song.mogg") &&
                          package_paths.header.generic_string() == "example_pc.hdr" &&
                          package_paths.archive.generic_string() == "example_pc_0.ark",
                      "custom-song package layout mismatch");

@@ -27,6 +27,7 @@ CustomSongCatalog scan_custom_songs(const std::filesystem::path& installation) {
             const auto metadata = inspector::decode_hdr_prefix(entry.header);
             entry.record_count = metadata.file_records.size();
             for (const auto& record : metadata.file_records) {
+                if (record.path.find("/songs_download/") != std::string::npos) ++entry.download_namespace_records;
                 if (record.path.ends_with(".mid_pc")) ++entry.midi_records;
                 else if (record.path.ends_with(".midisong_pc")) ++entry.midi_song_records;
                 else if (record.path.ends_with(".rbmid_pc")) ++entry.rbmid_records;
@@ -63,6 +64,7 @@ std::string format_json(const CustomSongCatalog& catalog) {
             << ", \"content\": {\"mid\": " << s.midi_records
             << ", \"midiSong\": " << s.midi_song_records << ", \"rbmid\": " << s.rbmid_records
             << ", \"mogg\": " << s.mogg_records << ", \"songMetadata\": " << s.song_metadata_records
+            << ", \"downloadNamespaceRecords\": " << s.download_namespace_records
             << ", \"coreComplete\": " << (s.core_content_complete ? "true" : "false") << '}';
         if (!s.error.empty()) out << ", \"error\": \"" << escape_json(s.error) << "\"";
         out << '}';

@@ -4,8 +4,17 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--list") {
+        try {
+            const auto vfs = rb4pc::runtime::ArchiveFileSystem::mount(argv[1]);
+            const auto paths = vfs.list_paths(argv[3], 100);
+            for (const auto& path : paths) std::cout << path << '\n';
+            std::cout << "Listed paths: " << paths.size() << '\n'; return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-runtime-probe: " << error.what() << '\n'; return 1; }
+    }
     if (argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " <header.hdr> <internal-path>\n";
+        std::cerr << "Usage: " << argv[0] << " <header.hdr> <internal-path>\n"
+                  << "   or: " << argv[0] << " <header.hdr> --list <prefix>\n";
         return 2;
     }
     try {

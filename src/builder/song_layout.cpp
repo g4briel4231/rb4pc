@@ -5,7 +5,8 @@
 
 namespace rb4pc::builder {
 bool is_internal_song_path(std::string_view path) {
-    return path.starts_with("songs/") || path.find("/songs/") != std::string_view::npos;
+    return path.starts_with("songs/") || path.find("/songs/") != std::string_view::npos ||
+           path.starts_with("songs_download/") || path.find("/songs_download/") != std::string_view::npos;
 }
 
 CustomSongPackagePaths custom_song_package_paths(std::string_view short_name) {

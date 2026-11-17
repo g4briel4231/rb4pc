@@ -21,3 +21,7 @@ contains nonempty `.mid_pc` and `.midisong_pc` sets, exactly one `.rbmid_pc`,
 exactly one `.mogg`, and at least one `.songdta_pc` plus one
 `.moggsong_dta_pc`. This establishes package completeness without decoding any
 of those formats.
+
+Custom-song assets consistently use `pc/songs_download/<shortname>/`. The
+observed `.songdta_pc` and `.moggsong_dta_pc` payloads do not begin as readable
+DTA text, so v0.22.0 treats them as opaque compiled payloads.
