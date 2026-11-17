@@ -7,3 +7,7 @@ and a repeatable verification method. Do not commit samples copied from a game.
 Static executable research is kept separately in
 [`../research/rbvr-static-analysis.md`](../research/rbvr-static-analysis.md).
 
+Verified format notes:
+
+- [`hdr-v10.md`](hdr-v10.md): stream transformation and decoded prefix
+

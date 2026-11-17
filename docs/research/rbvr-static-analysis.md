@@ -154,3 +154,38 @@ Map the callees around `0x140608130`, `0x140607770`, `0x140607CE0`, and
 byte-order conversion, serialization, or another abstraction. Function names
 must remain provisional until supported by call behavior or runtime evidence.
 
+## Callee map and stream transformation
+
+The four callees can now be classified from their behavior:
+
+| Address | Verified behavior |
+|---:|---|
+| `0x140608130` | Constructs a file-backed stream object from a path, mode value, and flag |
+| `0x140607770` | Generates and writes a 32-bit seed, then creates transformation state at object offset `+0x18` |
+| `0x140607CE0` | Encodes a buffer in chunks up to `0x200`, then calls virtual method `+0x60` |
+| `0x140607DC0` | Optionally byte-swaps a scalar of size 1, 2, 4, or 8 and passes it to `0x140607CE0` |
+
+The complementary function at `0x140607A00` calls virtual method `+0x58` first
+and then applies the same XOR transformation in place. This establishes `+0x58`
+as the read-side operation and `+0x60` as the write-side operation for this
+stream abstraction.
+
+`0x140607690` is the read-side initialization path: it reads a four-byte seed,
+optionally byte-swaps it, and initializes state at `+0x18`. `0x140607770` is the
+write-side counterpart: the seed is written before state is installed, so the
+first four bytes remain unencoded.
+
+The state constructor at `0x140C0F430` normalizes zero to 1 and negates negative
+seeds. The next-value function at `0x140C0F450` is the Park-Miller
+minimal-standard generator using constants 16807, 127773, 2836, and modulus
+2147483647. The low byte of each generated value is XORed with one data byte.
+
+This makes the role of `0x140709380` substantially clearer: it is a header
+construction/serialization path, not the primary parsing path. It opens an HDR
+stream, writes the seed through `0x140607770`, and writes typed values through
+`0x140607DC0`.
+
+Decoding the three available HDR prefixes with this algorithm produced coherent
+version, count, size, and filename data. The partial verified layout is recorded
+in [`../formats/hdr-v10.md`](../formats/hdr-v10.md).
+
