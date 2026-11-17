@@ -2,6 +2,7 @@
 
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/runtime/audio_output.hpp"
+#include "rb4pc/runtime/input.hpp"
 
 #include <utility>
 #include <sstream>
@@ -48,6 +49,7 @@ std::string RuntimeSession::diagnostics_json() const {
            << "    \"pcmWaveLoading\": true,\n"
            << "    \"pcmFrameStreaming\": true,\n"
            << "    \"audioPlayback\": " << (audio_playback_available() ? "true" : "false") << ",\n"
+           << "    \"controllerInput\": " << (input_backend_available() ? "true" : "false") << ",\n"
            << "    \"rendering\": false,\n"
            << "    \"gameplay\": false\n  }\n}\n";
     return output.str();

@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.13.0 Custom-song Catalog
+## Current milestone: v0.14.0 Controller Diagnostics
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -200,6 +200,10 @@ archive path, not a host installation directory.
 Version 0.13.0 scans a Rock Band VR installation for root-level custom-song
 package pairs, validates each HDR v10 and matching ARK, and writes a catalog
 without copying or modifying the installed songs.
+
+Version 0.14.0 adds an XInput backend on Windows and `rb4pc-input-probe`, which
+reports four controller slots and raw button, trigger, and stick state. Device
+diagnostics are separate from gameplay mappings.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `
