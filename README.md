@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.25.0 MIDI Note Lifecycles
+## Current milestone: v0.26.0 Five-Fret Chart Mapping
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -250,6 +250,11 @@ Version 0.25.0 pairs note-on and note-off events by channel and key, preserving
 start/end ticks and velocity while reporting unmatched releases and dangling
 notes. This produces bounded chart primitives without assigning instrument,
 difficulty, lane, or scoring semantics yet.
+
+Version 0.26.0 maps the established five-fret note ranges for easy, medium,
+hard, and expert guitar/bass charts. Simultaneous gems become one chord with a
+five-bit lane mask and a bounded sustain end tick. Drum and vocal semantics are
+not inferred by this mapper.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

@@ -50,3 +50,12 @@ little-endian RBVR format value `2f 00 00 00` expected by the public AmpForge
 [RBMID reader](https://github.com/SoffiMeower/AmpForge/blob/master/LibForge/LibForge/Midi/RBMidReader.cs).
 AmpForge 0.1.19 also rejects the extracted record at its first word. The
 observation is recorded without naming the unidentified outer layer.
+
+## Five-fret chart mapping
+
+Version 0.26.0 applies only the conventional five-note difficulty ranges to
+`PART GUITAR` and `PART BASS`. On the reference chart it produces 410/423/493/612
+guitar chords and 287/327/385/467 bass chords for easy/medium/hard/expert,
+respectively. Notes beginning on the same tick are represented as one lane-mask
+chord; the longest member determines its sustain end. No drum or vocal mapping
+is implied by these counts.

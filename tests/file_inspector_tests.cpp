@@ -18,6 +18,7 @@
 #include "rb4pc/runtime/shell.hpp"
 #include "rb4pc/runtime/shell_render.hpp"
 #include "rb4pc/runtime/midi_parser.hpp"
+#include "rb4pc/runtime/five_fret_chart.hpp"
 
 #include <array>
 #include <filesystem>
@@ -144,6 +145,12 @@ int main() {
     const auto custom_song_catalog = rb4pc::builder::scan_custom_songs(directory);
     const auto midi_header = rb4pc::runtime::parse_standard_midi_header(midi_path);
     const auto track_midi_summary = rb4pc::runtime::parse_standard_midi(track_midi_path);
+    const auto easy_five_fret = rb4pc::runtime::build_five_fret_chart(
+        track_midi_summary.tracks[0], rb4pc::runtime::ChartDifficulty::easy);
+    rb4pc::runtime::MidiTrackSummary chord_track;
+    chord_track.notes = {{0, 96, 100, 120, 240}, {0, 98, 100, 120, 360}, {0, 100, 100, 480, 600}};
+    const auto expert_five_fret = rb4pc::runtime::build_five_fret_chart(
+        chord_track, rb4pc::runtime::ChartDifficulty::expert);
     const rb4pc::runtime::ArchiveFileSystem vfs(set_report);
     const auto vfs_bytes = vfs.read("test/file.bin", 1, 2);
     const auto vfs_paths = vfs.list_paths("test/", 10);
@@ -199,6 +206,13 @@ int main() {
                          track_midi_summary.tracks[0].dangling_note_on_count == 0 &&
                          track_midi_summary.tracks[0].end_tick == 480,
                      "standard MIDI track parse mismatch");
+    passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
+                         easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,
+                     "five-fret chart mapping mismatch");
+    passed &= expect(expert_five_fret.chords.size() == 2 && expert_five_fret.chords[0].start_tick == 120 &&
+                         expert_five_fret.chords[0].end_tick == 360 && expert_five_fret.chords[0].lane_mask == 5 &&
+                         expert_five_fret.chords[1].lane_mask == 16,
+                     "five-fret chord grouping mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&
