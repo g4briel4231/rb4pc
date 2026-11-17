@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.18.0 Song Installation Planning
+## Current milestone: v0.19.0 Runtime Shell State
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -220,6 +220,10 @@ Rock Band scoring behavior and not yet connected to a chart format.
 Version 0.18.0 creates a dry-run installation plan for validated custom-song
 packages. It records source, root-level destination, size, total bytes, and
 collisions without copying any file.
+
+Version 0.19.0 adds a deterministic shell state machine for boot, main menu,
+song browser, settings, diagnostics, and quit. It is tested without opening a
+window and does not yet display text or launch gameplay.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `
