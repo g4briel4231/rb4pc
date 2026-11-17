@@ -14,6 +14,11 @@ std::uint32_t read_u32_le(const unsigned char* data) {
            (static_cast<std::uint32_t>(data[3]) << 24);
 }
 
+std::uint16_t read_u16_le(const unsigned char* data) {
+    return static_cast<std::uint16_t>(data[0]) |
+           static_cast<std::uint16_t>(static_cast<std::uint16_t>(data[1]) << 8);
+}
+
 bool read_at(std::istream& input, std::uint64_t offset, unsigned char* output, std::size_t size) {
     if (offset > static_cast<std::uint64_t>(std::numeric_limits<std::streamoff>::max())) return false;
     input.clear();
@@ -52,7 +57,17 @@ RiffAnalysis analyze_riff(std::istream& input, std::uint64_t base_offset, std::u
         const auto padded_size = chunk_size + (chunk_size & 1U);
         if (padded_size > analysis.declared_file_size - position - 8) return analysis;
         ++analysis.chunk_count;
-        ++analysis.chunk_ids[fourcc(chunk_header.data())];
+        const auto chunk_id = fourcc(chunk_header.data());
+        ++analysis.chunk_ids[chunk_id];
+        if (analysis.form_type == "WAVE" && chunk_id == "fmt " && chunk_size >= 16 &&
+            base_offset <= std::numeric_limits<std::uint64_t>::max() - position - 8) {
+            std::array<unsigned char, 16> format{};
+            if (!read_at(input, base_offset + position + 8, format.data(), format.size())) return analysis;
+            analysis.wave_format = WaveFormat{
+                read_u16_le(format.data()), read_u16_le(format.data() + 2),
+                read_u32_le(format.data() + 4), read_u32_le(format.data() + 8),
+                read_u16_le(format.data() + 12), read_u16_le(format.data() + 14)};
+        }
         position += 8 + padded_size;
     }
     analysis.structure_valid = position == analysis.declared_file_size;

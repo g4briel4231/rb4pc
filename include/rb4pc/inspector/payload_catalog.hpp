@@ -26,6 +26,12 @@ struct PayloadCatalog {
     std::vector<std::string> riff_invalid_examples;
     std::map<std::string, std::size_t> riff_form_types;
     std::map<std::string, std::size_t> riff_chunk_ids;
+    std::size_t wave_format_records = 0;
+    std::size_t wave_missing_format_records = 0;
+    std::map<std::string, std::size_t> wave_format_tags;
+    std::map<std::string, std::size_t> wave_channels;
+    std::map<std::string, std::size_t> wave_sample_rates;
+    std::map<std::string, std::size_t> wave_bits_per_sample;
 };
 
 [[nodiscard]] std::string classify_payload_signature(const unsigned char* data, std::size_t size);

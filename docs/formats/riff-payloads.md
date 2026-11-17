@@ -33,3 +33,16 @@ The purpose of the remaining allocation bytes is not yet established.
 This distinction matters for extraction: v0.3.x preserves the complete HDR
 record, while a future format-aware conversion may choose the logical RIFF
 boundary only after the trailing data's role is understood.
+
+## WAVE format metadata
+
+ForgeInspector v0.4.1 decoded a standard `fmt ` prefix for every WAVE record.
+All 5,061 WAVE files use format tag 1 (integer PCM) and 16 bits per sample.
+
+| Set | Mono | Stereo | 48 kHz | 44.1 kHz | 32 kHz |
+|---|---:|---:|---:|---:|---:|
+| Rock Band VR PC | 2,773 | 278 | 2,929 | 106 | 16 |
+| Rock Band 4 PS4 | 530 | 475 | 883 | 106 | 16 |
+| Rock Band 4 Xbox One | 530 | 475 | 883 | 106 | 16 |
+
+No WAVE record had a missing or shorter-than-16-byte `fmt ` chunk.

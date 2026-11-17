@@ -186,15 +186,23 @@ int main() {
                          png_signature.data(), png_signature.size()) == "png",
                      "PNG signature was not classified");
     std::vector<unsigned char> riff_bytes = {'R', 'I', 'F', 'F'};
-    append_u32(riff_bytes, 12);
+    append_u32(riff_bytes, 28);
     riff_bytes.insert(riff_bytes.end(), {'W', 'A', 'V', 'E', 'f', 'm', 't', ' '});
-    append_u32(riff_bytes, 0);
+    append_u32(riff_bytes, 16);
+    riff_bytes.insert(riff_bytes.end(), {1, 0, 2, 0});
+    append_u32(riff_bytes, 48000);
+    append_u32(riff_bytes, 192000);
+    riff_bytes.insert(riff_bytes.end(), {4, 0, 16, 0});
     std::stringstream riff_stream(std::string(riff_bytes.begin(), riff_bytes.end()),
                                   std::ios::in | std::ios::binary);
     const auto riff_analysis = rb4pc::inspector::analyze_riff(riff_stream, 0, riff_bytes.size());
     passed &= expect(riff_analysis.structure_valid && riff_analysis.size_matches_record &&
                          riff_analysis.form_type == "WAVE" && riff_analysis.chunk_count == 1 &&
-                         riff_analysis.chunk_ids.at("fmt ") == 1,
+                         riff_analysis.chunk_ids.at("fmt ") == 1 && riff_analysis.wave_format &&
+                         riff_analysis.wave_format->format_tag == 1 &&
+                         riff_analysis.wave_format->channels == 2 &&
+                         riff_analysis.wave_format->sample_rate == 48000 &&
+                         riff_analysis.wave_format->bits_per_sample == 16,
                      "RIFF structure analysis mismatch");
     auto padded_riff_bytes = riff_bytes;
     padded_riff_bytes.insert(padded_riff_bytes.end(), 4, 0);

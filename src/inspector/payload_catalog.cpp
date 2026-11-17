@@ -118,6 +118,15 @@ PayloadCatalog catalog_payloads(const HeaderSetReport& report) {
                 for (const auto& [chunk_id, count] : riff.chunk_ids) {
                     catalog.riff_chunk_ids[chunk_id] += count;
                 }
+                if (riff.form_type == "WAVE") {
+                    if (riff.wave_format) {
+                        ++catalog.wave_format_records;
+                        ++catalog.wave_format_tags[std::to_string(riff.wave_format->format_tag)];
+                        ++catalog.wave_channels[std::to_string(riff.wave_format->channels)];
+                        ++catalog.wave_sample_rates[std::to_string(riff.wave_format->sample_rate)];
+                        ++catalog.wave_bits_per_sample[std::to_string(riff.wave_format->bits_per_sample)];
+                    } else ++catalog.wave_missing_format_records;
+                }
             } else {
                 ++catalog.riff_invalid_records;
                 if (!riff.size_matches_record) ++catalog.riff_size_mismatches;
@@ -172,6 +181,18 @@ std::string format_report(const PayloadCatalog& catalog) {
     for (const auto& [name, count] : sorted_counts(catalog.riff_chunk_ids)) {
         output << "      " << name << ": " << count << '\n';
     }
+    output << "  WAVE format analysis:\n";
+    output << "    decoded fmt chunks: " << catalog.wave_format_records << '\n';
+    output << "    missing/short fmt chunks: " << catalog.wave_missing_format_records << '\n';
+    const auto print_wave_counts = [&output](std::string_view label, const auto& counts) {
+        output << "    " << label << ':';
+        for (const auto& [name, count] : sorted_counts(counts)) output << ' ' << name << '=' << count;
+        output << '\n';
+    };
+    print_wave_counts("format tags", catalog.wave_format_tags);
+    print_wave_counts("channels", catalog.wave_channels);
+    print_wave_counts("sample rates", catalog.wave_sample_rates);
+    print_wave_counts("bits per sample", catalog.wave_bits_per_sample);
     output << "  Extension groups (top 25):\n";
     const auto extensions = sorted_counts(catalog.extensions);
     const auto limit = std::min<std::size_t>(extensions.size(), 25);
