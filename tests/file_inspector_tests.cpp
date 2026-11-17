@@ -20,6 +20,7 @@
 #include "rb4pc/runtime/midi_parser.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
+#include "rb4pc/runtime/five_fret_gameplay.hpp"
 
 #include <array>
 #include <filesystem>
@@ -231,6 +232,16 @@ int main() {
                          timed_five_fret.chords[1].end_seconds == 0.75 &&
                          visible_chords.size() == 2 && visible_chords[0] == 0 && visible_chords[1] == 1,
                      "timed five-fret chart window mismatch");
+    rb4pc::runtime::FiveFretGameplay five_fret_gameplay(timed_five_fret);
+    five_fret_gameplay.update(0.3);
+    const auto chord_hit = five_fret_gameplay.strum(16, 0.52);
+    passed &= expect(chord_hit && chord_hit->chord_index == 1 &&
+                         chord_hit->timing.judgement == rb4pc::runtime::Judgement::perfect &&
+                         five_fret_gameplay.hit_count() == 1 && five_fret_gameplay.miss_count() == 1 &&
+                         five_fret_gameplay.score() == 100 && five_fret_gameplay.finished() &&
+                         five_fret_gameplay.states()[0] == rb4pc::runtime::ChordState::missed &&
+                         five_fret_gameplay.states()[1] == rb4pc::runtime::ChordState::hit,
+                     "five-fret gameplay lifecycle mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

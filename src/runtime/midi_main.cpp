@@ -1,6 +1,7 @@
 #include "rb4pc/runtime/midi_parser.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
+#include "rb4pc/runtime/five_fret_gameplay.hpp"
 #include <iostream>
 int main(int argc, char* argv[]) {
     if (argc != 2) { std::cerr << "Usage: " << argv[0] << " <notes.mid>\n"; return 2; }
@@ -17,6 +18,9 @@ int main(int argc, char* argv[]) {
             std::cout << "  " << track.name << " five-fret chords: easy=" << easy.chords.size() << ", medium=" << medium.chords.size() << ", hard=" << hard.chords.size() << ", expert=" << expert.chords.size() << '\n';
             const auto timed = rb4pc::runtime::time_five_fret_chart(midi, expert);
             if (!timed.chords.empty()) std::cout << "    expert timeline: first=" << timed.chords.front().start_seconds << "s, last=" << timed.chords.back().start_seconds << "s\n";
+            rb4pc::runtime::FiveFretGameplay autoplay(timed);
+            for (const auto& chord : timed.chords) (void)autoplay.strum(chord.lane_mask, chord.start_seconds);
+            std::cout << "    deterministic autoplay: hits=" << autoplay.hit_count() << ", misses=" << autoplay.miss_count() << ", score=" << autoplay.score() << '\n';
         }
     } catch (const std::exception& e) { std::cerr << "rb4pc-midi-probe: " << e.what() << '\n'; return 1; }
 }

@@ -71,3 +71,8 @@ Version 0.28.0 projects the expert five-fret charts onto the tempo timeline.
 The reference guitar chart spans 5.569–258.682 seconds and the bass chart spans
 42.789–240.013 seconds. Runtime window queries include upcoming chords and any
 sustain whose end remains inside the look-behind window.
+
+Version 0.29.0 feeds the timed expert charts through the provisional gameplay
+cursor at their exact timestamps. Deterministic autoplay records 612/612 guitar
+hits for 61,200 points and 467/467 bass hits for 46,700 points, with zero misses.
+This validates lifecycle integration only; it does not validate official scoring.

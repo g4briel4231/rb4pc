@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.28.0 Timed Gameplay Chart
+## Current milestone: v0.29.0 Five-Fret Gameplay Core
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -263,6 +263,11 @@ the first tempo event; zero tempos and unsupported SMPTE divisions are rejected.
 Version 0.28.0 projects five-fret chords onto that tempo timeline and exposes a
 deterministic visible-note query with configurable past and future windows.
 Sustains remain visible through their end time; negative time inputs are rejected.
+
+Version 0.29.0 adds a deterministic five-fret gameplay cursor. It expires late
+notes, accepts only an exact five-lane chord mask inside the provisional 100 ms
+window, applies the existing timing judgement, and records hit/miss counts and
+score. These are project-defined test rules, not recovered Rock Band scoring.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `
