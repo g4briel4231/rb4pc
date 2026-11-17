@@ -13,6 +13,10 @@ struct MidiNote {
     std::uint64_t start_tick = 0;
     std::uint64_t end_tick = 0;
 };
+struct MidiTempoChange {
+    std::uint64_t tick = 0;
+    std::uint32_t microseconds_per_quarter = 500000;
+};
 struct MidiTrackSummary {
     std::string name;
     std::size_t event_count = 0;
@@ -23,7 +27,13 @@ struct MidiTrackSummary {
     std::uint64_t end_tick = 0;
     std::vector<MidiNote> notes;
 };
-struct MidiFileSummary { MidiHeader header; std::vector<MidiTrackSummary> tracks; std::size_t tempo_events = 0; };
+struct MidiFileSummary {
+    MidiHeader header;
+    std::vector<MidiTrackSummary> tracks;
+    std::size_t tempo_events = 0;
+    std::vector<MidiTempoChange> tempo_changes;
+};
 [[nodiscard]] MidiHeader parse_standard_midi_header(const std::filesystem::path& path);
 [[nodiscard]] MidiFileSummary parse_standard_midi(const std::filesystem::path& path);
+[[nodiscard]] double midi_tick_to_seconds(const MidiFileSummary& midi, std::uint64_t tick);
 } // namespace rb4pc::runtime

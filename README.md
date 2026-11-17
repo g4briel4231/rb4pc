@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.26.0 Five-Fret Chart Mapping
+## Current milestone: v0.27.0 MIDI Tempo Timeline
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -255,6 +255,10 @@ Version 0.26.0 maps the established five-fret note ranges for easy, medium,
 hard, and expert guitar/bass charts. Simultaneous gems become one chord with a
 five-bit lane mask and a bounded sustain end tick. Drum and vocal semantics are
 not inferred by this mapper.
+
+Version 0.27.0 preserves standard-MIDI tempo changes and converts absolute ticks
+to seconds across the complete tempo map. The default 120 BPM applies before
+the first tempo event; zero tempos and unsupported SMPTE divisions are rejected.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

@@ -111,10 +111,11 @@ int main() {
     const auto midi_path = directory / "notes.mid";
     write_file(midi_path, std::string("MThd\0\0\0\6\0\1\0\2\x01\xe0", 14));
     const auto track_midi_path = directory / "track.mid";
-    const std::array<unsigned char, 43> track_midi = {
+    const std::array<unsigned char, 50> track_midi = {
         'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 1, 0xe0,
-        'M', 'T', 'r', 'k', 0, 0, 0, 21,
+        'M', 'T', 'r', 'k', 0, 0, 0, 28,
         0, 0xff, 3, 4, 'T', 'e', 's', 't',
+        0, 0xff, 0x51, 3, 7, 0xa1, 0x20,
         0, 0x90, 0x3c, 0x64,
         0x83, 0x60, 0x80, 0x3c, 0,
         0, 0xff, 0x2f, 0};
@@ -204,6 +205,9 @@ int main() {
                          track_midi_summary.tracks[0].notes[0].end_tick == 480 &&
                          track_midi_summary.tracks[0].unmatched_note_off_count == 0 &&
                          track_midi_summary.tracks[0].dangling_note_on_count == 0 &&
+                         track_midi_summary.tempo_changes.size() == 1 &&
+                         track_midi_summary.tempo_changes[0].microseconds_per_quarter == 500000 &&
+                         rb4pc::runtime::midi_tick_to_seconds(track_midi_summary, 480) == 0.5 &&
                          track_midi_summary.tracks[0].end_tick == 480,
                      "standard MIDI track parse mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
@@ -213,6 +217,11 @@ int main() {
                          expert_five_fret.chords[0].end_tick == 360 && expert_five_fret.chords[0].lane_mask == 5 &&
                          expert_five_fret.chords[1].lane_mask == 16,
                      "five-fret chord grouping mismatch");
+    rb4pc::runtime::MidiFileSummary changing_tempo;
+    changing_tempo.header.division = 480;
+    changing_tempo.tempo_changes = {{480, 1'000'000}};
+    passed &= expect(rb4pc::runtime::midi_tick_to_seconds(changing_tempo, 960) == 1.5,
+                     "MIDI changing-tempo timeline mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

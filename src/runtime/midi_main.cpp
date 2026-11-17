@@ -5,6 +5,7 @@ int main(int argc, char* argv[]) {
     if (argc != 2) { std::cerr << "Usage: " << argv[0] << " <notes.mid>\n"; return 2; }
     try { const auto midi = rb4pc::runtime::parse_standard_midi(argv[1]);
         std::cout << "MIDI size: " << midi.header.file_size << " bytes\nFormat: " << midi.header.format << "\nTracks: " << midi.header.track_count << "\nDivision: " << midi.header.division << "\nTempo events: " << midi.tempo_events << '\n';
+        std::cout << "Timeline end: " << rb4pc::runtime::midi_tick_to_seconds(midi, midi.tracks.empty() ? 0 : midi.tracks[0].end_tick) << " seconds (track 0)\n";
         for (std::size_t i = 0; i < midi.tracks.size(); ++i) { const auto& track = midi.tracks[i];
             std::cout << "  [" << i << "] " << (track.name.empty() ? "<unnamed>" : track.name) << ": events=" << track.event_count << ", noteOn=" << track.note_on_count << ", paired=" << track.notes.size() << ", unmatchedOff=" << track.unmatched_note_off_count << ", danglingOn=" << track.dangling_note_on_count << ", endTick=" << track.end_tick << '\n'; }
         for (const auto& track : midi.tracks) if (track.name == "PART GUITAR" || track.name == "PART BASS") {

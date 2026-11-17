@@ -59,3 +59,10 @@ guitar chords and 287/327/385/467 bass chords for easy/medium/hard/expert,
 respectively. Notes beginning on the same tick are represented as one lane-mask
 chord; the longest member determines its sustain end. No drum or vocal mapping
 is implied by these counts.
+
+## Tempo timeline
+
+Version 0.27.0 decodes all 218 tempo meta-events in the reference chart and
+integrates them over its 480-tick quarter-note division. Tick 273,600, the end
+of the tempo track, maps to 265.313 seconds. This timeline is calculated from
+standard MIDI only and is not yet synchronized to decoded song audio.

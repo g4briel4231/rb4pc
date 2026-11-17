@@ -1,4 +1,5 @@
 #include "rb4pc/runtime/midi_parser.hpp"
+#include <algorithm>
 #include <array>
 #include <deque>
 #include <fstream>
@@ -62,7 +63,15 @@ MidiFileSummary parse_standard_midi(const std::filesystem::path& path) {
                 const auto type = data[position++]; const auto size = vlq(data, position, end);
                 if (size > end - position) throw std::runtime_error("MIDI meta event exceeds track");
                 if (type == 0x03 && track.name.empty()) track.name.assign(reinterpret_cast<const char*>(data.data() + position), size);
-                if (type == 0x51) ++result.tempo_events;
+                if (type == 0x51) {
+                    if (size != 3) throw std::runtime_error("invalid MIDI tempo event length");
+                    ++result.tempo_events;
+                    const auto tempo = (static_cast<std::uint32_t>(data[position]) << 16) |
+                                       (static_cast<std::uint32_t>(data[position + 1]) << 8) |
+                                       data[position + 2];
+                    if (tempo == 0) throw std::runtime_error("MIDI tempo cannot be zero");
+                    result.tempo_changes.push_back({tick, tempo});
+                }
                 position += size;
             } else if (status == 0xf0 || status == 0xf7) {
                 running = 0;
@@ -93,6 +102,25 @@ MidiFileSummary parse_standard_midi(const std::filesystem::path& path) {
         for (const auto& channels : active_notes) for (const auto& notes : channels) track.dangling_note_on_count += notes.size();
         track.end_tick = tick; result.tracks.push_back(std::move(track)); position = end;
     }
+    std::stable_sort(result.tempo_changes.begin(), result.tempo_changes.end(),
+                     [](const auto& left, const auto& right) { return left.tick < right.tick; });
     return result;
+}
+
+double midi_tick_to_seconds(const MidiFileSummary& midi, std::uint64_t tick) {
+    if ((midi.header.division & 0x8000U) != 0 || midi.header.division == 0)
+        throw std::runtime_error("SMPTE or zero MIDI division is unsupported");
+    std::uint64_t previous_tick = 0; std::uint32_t tempo = 500000; double seconds = 0.0;
+    for (const auto& change : midi.tempo_changes) {
+        if (change.tick > tick) break;
+        if (change.tick > previous_tick) {
+            seconds += static_cast<double>(change.tick - previous_tick) * tempo /
+                       (static_cast<double>(midi.header.division) * 1'000'000.0);
+        }
+        previous_tick = change.tick; tempo = change.microseconds_per_quarter;
+    }
+    seconds += static_cast<double>(tick - previous_tick) * tempo /
+               (static_cast<double>(midi.header.division) * 1'000'000.0);
+    return seconds;
 }
 } // namespace rb4pc::runtime
