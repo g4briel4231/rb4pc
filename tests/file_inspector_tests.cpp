@@ -8,6 +8,7 @@
 #include "rb4pc/runtime/archive_file_system.hpp"
 #include "rb4pc/runtime/wave_loader.hpp"
 #include "rb4pc/runtime/pcm_stream.hpp"
+#include "rb4pc/runtime/runtime_session.hpp"
 
 #include <array>
 #include <filesystem>
@@ -258,6 +259,8 @@ int main() {
     conversion_report.metadata.file_records.push_back(
         {0, "audio/test.wav", 0xffffffff, static_cast<std::uint32_t>(conversion_source.size())});
     conversion_report.metadata.hash_bucket_heads.push_back(0);
+    conversion_report.metadata.version = 10;
+    conversion_report.metadata.hash_index_validated = true;
     conversion_report.archives.push_back(
         {conversion_ark, static_cast<std::uint32_t>(conversion_source.size()), conversion_source.size(), true, true});
     conversion_report.record_locations.push_back(rb4pc::inspector::ArchiveLocation{0, 0});
@@ -266,6 +269,8 @@ int main() {
     const auto pcm_bytes = rb4pc::runtime::read_pcm(wave_vfs, wave_asset, 1, 2);
     rb4pc::runtime::PcmStream pcm_stream(wave_vfs, wave_asset);
     const auto pcm_frame = pcm_stream.read_frames(1);
+    const auto runtime_session = rb4pc::runtime::RuntimeSession::from_report(conversion_report);
+    const auto session_waves = runtime_session.discover_wave_assets("audio/", 5);
     const auto converted_path = directory / "converted.wav";
     const auto conversion = rb4pc::inspector::convert_riff_record(
         conversion_report, "audio/test.wav", converted_path);
@@ -285,7 +290,8 @@ int main() {
                          std::to_integer<unsigned int>(pcm_bytes[0]) == 0x22 &&
                          std::to_integer<unsigned int>(pcm_bytes[1]) == 0x33 &&
                          pcm_frame.size() == 4 && pcm_stream.frame_position() == 1 &&
-                         pcm_stream.remaining_frames() == 0,
+                         pcm_stream.remaining_frames() == 0 && runtime_session.plan().ready &&
+                         runtime_session.plan().wave_records == 1 && session_waves.size() == 1,
                      "runtime WAVE loader mismatch");
     const std::vector<rb4pc::inspector::HdrArchiveEntry> layout = {
         {"first.ark", 3, {}}, {"second.ark", 5, {}}};

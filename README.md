@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.8.1 PCM Frame Streaming
+## Current milestone: v0.9.0 Integrated Runtime Session
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -171,6 +171,15 @@ duration, and exposes bounded PCM reads without extracting the source file.
 Version 0.8.1 adds a frame-aligned PCM stream cursor with bounded reads, seek,
 end-of-stream clamping, and overflow checks. It remains independent of any
 operating-system audio API.
+
+Version 0.9.0 integrates source validation, conversion inventory, the archive
+VFS, asset discovery, and the PCM WAVE loader into `RuntimeSession`. The new
+`rb4pc-runtime` executable boots a user-supplied set and reports readiness plus
+sample audio assets. It is an integration probe, not yet gameplay.
+
+```powershell
+./build/default/rb4pc-runtime.exe "../path/to/main_ps4.hdr" "ps4/fusion/samples/"
+```
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as
