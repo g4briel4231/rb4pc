@@ -24,6 +24,7 @@
 #include "rb4pc/runtime/note_highway.hpp"
 #include "rb4pc/runtime/five_fret_input.hpp"
 #include "rb4pc/runtime/five_fret_session.hpp"
+#include "rb4pc/runtime/audio_transport.hpp"
 
 #include <array>
 #include <filesystem>
@@ -282,6 +283,17 @@ int main() {
                          paused_frame.paused && paused_frame.gameplay_seconds == 0.5 && five_fret_session.paused() &&
                          session_render.visible_chords == 2,
                      "integrated five-fret session mismatch");
+    rb4pc::runtime::AudioTransportClock audio_transport(48000, 96000);
+    audio_transport.play(); audio_transport.complete_frames(24000);
+    rb4pc::runtime::FiveFretSession synchronized_session(timed_five_fret);
+    rb4pc::runtime::ControllerState synchronized_controller;
+    synchronized_controller.connected = true; synchronized_controller.buttons = 0x0200 | 0x0001;
+    const auto synchronized_hit = synchronized_session.step_to(audio_transport.seconds(), synchronized_controller);
+    audio_transport.pause(); audio_transport.complete_frames(24000);
+    passed &= expect(audio_transport.completed_frames() == 24000 && audio_transport.seconds() == 0.5 &&
+                         !audio_transport.playing() && synchronized_hit.hit &&
+                         synchronized_hit.hit->chord_index == 1 && synchronized_session.seconds() == 0.5,
+                     "audio-transport gameplay synchronization mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

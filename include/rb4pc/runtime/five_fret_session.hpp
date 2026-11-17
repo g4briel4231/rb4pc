@@ -19,6 +19,7 @@ class FiveFretSession {
 public:
     explicit FiveFretSession(TimedFiveFretChart chart, FiveFretInputProfile profile = default_xinput_five_fret_profile());
     [[nodiscard]] FiveFretFrameResult step(double delta_seconds, const ControllerState& controller);
+    [[nodiscard]] FiveFretFrameResult step_to(double transport_seconds, const ControllerState& controller);
     [[nodiscard]] HighwayRenderStats render(SoftwareFramebuffer& framebuffer, double past_window = 0.15, double future_window = 2.0) const;
     [[nodiscard]] const FiveFretGameplay& gameplay() const;
     [[nodiscard]] double seconds() const;

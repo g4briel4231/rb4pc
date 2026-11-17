@@ -23,6 +23,11 @@ FiveFretFrameResult FiveFretSession::step(double delta_seconds, const Controller
     return result;
 }
 
+FiveFretFrameResult FiveFretSession::step_to(double transport_seconds, const ControllerState& controller) {
+    if (transport_seconds < clock_.seconds()) throw std::runtime_error("five-fret session transport moved backwards");
+    return step(transport_seconds - clock_.seconds(), controller);
+}
+
 HighwayRenderStats FiveFretSession::render(SoftwareFramebuffer& framebuffer, double past_window, double future_window) const {
     return render_note_highway(framebuffer, gameplay_.chart(), {clock_.seconds(), past_window, future_window});
 }

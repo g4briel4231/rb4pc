@@ -91,3 +91,8 @@ Version 0.32.0 integrates frame delta, controller mapping, pause state, misses,
 hits, scoring, and highway rendering in one session object. The integration
 fixture expires its first chord, hits the second at 0.500 seconds, then pauses
 for a one-second host frame without advancing gameplay time.
+
+Version 0.33.0 introduces a PCM-frame transport clock. A 48 kHz fixture advances
+exactly 24,000 completed frames to 0.500 seconds, drives the integrated session
+to the second chord, and remains fixed while paused. This establishes the clock
+contract that a streaming audio backend must report.

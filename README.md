@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.32.0 Integrated Five-Fret Session
+## Current milestone: v0.33.0 Audio Transport Clock
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -282,6 +282,11 @@ Version 0.32.0 integrates the gameplay clock, mapped controller frames, pause,
 chord judgement, score state, and note-highway rendering into one deterministic
 five-fret session. It advances by caller-supplied frame deltas and has no audio
 clock synchronization yet.
+
+Version 0.33.0 adds a sample-accurate transport clock driven by completed PCM
+frames. Five-fret sessions can advance to its monotonic timestamp, so gameplay
+follows audio progress instead of accumulating host-frame deltas. Backend queue
+completion reporting is not wired to `waveOut` yet.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `
