@@ -13,3 +13,11 @@ The high number of distinct prefixes in compiled PC MIDI records indicates that
 the first word is not a single stable magic value. This milestone records the
 observation only; encryption, compression, or serialization semantics have not
 been assigned.
+
+## Forge custom-song invariant
+
+Version 0.21.0 validated all 22 installed ForgeToolGUI packages. Every package
+contains nonempty `.mid_pc` and `.midisong_pc` sets, exactly one `.rbmid_pc`,
+exactly one `.mogg`, and at least one `.songdta_pc` plus one
+`.moggsong_dta_pc`. This establishes package completeness without decoding any
+of those formats.

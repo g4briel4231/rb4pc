@@ -26,6 +26,17 @@ CustomSongCatalog scan_custom_songs(const std::filesystem::path& installation) {
             entry.archive = installation / paths.archive;
             const auto metadata = inspector::decode_hdr_prefix(entry.header);
             entry.record_count = metadata.file_records.size();
+            for (const auto& record : metadata.file_records) {
+                if (record.path.ends_with(".mid_pc")) ++entry.midi_records;
+                else if (record.path.ends_with(".midisong_pc")) ++entry.midi_song_records;
+                else if (record.path.ends_with(".rbmid_pc")) ++entry.rbmid_records;
+                else if (record.path.ends_with(".mogg")) ++entry.mogg_records;
+                else if (record.path.ends_with(".songdta_pc") || record.path.ends_with(".moggsong_dta_pc"))
+                    ++entry.song_metadata_records;
+            }
+            entry.core_content_complete = entry.midi_records != 0 && entry.midi_song_records != 0 &&
+                                          entry.rbmid_records == 1 && entry.mogg_records == 1 &&
+                                          entry.song_metadata_records >= 2;
             entry.header_valid = metadata.version == 10 && metadata.hash_index_validated &&
                                  metadata.archives.size() == 1 && metadata.archives[0].name == paths.archive.generic_string();
             entry.archive_present = std::filesystem::is_regular_file(entry.archive);
@@ -48,7 +59,11 @@ std::string format_json(const CustomSongCatalog& catalog) {
         const auto& s = catalog.songs[i]; out << (i ? ",\n" : "\n") << "    {\"shortName\": \""
             << escape_json(s.short_name) << "\", \"header\": \"" << escape_json(s.header.filename().string())
             << "\", \"archive\": \"" << escape_json(s.archive.filename().string()) << "\", \"records\": "
-            << s.record_count << ", \"ready\": " << (s.ready ? "true" : "false");
+            << s.record_count << ", \"ready\": " << (s.ready ? "true" : "false")
+            << ", \"content\": {\"mid\": " << s.midi_records
+            << ", \"midiSong\": " << s.midi_song_records << ", \"rbmid\": " << s.rbmid_records
+            << ", \"mogg\": " << s.mogg_records << ", \"songMetadata\": " << s.song_metadata_records
+            << ", \"coreComplete\": " << (s.core_content_complete ? "true" : "false") << '}';
         if (!s.error.empty()) out << ", \"error\": \"" << escape_json(s.error) << "\"";
         out << '}';
     }

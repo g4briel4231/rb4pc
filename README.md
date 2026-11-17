@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.20.0 Integrated Pre-alpha Shell
+## Current milestone: v0.21.0 Custom-song Content Validation
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -228,6 +228,10 @@ window and does not yet display text or launch gameplay.
 Version 0.20.0 integrates source validation, runtime session, shell state,
 software UI rendering, and the Win32 window in `rb4pc-prealpha`. The visual
 panel is diagnostic and contains no text, charts, gameplay, or original assets.
+
+Version 0.21.0 records the internal chart-related composition of every Forge
+custom-song package: compiled MIDI, MIDI-song, RBMID, MOGG, and song metadata.
+This validates required content without claiming those containers are decoded.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

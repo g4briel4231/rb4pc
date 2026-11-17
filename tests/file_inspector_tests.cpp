@@ -166,7 +166,8 @@ int main() {
                      "custom-song package layout mismatch");
     passed &= expect(custom_song_catalog.songs.size() == 1 &&
                          custom_song_catalog.songs[0].short_name == "example" &&
-                         !custom_song_catalog.songs[0].ready,
+                         !custom_song_catalog.songs[0].ready &&
+                         !custom_song_catalog.songs[0].core_content_complete,
                      "custom-song installation scan mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&

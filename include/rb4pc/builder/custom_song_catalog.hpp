@@ -15,6 +15,12 @@ struct CustomSongEntry {
     bool archive_present = false;
     bool archive_usable = false;
     bool ready = false;
+    std::size_t midi_records = 0;
+    std::size_t midi_song_records = 0;
+    std::size_t rbmid_records = 0;
+    std::size_t mogg_records = 0;
+    std::size_t song_metadata_records = 0;
+    bool core_content_complete = false;
     std::string error;
 };
 struct CustomSongCatalog {
