@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.31.0 Five-Fret Input Mapping
+## Current milestone: v0.32.0 Integrated Five-Fret Session
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -277,6 +277,11 @@ Version 0.31.0 maps a configurable controller profile into five held fret bits,
 edge-triggered strum, and edge-triggered pause. The default XInput profile uses
 face/shoulder buttons and the D-pad, so it is a fallback rather than a claim of
 device-specific guitar-controller compatibility.
+
+Version 0.32.0 integrates the gameplay clock, mapped controller frames, pause,
+chord judgement, score state, and note-highway rendering into one deterministic
+five-fret session. It advances by caller-supplied frame deltas and has no audio
+clock synchronization yet.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

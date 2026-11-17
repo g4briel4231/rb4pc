@@ -23,6 +23,7 @@
 #include "rb4pc/runtime/five_fret_gameplay.hpp"
 #include "rb4pc/runtime/note_highway.hpp"
 #include "rb4pc/runtime/five_fret_input.hpp"
+#include "rb4pc/runtime/five_fret_session.hpp"
 
 #include <array>
 #include <filesystem>
@@ -264,6 +265,23 @@ int main() {
                          !first_input.pause_pressed && held_input.lane_mask == 3 && !held_input.strum_pressed &&
                          next_input.lane_mask == 16 && next_input.strum_pressed && next_input.pause_pressed,
                      "five-fret input mapping mismatch");
+    rb4pc::runtime::FiveFretSession five_fret_session(timed_five_fret);
+    rb4pc::runtime::ControllerState session_controller;
+    session_controller.connected = true;
+    (void)five_fret_session.step(0.48, session_controller);
+    session_controller.buttons = 0x0200 | 0x0001;
+    const auto session_hit = five_fret_session.step(0.02, session_controller);
+    session_controller.buttons = 0;
+    (void)five_fret_session.step(0, session_controller);
+    session_controller.buttons = 0x0010;
+    const auto paused_frame = five_fret_session.step(1.0, session_controller);
+    rb4pc::runtime::SoftwareFramebuffer session_framebuffer(320, 200);
+    const auto session_render = five_fret_session.render(session_framebuffer, 0.13, 0.25);
+    passed &= expect(session_hit.hit && session_hit.hit->chord_index == 1 && session_hit.gameplay_seconds == 0.5 &&
+                         five_fret_session.gameplay().hit_count() == 1 && five_fret_session.gameplay().miss_count() == 1 &&
+                         paused_frame.paused && paused_frame.gameplay_seconds == 0.5 && five_fret_session.paused() &&
+                         session_render.visible_chords == 2,
+                     "integrated five-fret session mismatch");
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&

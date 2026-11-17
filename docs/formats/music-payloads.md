@@ -86,3 +86,8 @@ Version 0.31.0 adds a platform-neutral input mapping layer over raw controller
 state. Tests verify simultaneous fret masks, one-shot strum edges, held-button
 suppression, release/retrigger behavior, and pause edges. Hardware-specific
 guitar identifiers and layouts remain future evidence work.
+
+Version 0.32.0 integrates frame delta, controller mapping, pause state, misses,
+hits, scoring, and highway rendering in one session object. The integration
+fixture expires its first chord, hits the second at 0.500 seconds, then pauses
+for a one-second host frame without advancing gameplay time.
