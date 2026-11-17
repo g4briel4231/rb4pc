@@ -50,6 +50,7 @@ evidence about the file's internal format.
 - `src/inspector`: ForgeInspector implementation and command-line application
 - `tests`: automated tests using synthetic, non-proprietary data
 - `docs/formats`: evidence-backed format notes (planned)
+- `docs/research`: reproducible static-analysis notes without proprietary samples
 
 ## Legal notice
 
