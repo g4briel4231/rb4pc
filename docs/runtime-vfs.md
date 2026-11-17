@@ -9,3 +9,6 @@ Each request is checked against the HDR record boundary and a single call is
 limited to 64 MiB. The VFS does not expose host paths to internal callers, does
 not extract files, and never modifies source archives. This is infrastructure
 for later loaders, not yet a game runtime or playable build.
+
+Version 0.7.1 adds prefix enumeration with a caller-supplied result limit. Paths
+remain in HDR serialization order, making discovery deterministic.

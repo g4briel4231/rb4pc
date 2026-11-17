@@ -118,6 +118,7 @@ int main() {
     const auto build_plan_json = rb4pc::builder::format_json(build_plan);
     const rb4pc::runtime::ArchiveFileSystem vfs(set_report);
     const auto vfs_bytes = vfs.read("test/file.bin", 1, 2);
+    const auto vfs_paths = vfs.list_paths("test/", 10);
     bool passed = true;
     passed &= expect(file_report.size == contents.size() && file_report.preview_size == contents.size(),
                      "unexpected report size");
@@ -148,7 +149,8 @@ int main() {
     passed &= expect(vfs.contains("test/file.bin") && !vfs.contains("missing.bin") &&
                          vfs.file_size("test/file.bin") == 3 && vfs.file_count() == 1 &&
                          vfs_bytes.size() == 2 && std::to_integer<unsigned int>(vfs_bytes[0]) == 'w' &&
-                         std::to_integer<unsigned int>(vfs_bytes[1]) == 'o',
+                         std::to_integer<unsigned int>(vfs_bytes[1]) == 'o' &&
+                         vfs_paths.size() == 1 && vfs_paths[0] == "test/file.bin",
                      "runtime VFS read mismatch");
     passed &= expect(set_report.archives.size() == 2, "archive count mismatch");
     passed &= expect(set_report.metadata.version == 10 && set_report.metadata.unknown_04 == 1,

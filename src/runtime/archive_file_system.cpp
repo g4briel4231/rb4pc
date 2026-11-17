@@ -2,6 +2,7 @@
 
 #include "rb4pc/inspector/archive_layout.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <stdexcept>
 #include <utility>
@@ -49,4 +50,17 @@ std::vector<std::byte> ArchiveFileSystem::read(std::string_view path, std::uint6
 }
 
 std::size_t ArchiveFileSystem::file_count() const { return report_.metadata.file_records.size(); }
+
+std::vector<std::string> ArchiveFileSystem::list_paths(std::string_view prefix, std::size_t limit) const {
+    std::vector<std::string> result;
+    if (limit == 0) return result;
+    result.reserve(std::min(limit, report_.metadata.file_records.size()));
+    for (const auto& record : report_.metadata.file_records) {
+        if (record.path.starts_with(prefix)) {
+            result.push_back(record.path);
+            if (result.size() == limit) break;
+        }
+    }
+    return result;
+}
 } // namespace rb4pc::runtime

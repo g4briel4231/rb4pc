@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.7.0 Read-only Runtime VFS
+## Current milestone: v0.7.1 VFS Enumeration
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -159,6 +159,9 @@ extraction. `rb4pc-runtime-probe` mounts a set and reads a 32-byte preview.
 ```powershell
 ./build/default/rb4pc-runtime-probe.exe "../path/to/main_ps4.hdr" "path/inside/archive"
 ```
+
+Version 0.7.1 adds bounded prefix enumeration to the VFS so runtime loaders can
+discover related assets without exposing host filesystem paths.
 
 Reports use a versioned JSON schema so future research remains reproducible.
 The platform hint is based only on the filename suffix and is not presented as
