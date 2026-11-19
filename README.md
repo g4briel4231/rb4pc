@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.41.0 Vorbis PCM Decode
+## Current milestone: v0.42.0 Xbox Controller Prompts
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -324,6 +324,11 @@ Version 0.41.0 decodes a bounded one-second floating-point PCM preview directly
 from a compatible MOGG. The probe reports decoded frames, peak amplitude, and
 whether every sample is finite. The build fetches a revision-pinned copy of the
 public-domain/MIT `stb_vorbis` decoder; see `THIRD_PARTY_NOTICES.md`.
+
+Version 0.42.0 makes an original, procedurally rendered Xbox prompt set the
+runtime default. It covers A/B/X/Y, D-pad, LB/RB, LT/RT, both sticks, Menu, and
+View without using proprietary game textures. The shell now exposes A and B
+prompts, and the scalable icon renderer is available to later screens.
 
 ```powershell
 ./build/default/rb4pc-mogg-probe.exe "./song.mogg" --extract-ogg "./song.ogg"

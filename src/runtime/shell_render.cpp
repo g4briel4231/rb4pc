@@ -1,4 +1,5 @@
 #include "rb4pc/runtime/shell_render.hpp"
+#include "rb4pc/runtime/controller_icons.hpp"
 
 namespace rb4pc::runtime {
 void render_shell(SoftwareFramebuffer& fb, const RuntimeShell& shell, const ShellRenderStatus& status) {
@@ -17,5 +18,11 @@ void render_shell(SoftwareFramebuffer& fb, const RuntimeShell& shell, const Shel
     const auto wave_bar = static_cast<std::uint32_t>(status.wave_records % (fb.width() ? fb.width() : 1));
     fill_rect(fb, {0, fb.height() > 24 ? fb.height() - 24 : 0, record_bar, 8}, 0xff54a6ff);
     fill_rect(fb, {0, fb.height() > 12 ? fb.height() - 12 : 0, wave_bar, 8}, 0xff64d27b);
+    if (fb.width() >= 104 && fb.height() >= 52) {
+        render_controller_icon(fb, controller_prompt_for_action(ControllerAction::confirm),
+                               {fb.width() - 96, fb.height() - 48, 32, 32});
+        render_controller_icon(fb, controller_prompt_for_action(ControllerAction::cancel),
+                               {fb.width() - 48, fb.height() - 48, 32, 32});
+    }
 }
 } // namespace rb4pc::runtime

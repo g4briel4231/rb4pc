@@ -14,6 +14,7 @@
 #include "rb4pc/runtime/input.hpp"
 #include "rb4pc/runtime/window.hpp"
 #include "rb4pc/runtime/ui.hpp"
+#include "rb4pc/runtime/controller_icons.hpp"
 #include "rb4pc/runtime/gameplay_timing.hpp"
 #include "rb4pc/runtime/shell.hpp"
 #include "rb4pc/runtime/shell_render.hpp"
@@ -322,6 +323,30 @@ int main() {
                          highway_stats.rendered_sustains == 3 &&
                          highway_framebuffer.pixels().size() == 320U * 200U,
                      "note-highway rendering mismatch");
+    rb4pc::runtime::SoftwareFramebuffer controller_icons(416, 64);
+    controller_icons.clear(0);
+    const std::array prompts{
+        rb4pc::runtime::ControllerPrompt::a, rb4pc::runtime::ControllerPrompt::b,
+        rb4pc::runtime::ControllerPrompt::x, rb4pc::runtime::ControllerPrompt::y,
+        rb4pc::runtime::ControllerPrompt::dpad, rb4pc::runtime::ControllerPrompt::left_bumper,
+        rb4pc::runtime::ControllerPrompt::right_bumper, rb4pc::runtime::ControllerPrompt::left_trigger,
+        rb4pc::runtime::ControllerPrompt::right_trigger, rb4pc::runtime::ControllerPrompt::left_stick,
+        rb4pc::runtime::ControllerPrompt::right_stick, rb4pc::runtime::ControllerPrompt::menu,
+        rb4pc::runtime::ControllerPrompt::view};
+    for (std::size_t index = 0; index < prompts.size(); ++index)
+        rb4pc::runtime::render_controller_icon(
+            controller_icons, prompts[index], {static_cast<std::uint32_t>(index * 32), 0, 30, 30});
+    const auto green_pixels = std::count(controller_icons.pixels().begin(), controller_icons.pixels().end(), 0xff3aa655U);
+    const auto red_pixels = std::count(controller_icons.pixels().begin(), controller_icons.pixels().end(), 0xffd64a45U);
+    const auto blue_pixels = std::count(controller_icons.pixels().begin(), controller_icons.pixels().end(), 0xff318ac7U);
+    const auto yellow_pixels = std::count(controller_icons.pixels().begin(), controller_icons.pixels().end(), 0xffe2b93bU);
+    passed &= expect(rb4pc::runtime::default_controller_icon_theme() == rb4pc::runtime::ControllerIconTheme::xbox &&
+                         rb4pc::runtime::controller_prompt_for_action(rb4pc::runtime::ControllerAction::confirm) ==
+                             rb4pc::runtime::ControllerPrompt::a &&
+                         rb4pc::runtime::controller_prompt_for_action(rb4pc::runtime::ControllerAction::cancel) ==
+                             rb4pc::runtime::ControllerPrompt::b &&
+                         green_pixels > 0 && red_pixels > 0 && blue_pixels > 0 && yellow_pixels > 0,
+                     "default Xbox controller-icon rendering mismatch");
     rb4pc::runtime::FiveFretInputMapper input_mapper;
     rb4pc::runtime::ControllerState mapped_controller;
     mapped_controller.connected = true; mapped_controller.buttons = 0x1000 | 0x2000 | 0x0001;
