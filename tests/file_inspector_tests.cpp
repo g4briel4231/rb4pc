@@ -397,10 +397,20 @@ int main() {
     menu_only_controller.connected = true;
     menu_only_controller.buttons = 0x0010;
     const auto no_pause_input = no_pause_mapper.sample(menu_only_controller);
+    std::vector<rb4pc::runtime::ControllerState> selection_states(4);
+    for (std::uint32_t index = 0; index < selection_states.size(); ++index)
+        selection_states[index].index = index;
+    selection_states[1].connected = true;
+    selection_states[3].connected = true;
+    const auto first_connected = rb4pc::runtime::select_connected_controller(selection_states);
+    const auto preferred_connected = rb4pc::runtime::select_connected_controller(selection_states, 3);
+    const auto disconnected_fallback = rb4pc::runtime::select_connected_controller(selection_states, 2);
     passed &= expect(first_input.connected && first_input.lane_mask == 3 && first_input.strum_pressed &&
                          !first_input.pause_pressed && held_input.lane_mask == 3 && !held_input.strum_pressed &&
                          next_input.lane_mask == 16 && next_input.strum_pressed && next_input.pause_pressed &&
-                         !no_pause_input.pause_pressed,
+                         !no_pause_input.pause_pressed && first_connected && first_connected->index == 1 &&
+                         preferred_connected && preferred_connected->index == 3 &&
+                         disconnected_fallback && disconnected_fallback->index == 1,
                      "five-fret input mapping mismatch");
     rb4pc::runtime::FiveFretSession five_fret_session(timed_five_fret);
     rb4pc::runtime::ControllerState session_controller;

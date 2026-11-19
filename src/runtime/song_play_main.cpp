@@ -1,13 +1,17 @@
 #include "rb4pc/runtime/five_fret_import.hpp"
 #include "rb4pc/runtime/five_fret_session.hpp"
+#include "rb4pc/runtime/controller_icons.hpp"
 #include "rb4pc/runtime/input.hpp"
 #include "rb4pc/runtime/mogg_audio_output.hpp"
 #include "rb4pc/runtime/mogg_parser.hpp"
 #include "rb4pc/runtime/window.hpp"
+#include "rb4pc/runtime/ui.hpp"
 
 #include <atomic>
+#include <array>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -30,6 +34,7 @@ int main(int argc, char* argv[]) {
         std::atomic<bool> cancel = false, playback_done = false, playback_failed = false;
         std::mutex error_mutex;
         std::string playback_error;
+        std::optional<std::uint32_t> active_controller_index;
         std::thread audio([&] {
             try {
                 rb4pc::runtime::play_mogg_blocking(
@@ -44,12 +49,29 @@ int main(int argc, char* argv[]) {
             playback_done.store(true);
         });
         try {
-            rb4pc::runtime::run_window_loop("RB4PC v0.48.0 Interactive Song", framebuffer, [&] {
+            rb4pc::runtime::run_window_loop("RB4PC v0.49.0 Interactive Song", framebuffer, [&] {
                 const auto controllers = rb4pc::runtime::poll_controllers();
-                const auto controller = controllers.empty() ? rb4pc::runtime::ControllerState{} : controllers[0];
+                const auto selected = rb4pc::runtime::select_connected_controller(
+                    controllers, active_controller_index);
+                if (selected) active_controller_index = selected->index;
+                else active_controller_index.reset();
+                const auto controller = selected.value_or(rb4pc::runtime::ControllerState{});
                 const auto seconds = static_cast<double>(completed_frames.load()) / vorbis.sample_rate;
                 static_cast<void>(session.step_to(seconds, controller));
                 static_cast<void>(session.render(framebuffer));
+                rb4pc::runtime::fill_rect(
+                    framebuffer, {0, 0, framebuffer.width(), 8},
+                    selected ? 0xff2a9d50 : 0xffb43b3b);
+                constexpr std::array prompts{
+                    rb4pc::runtime::ControllerPrompt::a,
+                    rb4pc::runtime::ControllerPrompt::b,
+                    rb4pc::runtime::ControllerPrompt::y,
+                    rb4pc::runtime::ControllerPrompt::x,
+                    rb4pc::runtime::ControllerPrompt::right_bumper};
+                for (std::size_t index = 0; index < prompts.size(); ++index)
+                    rb4pc::runtime::render_controller_icon(
+                        framebuffer, prompts[index],
+                        {20 + static_cast<std::uint32_t>(index) * 44, 20, 32, 32});
                 return !playback_done.load() && !playback_failed.load();
             });
         } catch (...) {

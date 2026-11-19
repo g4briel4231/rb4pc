@@ -1,5 +1,7 @@
 #include "rb4pc/runtime/input.hpp"
 
+#include <algorithm>
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -33,5 +35,20 @@ std::vector<ControllerState> poll_controllers() {
     }
 #endif
     return result;
+}
+
+std::optional<ControllerState> select_connected_controller(
+    const std::vector<ControllerState>& states,
+    std::optional<std::uint32_t> preferred_index) {
+    if (preferred_index) {
+        const auto preferred = std::find_if(states.begin(), states.end(), [&](const auto& state) {
+            return state.connected && state.index == *preferred_index;
+        });
+        if (preferred != states.end()) return *preferred;
+    }
+    const auto first = std::find_if(states.begin(), states.end(), [](const auto& state) {
+        return state.connected;
+    });
+    return first == states.end() ? std::nullopt : std::optional<ControllerState>(*first);
 }
 } // namespace rb4pc::runtime

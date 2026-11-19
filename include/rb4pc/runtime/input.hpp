@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace rb4pc::runtime {
@@ -14,4 +15,7 @@ struct ControllerState {
 };
 [[nodiscard]] bool input_backend_available();
 [[nodiscard]] std::vector<ControllerState> poll_controllers();
+[[nodiscard]] std::optional<ControllerState> select_connected_controller(
+    const std::vector<ControllerState>& states,
+    std::optional<std::uint32_t> preferred_index = std::nullopt);
 } // namespace rb4pc::runtime

@@ -34,3 +34,8 @@ This backend covers devices exposed through XInput. A music-game instrument
 that exposes only a USB HID interface will need a separate device backend and
 mapping profile; Xbox-style UI prompts do not imply that every guitar model is
 already supported.
+
+Version 0.49.0 renders the gameplay fallback mapping directly over the highway:
+A, B, Y, X, and RB correspond to green, red, yellow, blue, and orange frets;
+D-pad up/down are strum. The runtime retains a connected controller slot across
+frames, falls back when it disconnects, and detects hotplug without restarting.

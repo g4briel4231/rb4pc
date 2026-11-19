@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.48.0 Interactive Audio-clocked Song
+## Current milestone: v0.49.0 Xbox Controller Routing
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -361,6 +361,12 @@ thread reports completed 1,024-frame buffers; the window loop uses that value as
 its sole gameplay clock, polls XInput controller slot zero, and redraws the note
 highway every frame. Closing the window cancels playback safely. Pause is
 deliberately disabled until audio-device pause/resume is implemented.
+
+Version 0.49.0 removes the slot-zero assumption. The interactive session keeps
+the preferred connected XInput slot, falls back to the first connected device
+after disconnect, and supports hotplug on every frame. A green/red status strip
+shows connection state, while A/B/Y/X/RB prompts identify the fallback
+green/red/yellow/blue/orange fret mapping.
 
 ```powershell
 ./build/default/rb4pc-song-play.exe `
