@@ -149,3 +149,14 @@ found only finite samples, and measured a peak absolute amplitude of 0.141503.
 This proves that the compatible MOGG is not merely structurally recognizable:
 its audio payload can be decoded. Streaming, channel-to-stem routing, and output
 device playback remain subsequent integration steps.
+
+Version 0.43.0 replaces the one-shot decoding path with a stateful stream. PCM
+is produced in bounded interleaved blocks and accounted for by the same
+frame-based transport clock used by gameplay. The full-file verification mode
+rejects decoder stalls, non-finite samples, and incomplete transport completion;
+it does not write decoded copyrighted audio to disk.
+
+On the reference MOGG, the stream verifier decoded all 7,799,738 frames in
+4,096-frame blocks, found only finite PCM samples, and advanced the transport to
+176.865 seconds. It also sought to frame 3,899,869 and decoded a nonempty block
+beginning at that exact position.
