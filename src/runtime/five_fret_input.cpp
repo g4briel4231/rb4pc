@@ -11,8 +11,7 @@ FiveFretInputProfile default_xinput_five_fret_profile() {
 FiveFretInputMapper::FiveFretInputMapper(FiveFretInputProfile profile) : profile_(profile) {
     for (const auto button : profile_.fret_buttons)
         if (button == 0 || (button & (button - 1)) != 0) throw std::runtime_error("each fret must map to one button");
-    if (profile_.strum_buttons == 0 || profile_.pause_button == 0)
-        throw std::runtime_error("strum and pause mappings are required");
+    if (profile_.strum_buttons == 0) throw std::runtime_error("strum mapping is required");
 }
 
 FiveFretInputFrame FiveFretInputMapper::sample(const ControllerState& state) {
@@ -23,7 +22,7 @@ FiveFretInputFrame FiveFretInputMapper::sample(const ControllerState& state) {
             result.lane_mask = static_cast<std::uint8_t>(result.lane_mask | (1U << lane));
     const auto pressed_edges = static_cast<std::uint16_t>(state.buttons & ~previous_buttons_);
     result.strum_pressed = (pressed_edges & profile_.strum_buttons) != 0;
-    result.pause_pressed = (pressed_edges & profile_.pause_button) != 0;
+    result.pause_pressed = profile_.pause_button != 0 && (pressed_edges & profile_.pause_button) != 0;
     previous_buttons_ = state.buttons;
     return result;
 }

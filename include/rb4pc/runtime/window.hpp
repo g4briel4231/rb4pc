@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string_view>
 #include <vector>
 
@@ -18,5 +19,8 @@ private:
     std::vector<std::uint32_t> pixels_;
 };
 [[nodiscard]] bool window_backend_available();
+using WindowFrameCallback = std::function<bool()>;
 void run_window(std::string_view title, SoftwareFramebuffer& framebuffer);
+void run_window_loop(std::string_view title, SoftwareFramebuffer& framebuffer,
+                     const WindowFrameCallback& frame_callback);
 } // namespace rb4pc::runtime

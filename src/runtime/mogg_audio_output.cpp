@@ -33,7 +33,8 @@ std::vector<std::int16_t> stereo_float_to_pcm16(const StereoPcmBlock& block) {
 void play_mogg_blocking(const std::filesystem::path& mogg_path,
                         const std::filesystem::path& mix_metadata_path,
                         const MoggMixConfig& config,
-                        const AudioProgressCallback& progress) {
+                        const AudioProgressCallback& progress,
+                        const AudioCancellationCallback& cancellation) {
 #ifdef _WIN32
     const auto header = parse_mogg_header(mogg_path);
     const auto vorbis = inspect_ogg_vorbis(mogg_path, header.ogg_offset);
@@ -62,7 +63,7 @@ void play_mogg_blocking(const std::filesystem::path& mogg_path,
     queue.play();
     auto submit = [&](OutputBuffer& buffer) {
         if (queue.source_exhausted()) return false;
-        const auto decoded = queue.queue_next(4096);
+        const auto decoded = queue.queue_next(1024);
         if (decoded.frame_count() == 0) throw std::runtime_error("MOGG audio decoder stalled");
         const auto mixed = mix_mogg_to_stereo(decoded, metadata, config);
         buffer.samples = stereo_float_to_pcm16(mixed);
@@ -79,10 +80,12 @@ void play_mogg_blocking(const std::filesystem::path& mogg_path,
         return true;
     };
 
+    bool cancelled = false;
     try {
         for (auto& buffer : buffers) static_cast<void>(submit(buffer));
         bool any_active = true;
         while (any_active) {
+            if (cancellation && cancellation()) { cancelled = true; waveOutReset(output); break; }
             any_active = false;
             for (auto& buffer : buffers) {
                 if (!buffer.active) continue;
@@ -104,10 +107,13 @@ void play_mogg_blocking(const std::filesystem::path& mogg_path,
         waveOutClose(output);
         throw;
     }
+    for (auto& buffer : buffers)
+        if (buffer.prepared) waveOutUnprepareHeader(output, &buffer.header, sizeof(buffer.header));
     waveOutClose(output);
-    if (!queue.transport().finished()) throw std::runtime_error("MOGG playback ended before transport completion");
+    if (!cancelled && !queue.transport().finished())
+        throw std::runtime_error("MOGG playback ended before transport completion");
 #else
-    (void)mogg_path; (void)mix_metadata_path; (void)config; (void)progress;
+    (void)mogg_path; (void)mix_metadata_path; (void)config; (void)progress; (void)cancellation;
     throw std::runtime_error("MOGG audio playback backend is unavailable on this platform");
 #endif
 }

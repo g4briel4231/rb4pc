@@ -9,10 +9,13 @@
 
 namespace rb4pc::runtime {
 
+using AudioCancellationCallback = std::function<bool()>;
+
 [[nodiscard]] std::vector<std::int16_t> stereo_float_to_pcm16(const StereoPcmBlock& block);
 void play_mogg_blocking(const std::filesystem::path& mogg_path,
                         const std::filesystem::path& mix_metadata_path,
                         const MoggMixConfig& config = {},
-                        const AudioProgressCallback& progress = {});
+                        const AudioProgressCallback& progress = {},
+                        const AudioCancellationCallback& cancellation = {});
 
 } // namespace rb4pc::runtime

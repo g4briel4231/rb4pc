@@ -23,6 +23,20 @@ points with zero misses; PCM remained finite, and both transport and gameplay
 reported completion. This proves a full headless session, not yet interactive
 human play or hardware audio completion.
 
+## Interactive audio-clocked session
+
+Version 0.48.0 introduces `rb4pc-song-play`. The Windows audio backend runs on a
+cancellable worker while the window thread polls XInput slot zero and renders
+the highway. Only completed device frames advance `FiveFretSession`; wall-clock
+time is not used as a competing gameplay clock. Buffers are 1,024 frames
+(approximately 23.2 ms at 44.1 kHz), below the provisional 100 ms hit window.
+
+Closing the window requests cancellation, resets queued `waveOut` buffers, and
+joins the audio worker. Pause input is disabled in this entry point because
+pausing gameplay without pausing the device would violate synchronization.
+Compilation and deterministic subsystems are automated; a human/device run is
+still required before claiming hardware-interactive validation.
+
 Version 0.10.0 adds a machine-readable diagnostic report whose capability flags
 explicitly keep audio playback, rendering, and gameplay false until those
 subsystems genuinely exist.

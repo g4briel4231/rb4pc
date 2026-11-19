@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.47.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.48.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -123,6 +123,9 @@ target_link_libraries(rb4pc-mogg-play PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-song-verify src/runtime/song_verify_main.cpp)
 target_link_libraries(rb4pc-song-verify PRIVATE rb4pc_inspection)
+
+add_executable(rb4pc-song-play src/runtime/song_play_main.cpp)
+target_link_libraries(rb4pc-song-play PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-runtime src/runtime/session_main.cpp)
 target_link_libraries(rb4pc-runtime PRIVATE rb4pc_inspection)

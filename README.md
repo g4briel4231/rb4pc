@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.47.0 End-to-end Song Session Verification
+## Current milestone: v0.48.0 Interactive Audio-clocked Song
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -355,6 +355,17 @@ Version 0.47.0 executes that contract headlessly: audio decoding and stem mixing
 advance the frame transport while deterministic autoplay consumes the timed
 expert guitar chart. Success requires finite PCM, completed audio transport,
 completed gameplay, every chord hit, and zero misses.
+
+Version 0.48.0 adds an interactive Windows entry point. A cancellable audio
+thread reports completed 1,024-frame buffers; the window loop uses that value as
+its sole gameplay clock, polls XInput controller slot zero, and redraws the note
+highway every frame. Closing the window cancels playback safely. Pause is
+deliberately disabled until audio-device pause/resume is implemented.
+
+```powershell
+./build/default/rb4pc-song-play.exe `
+  "./notes.mid" "./song.mogg" "./song.mogg.dta"
+```
 
 ```powershell
 ./build/default/rb4pc-song-verify.exe `

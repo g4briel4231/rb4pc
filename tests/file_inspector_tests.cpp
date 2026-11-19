@@ -390,9 +390,17 @@ int main() {
     (void)input_mapper.sample(mapped_controller);
     mapped_controller.buttons = 0x0200 | 0x0002 | 0x0010;
     const auto next_input = input_mapper.sample(mapped_controller);
+    auto no_pause_profile = rb4pc::runtime::default_xinput_five_fret_profile();
+    no_pause_profile.pause_button = 0;
+    rb4pc::runtime::FiveFretInputMapper no_pause_mapper(no_pause_profile);
+    rb4pc::runtime::ControllerState menu_only_controller;
+    menu_only_controller.connected = true;
+    menu_only_controller.buttons = 0x0010;
+    const auto no_pause_input = no_pause_mapper.sample(menu_only_controller);
     passed &= expect(first_input.connected && first_input.lane_mask == 3 && first_input.strum_pressed &&
                          !first_input.pause_pressed && held_input.lane_mask == 3 && !held_input.strum_pressed &&
-                         next_input.lane_mask == 16 && next_input.strum_pressed && next_input.pause_pressed,
+                         next_input.lane_mask == 16 && next_input.strum_pressed && next_input.pause_pressed &&
+                         !no_pause_input.pause_pressed,
                      "five-fret input mapping mismatch");
     rb4pc::runtime::FiveFretSession five_fret_session(timed_five_fret);
     rb4pc::runtime::ControllerState session_controller;

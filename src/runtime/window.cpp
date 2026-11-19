@@ -44,7 +44,13 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
 #endif
 
 void run_window(std::string_view title, SoftwareFramebuffer& framebuffer) {
+    run_window_loop(title, framebuffer, [] { return true; });
+}
+
+void run_window_loop(std::string_view title, SoftwareFramebuffer& framebuffer,
+                     const WindowFrameCallback& frame_callback) {
 #ifdef _WIN32
+    if (!frame_callback) throw std::runtime_error("window frame callback is empty");
     const auto instance = GetModuleHandleW(nullptr);
     const wchar_t* class_name = L"RB4PCWindow";
     WNDCLASSW window_class{}; window_class.lpfnWndProc = window_proc; window_class.hInstance = instance;
@@ -66,13 +72,16 @@ void run_window(std::string_view title, SoftwareFramebuffer& framebuffer) {
             TranslateMessage(&message); DispatchMessageW(&message);
         }
         if (!running) break;
+        if (!frame_callback()) break;
         RECT client{}; GetClientRect(window, &client); HDC dc = GetDC(window);
         StretchDIBits(dc, 0, 0, client.right, client.bottom, 0, 0, framebuffer.width(), framebuffer.height(),
             framebuffer.pixels().data(), &bitmap, DIB_RGB_COLORS, SRCCOPY);
         ReleaseDC(window, dc); Sleep(16);
     }
+    if (IsWindow(window)) DestroyWindow(window);
 #else
-    (void)title; (void)framebuffer; throw std::runtime_error("window backend is unavailable");
+    (void)title; (void)framebuffer; (void)frame_callback;
+    throw std::runtime_error("window backend is unavailable");
 #endif
 }
 } // namespace rb4pc::runtime
