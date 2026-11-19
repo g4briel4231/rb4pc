@@ -65,3 +65,8 @@ The real `abcdefu` assembly copied 14,574,786 bytes into an ignored build
 directory. The one-argument verifier resolved the conventional names and again
 completed 657/657 expert guitar chords with zero misses. Repeating the assembly
 against the same destination returned an error before any overwrite.
+
+Version 0.52.0 enforces the generated manifest on one-argument runtime paths.
+The resolver recalculates all three SHA-256 values before verification or
+interactive playback. Synthetic coverage confirms that an assembled directory
+resolves with `integrity_verified`, while a modified `notes.mid` is rejected.

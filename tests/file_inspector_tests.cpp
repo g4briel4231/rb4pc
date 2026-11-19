@@ -7,6 +7,7 @@
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
 #include "rb4pc/inspector/riff_parser.hpp"
+#include "rb4pc/inspector/sha256.hpp"
 #include "rb4pc/runtime/archive_file_system.hpp"
 #include "rb4pc/runtime/wave_loader.hpp"
 #include "rb4pc/runtime/pcm_stream.hpp"
@@ -176,7 +177,23 @@ int main() {
     std::filesystem::copy_file(track_midi_path, conventional_song / "notes.mid");
     std::filesystem::copy_file(mogg_path, conventional_song / "example.mogg");
     std::filesystem::copy_file(mogg_mix_path, conventional_song / "example.mogg.dta");
+    write_file(conventional_song / "session.json",
+               "{\"hashes\":{\"midi\":\"" +
+                   rb4pc::inspector::sha256_file(conventional_song / "notes.mid") +
+                   "\",\"mogg\":\"" + rb4pc::inspector::sha256_file(conventional_song / "example.mogg") +
+                   "\",\"mixMetadata\":\"" +
+                   rb4pc::inspector::sha256_file(conventional_song / "example.mogg.dta") + "\"}}");
     const auto resolved_song = rb4pc::runtime::resolve_song_directory(conventional_song);
+    const auto tampered_song = directory / "songs" / "tampered";
+    std::filesystem::create_directories(tampered_song);
+    std::filesystem::copy_file(conventional_song / "notes.mid", tampered_song / "notes.mid");
+    std::filesystem::copy_file(conventional_song / "example.mogg", tampered_song / "tampered.mogg");
+    std::filesystem::copy_file(conventional_song / "example.mogg.dta", tampered_song / "tampered.mogg.dta");
+    std::filesystem::copy_file(conventional_song / "session.json", tampered_song / "session.json");
+    write_file(tampered_song / "notes.mid", "tampered");
+    bool tampered_song_rejected = false;
+    try { static_cast<void>(rb4pc::runtime::resolve_song_directory(tampered_song)); }
+    catch (const std::runtime_error&) { tampered_song_rejected = true; }
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -329,7 +346,8 @@ int main() {
                      "MOGG metadata stereo-mix mismatch");
     passed &= expect(resolved_song.midi.filename() == "notes.mid" &&
                          resolved_song.mogg.filename() == "example.mogg" &&
-                         resolved_song.mix_metadata.filename() == "example.mogg.dta",
+                         resolved_song.mix_metadata.filename() == "example.mogg.dta" &&
+                         resolved_song.integrity_verified && tampered_song_rejected,
                      "conventional song-directory resolution mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,

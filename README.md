@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.51.0 Builder Song Assembly
+## Current milestone: v0.52.0 Song-directory Integrity
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -378,6 +378,12 @@ Version 0.51.0 lets Builder assemble a validated local song directory at
 only after the complete-session gate passes, writes a hash-only manifest, and
 refuses an existing destination. Runtime verification and interactive play then
 accept that directory as one argument.
+
+Version 0.52.0 makes the one-directory runtime path verify `session.json` before
+parsing or playing content. SHA-256 is recalculated for MIDI, MOGG, and mix
+metadata; missing manifests, malformed hash sets, and modified files are
+rejected. The explicit three-file expert interface remains available for format
+research.
 
 ```powershell
 ./build/default/rb4pc-builder.exe "./notes.mid" --assemble-song `
