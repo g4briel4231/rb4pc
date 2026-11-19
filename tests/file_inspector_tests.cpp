@@ -61,6 +61,10 @@ void append_u32(std::vector<unsigned char>& output, std::uint32_t value) {
     for (int shift = 0; shift < 32; shift += 8) output.push_back(static_cast<unsigned char>(value >> shift));
 }
 
+void append_u64(std::vector<unsigned char>& output, std::uint64_t value) {
+    for (int shift = 0; shift < 64; shift += 8) output.push_back(static_cast<unsigned char>(value >> shift));
+}
+
 void append_string(std::vector<unsigned char>& output, const std::string& value) {
     append_u32(output, static_cast<std::uint32_t>(value.size()));
     output.insert(output.end(), value.begin(), value.end());
@@ -136,7 +140,27 @@ int main() {
         0, 0xff, 0x2f, 0};
     write_file(track_midi_path, std::string(track_midi.begin(), track_midi.end()));
     write_file(rbmid_path, std::string("\x10\0\0\0synthetic-rbmid", 19));
-    write_file(mogg_path, std::string("\x0a\0\0\0\x0c\0\0\0\0\0\0\0OggSabc", 19));
+    std::vector<unsigned char> synthetic_mogg;
+    append_u32(synthetic_mogg, 10);
+    append_u32(synthetic_mogg, 12);
+    append_u32(synthetic_mogg, 0);
+    synthetic_mogg.insert(synthetic_mogg.end(), {'O', 'g', 'g', 'S', 0, 6});
+    append_u64(synthetic_mogg, 48'000);
+    append_u32(synthetic_mogg, 1);
+    append_u32(synthetic_mogg, 0);
+    append_u32(synthetic_mogg, 0);
+    synthetic_mogg.push_back(1);
+    synthetic_mogg.push_back(30);
+    synthetic_mogg.insert(synthetic_mogg.end(), {1, 'v', 'o', 'r', 'b', 'i', 's'});
+    append_u32(synthetic_mogg, 0);
+    synthetic_mogg.push_back(2);
+    append_u32(synthetic_mogg, 48'000);
+    append_u32(synthetic_mogg, 0);
+    append_u32(synthetic_mogg, 0);
+    append_u32(synthetic_mogg, 0);
+    synthetic_mogg.push_back(0xb8);
+    synthetic_mogg.push_back(1);
+    write_file(mogg_path, std::string(synthetic_mogg.begin(), synthetic_mogg.end()));
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -167,6 +191,7 @@ int main() {
         track_midi_path, "Test", rb4pc::runtime::ChartDifficulty::easy);
     const auto rbmid_header = rb4pc::runtime::parse_rbmid_header(rbmid_path);
     const auto mogg_header = rb4pc::runtime::parse_mogg_header(mogg_path);
+    const auto vorbis_info = rb4pc::runtime::inspect_ogg_vorbis(mogg_path, mogg_header.ogg_offset);
     rb4pc::runtime::extract_mogg_ogg(mogg_path, mogg_header, ogg_path);
     auto session_midi = track_midi_summary;
     session_midi.tracks[0].name = "PART GUITAR";
@@ -248,7 +273,10 @@ int main() {
                          imported_five_fret.chart.chords[0].end_seconds == 0.5,
                      "five-fret MIDI import mismatch");
     passed &= expect(mogg_header.version == 10 && mogg_header.ogg_offset == 12 && mogg_header.embedded_ogg &&
-                         read_file(ogg_path) == "OggSabc",
+                         read_file(ogg_path).size() == synthetic_mogg.size() - 12 &&
+                         vorbis_info.channels == 2 && vorbis_info.sample_rate == 48'000 &&
+                         vorbis_info.page_count == 1 && vorbis_info.final_granule == 48'000 &&
+                         vorbis_info.duration_seconds == 1.0,
                      "MOGG embedded-Ogg extraction mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,

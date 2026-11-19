@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.39.0 MOGG v10 Compatibility
+## Current milestone: v0.40.0 Ogg/Vorbis Inspection
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -315,6 +315,10 @@ runtime without requiring an in-process ForgeTool dependency.
 Version 0.39.0 recognizes unencrypted MOGG v10 files whose declared payload
 offset exposes a standard `OggS` stream. `rb4pc-mogg-probe` can extract that Ogg
 without modifying the source. Encrypted or opaque MOGGs are rejected.
+
+Version 0.40.0 walks the embedded Ogg pages and validates the Vorbis
+identification packet. The probe reports channel count, sample rate, page count,
+final PCM granule, and duration before optionally extracting the stream.
 
 ```powershell
 ./build/default/rb4pc-mogg-probe.exe "./song.mogg" --extract-ogg "./song.ogg"

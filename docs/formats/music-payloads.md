@@ -135,3 +135,10 @@ This does not generalize to opaque installed PC payloads. The extracted
 `angel3.mogg` begins with the unidentified word `0x1473cd2a`, so the v10 parser
 rejects it instead of guessing an encryption or serialization scheme. Ogg
 decoding, PCM validation, channel mapping, and playback remain separate work.
+
+Version 0.40.0 validates the embedded bitstream beyond its four-byte signature.
+The same reference contains a Vorbis identification packet declaring 10
+channels at 44,100 Hz. Its 3,410 Ogg pages end at PCM granule 7,799,738, which
+corresponds to 176.865 seconds. These values are now reported directly from the
+source MOGG; compressed-audio decoding is still required before the samples can
+enter the runtime PCM transport.
