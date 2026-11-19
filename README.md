@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.53.0 Verified Song Library
+## Current milestone: v0.54.0 Controller-driven Song Launcher
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -389,6 +389,16 @@ Version 0.53.0 scans a `songs/` root into a deterministic library. Every child
 directory is integrity-checked independently; valid songs remain selectable
 while malformed or modified entries are retained with an error instead of
 hiding them or aborting the whole library.
+
+Version 0.54.0 adds a graphical launcher over that verified library. D-pad
+up/down wraps through valid songs, A starts the selected interactive session,
+and B exits. Invalid entries remain visible in red but cannot be selected. The
+interactive player is now a reusable runtime component rather than CLI-only
+logic.
+
+```powershell
+./build/default/rb4pc-launcher.exe "./output/songs"
+```
 
 ```powershell
 ./build/default/rb4pc-song-library.exe "./output/songs"

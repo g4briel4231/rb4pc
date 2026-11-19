@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.53.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.54.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -54,6 +54,8 @@ add_library(rb4pc_inspection
     src/runtime/song_session_verifier.cpp
     src/runtime/song_directory.cpp
     src/runtime/song_library.cpp
+    src/runtime/song_browser.cpp
+    src/runtime/interactive_song.cpp
     src/runtime/five_fret_chart.cpp
     src/runtime/timed_chart.cpp
     src/runtime/five_fret_gameplay.cpp
@@ -132,6 +134,9 @@ target_link_libraries(rb4pc-song-play PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-song-library src/runtime/song_library_main.cpp)
 target_link_libraries(rb4pc-song-library PRIVATE rb4pc_inspection)
+
+add_executable(rb4pc-launcher src/runtime/launcher_main.cpp)
+target_link_libraries(rb4pc-launcher PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-runtime src/runtime/session_main.cpp)
 target_link_libraries(rb4pc-runtime PRIVATE rb4pc_inspection)

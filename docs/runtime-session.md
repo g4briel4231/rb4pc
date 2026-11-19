@@ -45,6 +45,12 @@ their diagnostic error and do not prevent valid songs from loading. This is the
 runtime data model for the upcoming song browser; it does not ingest any song
 content into the executable or repository.
 
+Version 0.54.0 connects this model to a controller-driven graphical launcher.
+Only integrity-valid entries participate in wrapped D-pad selection; invalid
+entries remain visible as diagnostics. A launches the selected song and B exits.
+The reusable interactive-session function allows the launcher to return a
+result without spawning a second executable or shell command.
+
 Version 0.10.0 adds a machine-readable diagnostic report whose capability flags
 explicitly keep audio playback, rendering, and gameplay false until those
 subsystems genuinely exist.

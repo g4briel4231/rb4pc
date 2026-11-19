@@ -27,6 +27,7 @@
 #include "rb4pc/runtime/mogg_audio_output.hpp"
 #include "rb4pc/runtime/song_directory.hpp"
 #include "rb4pc/runtime/song_library.hpp"
+#include "rb4pc/runtime/song_browser.hpp"
 #include "rb4pc/runtime/vorbis_decoder.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
@@ -196,6 +197,11 @@ int main() {
     try { static_cast<void>(rb4pc::runtime::resolve_song_directory(tampered_song)); }
     catch (const std::runtime_error&) { tampered_song_rejected = true; }
     const auto song_library = rb4pc::runtime::scan_song_library(directory / "songs");
+    rb4pc::runtime::SongBrowserModel song_browser(song_library);
+    song_browser.move(1);
+    rb4pc::runtime::SoftwareFramebuffer song_browser_framebuffer(640, 360);
+    rb4pc::runtime::render_song_browser(
+        song_browser_framebuffer, song_library, song_browser, true);
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -356,7 +362,10 @@ int main() {
                          song_library.entries[0].short_name == "example" &&
                          song_library.entries[0].valid &&
                          song_library.entries[1].short_name == "tampered" &&
-                         !song_library.entries[1].valid && !song_library.entries[1].error.empty(),
+                         !song_library.entries[1].valid && !song_library.entries[1].error.empty() &&
+                         song_browser.valid_count() == 1 &&
+                         song_browser.selected().short_name == "example" &&
+                         song_browser_framebuffer.pixels().size() == 640U * 360U,
                      "song-library integrity scan mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,

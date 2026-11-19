@@ -79,6 +79,7 @@ void run_window_loop(std::string_view title, SoftwareFramebuffer& framebuffer,
         ReleaseDC(window, dc); Sleep(16);
     }
     if (IsWindow(window)) DestroyWindow(window);
+    while (PeekMessageW(&message, nullptr, WM_QUIT, WM_QUIT, PM_REMOVE)) {}
 #else
     (void)title; (void)framebuffer; (void)frame_callback;
     throw std::runtime_error("window backend is unavailable");
