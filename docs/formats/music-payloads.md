@@ -116,3 +116,9 @@ The same probe rejects the extracted installed `angel3.rbmid_pc`, whose leading
 word is `0xb61e81e7`. Therefore ForgeTool outputs can now be identified by the
 runtime at the container boundary, while the installed opaque RBMID layer still
 requires separate format work.
+
+Version 0.38.0 completes the compatible conversion path without embedding
+ForgeTool: its `rbmid2mid` output is accepted as standard MIDI by the new
+five-fret importer. On the round-trip fixture, `PART GUITAR` imports 154 expert
+chords ending at 36.0833 seconds. This is currently the supported bridge from a
+ForgeTool-readable raw RBMID to the RB4PC runtime.

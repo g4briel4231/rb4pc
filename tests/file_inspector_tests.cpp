@@ -19,6 +19,7 @@
 #include "rb4pc/runtime/shell_render.hpp"
 #include "rb4pc/runtime/midi_parser.hpp"
 #include "rb4pc/runtime/rbmid_parser.hpp"
+#include "rb4pc/runtime/five_fret_import.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
 #include "rb4pc/runtime/five_fret_gameplay.hpp"
@@ -158,6 +159,8 @@ int main() {
     const auto custom_song_catalog = rb4pc::builder::scan_custom_songs(directory);
     const auto midi_header = rb4pc::runtime::parse_standard_midi_header(midi_path);
     const auto track_midi_summary = rb4pc::runtime::parse_standard_midi(track_midi_path);
+    const auto imported_five_fret = rb4pc::runtime::import_five_fret_midi(
+        track_midi_path, "Test", rb4pc::runtime::ChartDifficulty::easy);
     const auto rbmid_header = rb4pc::runtime::parse_rbmid_header(rbmid_path);
     auto session_midi = track_midi_summary;
     session_midi.tracks[0].name = "PART GUITAR";
@@ -234,6 +237,10 @@ int main() {
                      "MIDI session-plan mismatch");
     passed &= expect(rbmid_header.format == rb4pc::runtime::RBMidFormat::rb4 && rbmid_header.file_size == 19,
                      "RBMID envelope parse mismatch");
+    passed &= expect(imported_five_fret.track_name == "Test" && imported_five_fret.chart.chords.size() == 1 &&
+                         imported_five_fret.chart.chords[0].start_seconds == 0.0 &&
+                         imported_five_fret.chart.chords[0].end_seconds == 0.5,
+                     "five-fret MIDI import mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,
                      "five-fret chart mapping mismatch");

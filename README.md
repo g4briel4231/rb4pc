@@ -308,6 +308,14 @@ raw RB4/RBVR RBMID files. `rb4pc-rbmid-probe` validates that envelope without
 claiming to decode the gameplay structures inside it. Installed opaque RBMID
 records that lack this header remain unsupported.
 
+Version 0.38.0 imports a standard MIDI directly into a timed five-fret chart.
+This connects a MIDI exported by ForgeTool's `rbmid2mid` operation to the RB4PC
+runtime without requiring an in-process ForgeTool dependency.
+
+```powershell
+./build/default/rb4pc-session-probe.exe "./forge-export.mid" "PART GUITAR"
+```
+
 ```powershell
 ./build/default/rb4pc-rbmid-probe.exe "./converted.rbmid_pc"
 ```
