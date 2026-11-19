@@ -23,6 +23,7 @@
 #include "rb4pc/runtime/five_fret_import.hpp"
 #include "rb4pc/runtime/mogg_parser.hpp"
 #include "rb4pc/runtime/mogg_mix.hpp"
+#include "rb4pc/runtime/mogg_audio_output.hpp"
 #include "rb4pc/runtime/vorbis_decoder.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
@@ -202,6 +203,7 @@ int main() {
     const auto mogg_mix = rb4pc::runtime::parse_mogg_mix_metadata(mogg_mix_path, 2);
     rb4pc::runtime::VorbisPcmBlock synthetic_multichannel{100, 2, 48'000, {0.25F, -0.5F}};
     const auto stereo_mix = rb4pc::runtime::mix_mogg_to_stereo(synthetic_multichannel, mogg_mix);
+    const auto pcm16_mix = rb4pc::runtime::stereo_float_to_pcm16(stereo_mix);
     rb4pc::runtime::MoggMixConfig muted_drums;
     muted_drums.stem_levels["drum"] = 0.0F;
     const auto muted_mix = rb4pc::runtime::mix_mogg_to_stereo(
@@ -303,6 +305,7 @@ int main() {
                          stereo_mix.first_frame == 100 && stereo_mix.sample_rate == 48'000 &&
                          stereo_mix.frame_count() == 1 && stereo_mix.samples[0] == 0.25F &&
                          stereo_mix.samples[1] == -0.5F && stereo_mix.clipped_samples == 0 &&
+                         pcm16_mix == std::vector<std::int16_t>({8192, -16384}) &&
                          muted_mix.peak_amplitude == 0.0F,
                      "MOGG metadata stereo-mix mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&

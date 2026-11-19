@@ -17,3 +17,15 @@ Version 0.12.0 adds the first operating-system output backend. On Windows,
 `waveOut` and waits for completion. Playback is explicit and is never invoked by
 the automated test suite. Mixing, resampling, MOGG decoding, low-latency queues,
 and gameplay synchronization remain future work.
+
+Version 0.45.0 adds a separate compatible-MOGG path on Windows. It incrementally
+decodes Vorbis, applies `mogg.dta` stem/pan/volume metadata, limits normalized
+stereo float samples, converts them to signed 16-bit PCM, and maintains two
+queued `waveOut` buffers. Completed device buffers advance the same frame clock
+used by gameplay. Automated tests cover conversion and transport invariants but
+do not open the user's audio device.
+
+The `rb4pc-mogg-play` executable provides the explicit hardware-validation
+entry point. Its presence and compilation do not by themselves claim that a
+particular sound device completed a full song; that distinction remains part of
+the release evidence.
