@@ -13,6 +13,7 @@ struct MidiInstrumentPlan {
     std::size_t medium_chords = 0;
     std::size_t hard_chords = 0;
     std::size_t expert_chords = 0;
+    double expert_chart_end_seconds = 0.0;
 };
 
 struct MidiSessionPlan {

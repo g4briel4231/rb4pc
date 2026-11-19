@@ -34,6 +34,7 @@
 #include "rb4pc/runtime/audio_transport.hpp"
 #include "rb4pc/runtime/pcm_playback_queue.hpp"
 #include "rb4pc/builder/midi_session_plan.hpp"
+#include "rb4pc/builder/song_session_plan.hpp"
 
 #include <array>
 #include <filesystem>
@@ -219,6 +220,11 @@ int main() {
     session_midi.tracks[0].name = "PART GUITAR";
     session_midi.tracks[0].notes[0].key = 96;
     const auto midi_session_plan = rb4pc::builder::create_midi_session_plan(session_midi, "synthetic-sha256");
+    auto session_mix = mogg_mix;
+    session_mix.stems[0].name = "guitar";
+    const auto song_session_plan = rb4pc::builder::create_song_session_plan(
+        midi_session_plan, mogg_header, vorbis_info, session_mix,
+        "synthetic-mogg-sha256", "synthetic-mix-sha256");
     const auto easy_five_fret = rb4pc::runtime::build_five_fret_chart(
         track_midi_summary.tracks[0], rb4pc::runtime::ChartDifficulty::easy);
     rb4pc::runtime::MidiTrackSummary chord_track;
@@ -288,6 +294,12 @@ int main() {
                          midi_session_plan.duration_seconds == 0.5 &&
                          rb4pc::builder::format_json(midi_session_plan).find("\"readyForFiveFretSession\": true") != std::string::npos,
                      "MIDI session-plan mismatch");
+    passed &= expect(song_session_plan.ready && song_session_plan.guitar_stem &&
+                         song_session_plan.timeline_fits_audio && song_session_plan.channels == 2 &&
+                         song_session_plan.audio_frames == 48'000 &&
+                         rb4pc::builder::format_json(song_session_plan).find(
+                             "\"readyForSongSession\": true") != std::string::npos,
+                     "complete song-session plan mismatch");
     passed &= expect(rbmid_header.format == rb4pc::runtime::RBMidFormat::rb4 && rbmid_header.file_size == 19,
                      "RBMID envelope parse mismatch");
     passed &= expect(imported_five_fret.track_name == "Test" && imported_five_fret.chart.chords.size() == 1 &&

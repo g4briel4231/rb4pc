@@ -14,11 +14,14 @@ MidiInstrumentPlan instrument_plan(const runtime::MidiFileSummary& midi, const s
         return track.name == name;
     });
     if (found == midi.tracks.end()) return {name};
-    const auto count = [&found](runtime::ChartDifficulty difficulty) {
-        return runtime::build_five_fret_chart(*found, difficulty).chords.size();
-    };
-    return {name, count(runtime::ChartDifficulty::easy), count(runtime::ChartDifficulty::medium),
-            count(runtime::ChartDifficulty::hard), count(runtime::ChartDifficulty::expert)};
+    const auto easy = runtime::build_five_fret_chart(*found, runtime::ChartDifficulty::easy);
+    const auto medium = runtime::build_five_fret_chart(*found, runtime::ChartDifficulty::medium);
+    const auto hard = runtime::build_five_fret_chart(*found, runtime::ChartDifficulty::hard);
+    const auto expert = runtime::build_five_fret_chart(*found, runtime::ChartDifficulty::expert);
+    std::uint64_t final_tick = 0;
+    for (const auto& chord : expert.chords) final_tick = std::max(final_tick, chord.end_tick);
+    return {name, easy.chords.size(), medium.chords.size(), hard.chords.size(), expert.chords.size(),
+            runtime::midi_tick_to_seconds(midi, final_tick)};
 }
 }
 
@@ -45,7 +48,8 @@ std::string format_json(const MidiSessionPlan& plan) {
         output << "{\"track\": \"" << instrument.track_name << "\", \"chords\": {\"easy\": "
                << instrument.easy_chords << ", \"medium\": " << instrument.medium_chords
                << ", \"hard\": " << instrument.hard_chords << ", \"expert\": "
-               << instrument.expert_chords << "}}";
+               << instrument.expert_chords << "}, \"expertChartEndSeconds\": "
+               << instrument.expert_chart_end_seconds << "}";
     };
     output << "{\n  \"schemaVersion\": 1,\n  \"source\": {\"sha256\": \"" << plan.source_sha256
            << "\", \"size\": " << plan.source_size << "},\n  \"midi\": {\"division\": "

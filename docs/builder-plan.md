@@ -34,3 +34,17 @@ Version 0.13.0 can scan this flat installation layout. A package is ready when
 its HDR is version 10, its hash index validates, it declares exactly the
 expected `<shortname>_pc_0.ark`, and that ARK is present with at least the
 declared size.
+
+## Complete song-session plan
+
+Version 0.46.0 adds a read-only plan joining a user-supplied standard MIDI,
+compatible MOGG v10, and `mogg.dta`. Readiness requires a playable expert guitar
+chart, valid Vorbis timing, complete per-channel mix metadata, a named guitar
+stem, and a chart timeline that does not extend more than 250 ms beyond the
+audio. The JSON records source hashes and derived properties, not song content.
+
+The reference `abcdefu.rbmid_ps4` was converted to standard MIDI by ForgeTool
+and planned against its matching MOGG and mix metadata. Builder found 657 expert
+guitar chords ending at 174.688 seconds, while the 10-channel audio ends at
+176.865 seconds. All five stems were present, including guitar, and the resulting
+real-file plan reported `readyForSongSession: true`.
