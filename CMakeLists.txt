@@ -1,8 +1,16 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.40.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.41.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
+
+include(FetchContent)
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG 6b5799bae8a1fe3792691ef4b72ae26434c3e799
+)
+FetchContent_MakeAvailable(stb)
 
 add_library(rb4pc_inspection
     src/inspector/asset_converter.cpp
@@ -36,6 +44,7 @@ add_library(rb4pc_inspection
     src/runtime/rbmid_parser.cpp
     src/runtime/five_fret_import.cpp
     src/runtime/mogg_parser.cpp
+    src/runtime/vorbis_decoder.cpp
     src/runtime/five_fret_chart.cpp
     src/runtime/timed_chart.cpp
     src/runtime/five_fret_gameplay.cpp
@@ -46,7 +55,14 @@ add_library(rb4pc_inspection
     src/runtime/pcm_playback_queue.cpp
 )
 target_include_directories(rb4pc_inspection PUBLIC include)
+target_include_directories(rb4pc_inspection PRIVATE ${stb_SOURCE_DIR})
 target_compile_features(rb4pc_inspection PUBLIC cxx_std_20)
+
+if(MSVC)
+    set_source_files_properties(src/runtime/vorbis_decoder.cpp PROPERTIES COMPILE_OPTIONS /w)
+else()
+    set_source_files_properties(src/runtime/vorbis_decoder.cpp PROPERTIES COMPILE_OPTIONS -w)
+endif()
 
 if(MSVC)
     target_compile_options(rb4pc_inspection PRIVATE /W4 /permissive-)

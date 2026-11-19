@@ -21,6 +21,7 @@
 #include "rb4pc/runtime/rbmid_parser.hpp"
 #include "rb4pc/runtime/five_fret_import.hpp"
 #include "rb4pc/runtime/mogg_parser.hpp"
+#include "rb4pc/runtime/vorbis_decoder.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
 #include "rb4pc/runtime/five_fret_gameplay.hpp"
@@ -192,6 +193,12 @@ int main() {
     const auto rbmid_header = rb4pc::runtime::parse_rbmid_header(rbmid_path);
     const auto mogg_header = rb4pc::runtime::parse_mogg_header(mogg_path);
     const auto vorbis_info = rb4pc::runtime::inspect_ogg_vorbis(mogg_path, mogg_header.ogg_offset);
+    bool incomplete_vorbis_rejected = false;
+    try {
+        static_cast<void>(rb4pc::runtime::decode_vorbis_preview(mogg_path, mogg_header.ogg_offset, 32));
+    } catch (const std::runtime_error&) {
+        incomplete_vorbis_rejected = true;
+    }
     rb4pc::runtime::extract_mogg_ogg(mogg_path, mogg_header, ogg_path);
     auto session_midi = track_midi_summary;
     session_midi.tracks[0].name = "PART GUITAR";
@@ -276,7 +283,7 @@ int main() {
                          read_file(ogg_path).size() == synthetic_mogg.size() - 12 &&
                          vorbis_info.channels == 2 && vorbis_info.sample_rate == 48'000 &&
                          vorbis_info.page_count == 1 && vorbis_info.final_granule == 48'000 &&
-                         vorbis_info.duration_seconds == 1.0,
+                         vorbis_info.duration_seconds == 1.0 && incomplete_vorbis_rejected,
                      "MOGG embedded-Ogg extraction mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,

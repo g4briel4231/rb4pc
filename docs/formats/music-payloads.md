@@ -142,3 +142,10 @@ channels at 44,100 Hz. Its 3,410 Ogg pages end at PCM granule 7,799,738, which
 corresponds to 176.865 seconds. These values are now reported directly from the
 source MOGG; compressed-audio decoding is still required before the samples can
 enter the runtime PCM transport.
+
+Version 0.41.0 decodes the first 44,100 frames of that same 10-channel stream to
+floating-point PCM. The real-file probe produced all 44,100 requested frames,
+found only finite samples, and measured a peak absolute amplitude of 0.141503.
+This proves that the compatible MOGG is not merely structurally recognizable:
+its audio payload can be decoded. Streaming, channel-to-stem routing, and output
+device playback remain subsequent integration steps.

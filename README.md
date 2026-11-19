@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.40.0 Ogg/Vorbis Inspection
+## Current milestone: v0.41.0 Vorbis PCM Decode
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -319,6 +319,11 @@ without modifying the source. Encrypted or opaque MOGGs are rejected.
 Version 0.40.0 walks the embedded Ogg pages and validates the Vorbis
 identification packet. The probe reports channel count, sample rate, page count,
 final PCM granule, and duration before optionally extracting the stream.
+
+Version 0.41.0 decodes a bounded one-second floating-point PCM preview directly
+from a compatible MOGG. The probe reports decoded frames, peak amplitude, and
+whether every sample is finite. The build fetches a revision-pinned copy of the
+public-domain/MIT `stb_vorbis` decoder; see `THIRD_PARTY_NOTICES.md`.
 
 ```powershell
 ./build/default/rb4pc-mogg-probe.exe "./song.mogg" --extract-ogg "./song.ogg"
