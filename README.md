@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.49.0 Xbox Controller Routing
+## Current milestone: v0.50.0 Xbox Input Observation
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -367,6 +367,15 @@ the preferred connected XInput slot, falls back to the first connected device
 after disconnect, and supports hotplug on every frame. A green/red status strip
 shows connection state, while A/B/Y/X/RB prompts identify the fallback
 green/red/yellow/blue/orange fret mapping.
+
+Version 0.50.0 adds a bounded XInput observation mode for hardware validation.
+It reports hotplug/state changes and summarizes every observed slot, button mask,
+and maximum trigger values without writing configuration or requiring a game
+session.
+
+```powershell
+./build/default/rb4pc-input-probe.exe --watch 15
+```
 
 ```powershell
 ./build/default/rb4pc-song-play.exe `
