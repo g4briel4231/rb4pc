@@ -3,6 +3,7 @@
 #include "rb4pc/builder/install_plan.hpp"
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
+#include "rb4pc/builder/song_assembler.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 
@@ -11,6 +12,16 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 7 && std::string(argv[2]) == "--assemble-song") {
+        try {
+            const auto result = rb4pc::builder::assemble_song_directory(
+                argv[1], argv[3], argv[4], argv[5], argv[6]);
+            std::cout << "Assembled song: " << result.directory.string()
+                      << "\nManifest: " << result.manifest.string()
+                      << "\nCopied bytes: " << result.copied_bytes << '\n';
+            return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 6 && std::string(argv[2]) == "--plan-song-session") {
         try {
             const std::filesystem::path output_path = argv[5];
@@ -53,6 +64,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <source-dir> --plan-song-install <target-dir> <plan.json>\n";
         std::cerr << "   or: " << argv[0] << " <notes.mid> --plan-midi-session <session.json>\n";
         std::cerr << "   or: " << argv[0] << " <notes.mid> --plan-song-session <song.mogg> <song.mogg.dta> <session.json>\n";
+        std::cerr << "   or: " << argv[0] << " <notes.mid> --assemble-song <song.mogg> <song.mogg.dta> <output-root> <shortname>\n";
         return 2;
     }
     try {

@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.50.0 Xbox Input Observation
+## Current milestone: v0.51.0 Builder Song Assembly
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -372,6 +372,19 @@ Version 0.50.0 adds a bounded XInput observation mode for hardware validation.
 It reports hotplug/state changes and summarizes every observed slot, button mask,
 and maximum trigger values without writing configuration or requiring a game
 session.
+
+Version 0.51.0 lets Builder assemble a validated local song directory at
+`<output>/songs/<shortname>/`. It copies the user's MIDI, MOGG, and `mogg.dta`
+only after the complete-session gate passes, writes a hash-only manifest, and
+refuses an existing destination. Runtime verification and interactive play then
+accept that directory as one argument.
+
+```powershell
+./build/default/rb4pc-builder.exe "./notes.mid" --assemble-song `
+  "./song.mogg" "./song.mogg.dta" "./output" "shortname"
+./build/default/rb4pc-song-verify.exe "./output/songs/shortname"
+./build/default/rb4pc-song-play.exe "./output/songs/shortname"
+```
 
 ```powershell
 ./build/default/rb4pc-input-probe.exe --watch 15

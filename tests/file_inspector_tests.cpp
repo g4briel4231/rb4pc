@@ -24,6 +24,7 @@
 #include "rb4pc/runtime/mogg_parser.hpp"
 #include "rb4pc/runtime/mogg_mix.hpp"
 #include "rb4pc/runtime/mogg_audio_output.hpp"
+#include "rb4pc/runtime/song_directory.hpp"
 #include "rb4pc/runtime/vorbis_decoder.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
@@ -170,6 +171,12 @@ int main() {
     write_file(mogg_mix_path,
                "; synthetic mix\n(tracks ((drum (0 1))))\n"
                "(pans (-1.0 1.0))\n(vols (0.0 0.0))\n");
+    const auto conventional_song = directory / "songs" / "example";
+    std::filesystem::create_directories(conventional_song);
+    std::filesystem::copy_file(track_midi_path, conventional_song / "notes.mid");
+    std::filesystem::copy_file(mogg_path, conventional_song / "example.mogg");
+    std::filesystem::copy_file(mogg_mix_path, conventional_song / "example.mogg.dta");
+    const auto resolved_song = rb4pc::runtime::resolve_song_directory(conventional_song);
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -320,6 +327,10 @@ int main() {
                          pcm16_mix == std::vector<std::int16_t>({8192, -16384}) &&
                          muted_mix.peak_amplitude == 0.0F,
                      "MOGG metadata stereo-mix mismatch");
+    passed &= expect(resolved_song.midi.filename() == "notes.mid" &&
+                         resolved_song.mogg.filename() == "example.mogg" &&
+                         resolved_song.mix_metadata.filename() == "example.mogg.dta",
+                     "conventional song-directory resolution mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,
                      "five-fret chart mapping mismatch");

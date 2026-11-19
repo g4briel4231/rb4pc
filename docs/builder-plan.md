@@ -48,3 +48,20 @@ and planned against its matching MOGG and mix metadata. Builder found 657 expert
 guitar chords ending at 174.688 seconds, while the 10-channel audio ends at
 176.865 seconds. All five stems were present, including guitar, and the resulting
 real-file plan reported `readyForSongSession: true`.
+
+## Local song assembly
+
+Version 0.51.0 turns a ready plan into the runtime convention
+`songs/<shortname>/notes.mid`, `<shortname>.mogg`, and
+`<shortname>.mogg.dta`. Builder creates a small `session.json` containing
+relative filenames and SHA-256 values. It refuses to overwrite an existing song
+directory and removes a newly created partial destination if copying fails.
+
+These are local copies of files supplied by the user. They remain ignored when
+created under the repository's top-level `songs/` folder and are never included
+in RB4PC source or release artifacts.
+
+The real `abcdefu` assembly copied 14,574,786 bytes into an ignored build
+directory. The one-argument verifier resolved the conventional names and again
+completed 657/657 expert guitar chords with zero misses. Repeating the assembly
+against the same destination returned an error before any overwrite.

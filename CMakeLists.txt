@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.50.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.51.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -22,6 +22,7 @@ add_library(rb4pc_inspection
     src/builder/install_plan.cpp
     src/builder/midi_session_plan.cpp
     src/builder/song_session_plan.cpp
+    src/builder/song_assembler.cpp
     src/inspector/file_inspector.cpp
     src/inspector/hdr_decoder.cpp
     src/inspector/murmur_hash3.cpp
@@ -51,6 +52,7 @@ add_library(rb4pc_inspection
     src/runtime/mogg_mix.cpp
     src/runtime/mogg_audio_output.cpp
     src/runtime/song_session_verifier.cpp
+    src/runtime/song_directory.cpp
     src/runtime/five_fret_chart.cpp
     src/runtime/timed_chart.cpp
     src/runtime/five_fret_gameplay.cpp

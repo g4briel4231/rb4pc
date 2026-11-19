@@ -1,14 +1,19 @@
 #include "rb4pc/runtime/song_session_verifier.hpp"
+#include "rb4pc/runtime/song_directory.hpp"
 
 #include <iostream>
 
 int main(int argc, char* argv[]) {
-    if (argc != 4) {
-        std::cerr << "Usage: " << argv[0] << " <notes.mid> <song.mogg> <song.mogg.dta>\n";
+    if (argc != 2 && argc != 4) {
+        std::cerr << "Usage: " << argv[0] << " <song-directory>\n"
+                  << "   or: " << argv[0] << " <notes.mid> <song.mogg> <song.mogg.dta>\n";
         return 2;
     }
     try {
-        const auto result = rb4pc::runtime::verify_song_session(argv[1], argv[2], argv[3]);
+        const auto files = argc == 2 ? rb4pc::runtime::resolve_song_directory(argv[1])
+                                     : rb4pc::runtime::SongDirectoryFiles{{}, argv[1], argv[2], argv[3]};
+        const auto result = rb4pc::runtime::verify_song_session(
+            files.midi, files.mogg, files.mix_metadata);
         std::cout << "Track: " << result.track_name
                   << "\nAudio frames: " << result.audio_frames
                   << "\nAudio seconds: " << result.audio_seconds

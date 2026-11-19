@@ -4,6 +4,7 @@
 #include "rb4pc/runtime/input.hpp"
 #include "rb4pc/runtime/mogg_audio_output.hpp"
 #include "rb4pc/runtime/mogg_parser.hpp"
+#include "rb4pc/runtime/song_directory.hpp"
 #include "rb4pc/runtime/window.hpp"
 #include "rb4pc/runtime/ui.hpp"
 
@@ -17,15 +18,18 @@
 #include <thread>
 
 int main(int argc, char* argv[]) {
-    if (argc != 4) {
-        std::cerr << "Usage: " << argv[0] << " <notes.mid> <song.mogg> <song.mogg.dta>\n";
+    if (argc != 2 && argc != 4) {
+        std::cerr << "Usage: " << argv[0] << " <song-directory>\n"
+                  << "   or: " << argv[0] << " <notes.mid> <song.mogg> <song.mogg.dta>\n";
         return 2;
     }
     try {
+        const auto files = argc == 2 ? rb4pc::runtime::resolve_song_directory(argv[1])
+                                     : rb4pc::runtime::SongDirectoryFiles{{}, argv[1], argv[2], argv[3]};
         const auto imported = rb4pc::runtime::import_five_fret_midi(
-            argv[1], "PART GUITAR", rb4pc::runtime::ChartDifficulty::expert);
-        const auto mogg = rb4pc::runtime::parse_mogg_header(argv[2]);
-        const auto vorbis = rb4pc::runtime::inspect_ogg_vorbis(argv[2], mogg.ogg_offset);
+            files.midi, "PART GUITAR", rb4pc::runtime::ChartDifficulty::expert);
+        const auto mogg = rb4pc::runtime::parse_mogg_header(files.mogg);
+        const auto vorbis = rb4pc::runtime::inspect_ogg_vorbis(files.mogg, mogg.ogg_offset);
         auto profile = rb4pc::runtime::default_xinput_five_fret_profile();
         profile.pause_button = 0;
         rb4pc::runtime::FiveFretSession session(imported.chart, profile);
@@ -38,7 +42,7 @@ int main(int argc, char* argv[]) {
         std::thread audio([&] {
             try {
                 rb4pc::runtime::play_mogg_blocking(
-                    argv[2], argv[3], {},
+                    files.mogg, files.mix_metadata, {},
                     [&](std::uint64_t frames) { completed_frames.store(frames); },
                     [&] { return cancel.load(); });
             } catch (const std::exception& error) {
