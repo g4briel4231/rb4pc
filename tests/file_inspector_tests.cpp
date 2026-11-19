@@ -468,13 +468,20 @@ int main() {
     session_controller.buttons = 0;
     (void)five_fret_session.step(0, session_controller);
     session_controller.buttons = 0x0010;
-    const auto paused_frame = five_fret_session.step(1.0, session_controller);
+    const auto paused_frame = five_fret_session.step(0.0, session_controller);
+    session_controller.buttons = 0;
+    (void)five_fret_session.step(0.0, session_controller);
+    session_controller.buttons = 0x0010;
+    const auto resumed_frame = five_fret_session.step(0.0, session_controller);
+    session_controller.buttons = 0;
+    const auto after_resume_frame = five_fret_session.step(0.25, session_controller);
     rb4pc::runtime::SoftwareFramebuffer session_framebuffer(320, 200);
     const auto session_render = five_fret_session.render(session_framebuffer, 0.13, 0.25);
     passed &= expect(session_hit.hit && session_hit.hit->chord_index == 1 && session_hit.gameplay_seconds == 0.5 &&
                          five_fret_session.gameplay().hit_count() == 1 && five_fret_session.gameplay().miss_count() == 1 &&
-                         paused_frame.paused && paused_frame.gameplay_seconds == 0.5 && five_fret_session.paused() &&
-                         session_render.visible_chords == 2,
+                         paused_frame.paused && paused_frame.gameplay_seconds == 0.5 && !resumed_frame.paused &&
+                         after_resume_frame.gameplay_seconds == 0.75 && !five_fret_session.paused() &&
+                         session_render.visible_chords == 1,
                      "integrated five-fret session mismatch");
     rb4pc::runtime::AudioTransportClock audio_transport(48000, 96000);
     audio_transport.play(); audio_transport.complete_frames(24000);

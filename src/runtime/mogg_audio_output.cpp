@@ -34,7 +34,8 @@ void play_mogg_blocking(const std::filesystem::path& mogg_path,
                         const std::filesystem::path& mix_metadata_path,
                         const MoggMixConfig& config,
                         const AudioProgressCallback& progress,
-                        const AudioCancellationCallback& cancellation) {
+                        const AudioCancellationCallback& cancellation,
+                        const AudioPauseCallback& pause_requested) {
 #ifdef _WIN32
     const auto header = parse_mogg_header(mogg_path);
     const auto vorbis = inspect_ogg_vorbis(mogg_path, header.ogg_offset);
@@ -86,6 +87,14 @@ void play_mogg_blocking(const std::filesystem::path& mogg_path,
         bool any_active = true;
         while (any_active) {
             if (cancellation && cancellation()) { cancelled = true; waveOutReset(output); break; }
+            if (pause_requested && pause_requested()) {
+                if (waveOutPause(output) != MMSYSERR_NOERROR)
+                    throw std::runtime_error("waveOutPause failed for MOGG playback");
+                while (pause_requested() && !(cancellation && cancellation())) Sleep(2);
+                if (cancellation && cancellation()) { cancelled = true; waveOutReset(output); break; }
+                if (waveOutRestart(output) != MMSYSERR_NOERROR)
+                    throw std::runtime_error("waveOutRestart failed for MOGG playback");
+            }
             any_active = false;
             for (auto& buffer : buffers) {
                 if (!buffer.active) continue;
@@ -113,7 +122,8 @@ void play_mogg_blocking(const std::filesystem::path& mogg_path,
     if (!cancelled && !queue.transport().finished())
         throw std::runtime_error("MOGG playback ended before transport completion");
 #else
-    (void)mogg_path; (void)mix_metadata_path; (void)config; (void)progress; (void)cancellation;
+    (void)mogg_path; (void)mix_metadata_path; (void)config; (void)progress;
+    (void)cancellation; (void)pause_requested;
     throw std::runtime_error("MOGG audio playback backend is unavailable on this platform");
 #endif
 }

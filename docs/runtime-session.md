@@ -51,6 +51,11 @@ entries remain visible as diagnostics. A launches the selected song and B exits.
 The reusable interactive-session function allows the launcher to return a
 result without spawning a second executable or shell command.
 
+Version 0.55.0 connects the session's Menu-button pause state to `waveOutPause`
+and `waveOutRestart`. The audio worker continues checking cancellation while
+paused, and completed device frames remain the only gameplay time source. This
+supersedes the deliberately disabled pause behavior in v0.48.0.
+
 Version 0.10.0 adds a machine-readable diagnostic report whose capability flags
 explicitly keep audio playback, rendering, and gameplay false until those
 subsystems genuinely exist.

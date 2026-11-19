@@ -24,12 +24,11 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
         files.midi, "PART GUITAR", ChartDifficulty::expert);
     const auto mogg = parse_mogg_header(files.mogg);
     const auto vorbis = inspect_ogg_vorbis(files.mogg, mogg.ogg_offset);
-    auto profile = default_xinput_five_fret_profile();
-    profile.pause_button = 0;
-    FiveFretSession session(imported.chart, profile);
+    FiveFretSession session(imported.chart);
     SoftwareFramebuffer framebuffer(1280, 720);
     std::atomic<std::uint64_t> completed_frames = 0;
-    std::atomic<bool> cancel = false, playback_done = false, playback_failed = false;
+    std::atomic<bool> cancel = false, pause_audio = false;
+    std::atomic<bool> playback_done = false, playback_failed = false;
     std::mutex error_mutex;
     std::string playback_error;
     std::optional<std::uint32_t> active_controller_index;
@@ -38,7 +37,8 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
             play_mogg_blocking(
                 files.mogg, files.mix_metadata, {},
                 [&](std::uint64_t frames) { completed_frames.store(frames); },
-                [&] { return cancel.load(); });
+                [&] { return cancel.load(); },
+                [&] { return pause_audio.load(); });
         } catch (const std::exception& error) {
             std::lock_guard lock(error_mutex);
             playback_error = error.what();
@@ -55,6 +55,7 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
             const auto controller = selected.value_or(ControllerState{});
             const auto seconds = static_cast<double>(completed_frames.load()) / vorbis.sample_rate;
             static_cast<void>(session.step_to(seconds, controller));
+            pause_audio.store(session.paused());
             static_cast<void>(session.render(framebuffer));
             fill_rect(framebuffer, {0, 0, framebuffer.width(), 8},
                       selected ? 0xff2a9d50 : 0xffb43b3b);

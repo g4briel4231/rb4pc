@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.54.0 Controller-driven Song Launcher
+## Current milestone: v0.55.0 Synchronized Pause and Resume
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -395,6 +395,11 @@ up/down wraps through valid songs, A starts the selected interactive session,
 and B exits. Invalid entries remain visible in red but cannot be selected. The
 interactive player is now a reusable runtime component rather than CLI-only
 logic.
+
+Version 0.55.0 enables the Xbox Menu button during a song. The gameplay session
+and Windows `waveOut` device pause and resume together; no wall-clock fallback
+advances the chart while audio is stopped. Cancellation remains available while
+paused so closing the window cannot strand the audio worker.
 
 ```powershell
 ./build/default/rb4pc-launcher.exe "./output/songs"

@@ -11,13 +11,13 @@ FiveFretSession::FiveFretSession(TimedFiveFretChart chart, FiveFretInputProfile 
 FiveFretFrameResult FiveFretSession::step(double delta_seconds, const ControllerState& controller) {
     if (delta_seconds < 0) throw std::runtime_error("negative session frame delta");
     FiveFretFrameResult result; result.input = input_.sample(controller);
-    if (result.input.pause_pressed) {
-        paused_ = !paused_; clock_.set_paused(paused_);
-    }
     clock_.advance(delta_seconds);
     if (!paused_) {
         gameplay_.update(clock_.seconds());
         if (result.input.strum_pressed) result.hit = gameplay_.strum(result.input.lane_mask, clock_.seconds());
+    }
+    if (result.input.pause_pressed) {
+        paused_ = !paused_; clock_.set_paused(paused_);
     }
     result.gameplay_seconds = clock_.seconds(); result.paused = paused_;
     return result;
