@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.35.0 WaveOut Progress Reporting
+## Current milestone: v0.36.0 MIDI Session Planning
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -297,6 +297,16 @@ Version 0.35.0 extends the Windows `waveOut` path with optional frame-progress
 callbacks based on `TIME_SAMPLES`. Reports are monotonic and clamped to the WAVE
 frame count, a final exact completion is emitted, and callback failures reset and
 clean up the device before propagating the error.
+
+Version 0.36.0 adds a Builder plan for a user-supplied standard MIDI chart. It
+records the input SHA-256, timing information, chart duration, and five-fret
+guitar/bass counts without copying the chart. This is a source-side session plan;
+compiled RBMID payloads remain unsupported.
+
+```powershell
+./build/default/rb4pc-builder.exe "../path/to/notes.mid" `
+  --plan-midi-session "./midi-session.json"
+```
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../Rock Band VR" `

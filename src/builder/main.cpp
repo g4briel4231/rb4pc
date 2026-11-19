@@ -1,6 +1,7 @@
 #include "rb4pc/builder/build_plan.hpp"
 #include "rb4pc/builder/custom_song_catalog.hpp"
 #include "rb4pc/builder/install_plan.hpp"
+#include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 
@@ -9,6 +10,18 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--plan-midi-session") {
+        try {
+            const std::filesystem::path output_path = argv[3];
+            if (std::filesystem::exists(output_path)) throw std::runtime_error("plan destination already exists");
+            const auto plan = rb4pc::builder::create_midi_session_plan(argv[1]);
+            std::ofstream output(output_path, std::ios::binary); output << rb4pc::builder::format_json(plan);
+            if (!output) throw std::runtime_error("could not write MIDI session plan");
+            std::cout << "MIDI session plan: " << output_path.string() << '\n'
+                      << "Ready for five-fret session: " << (plan.ready ? "yes" : "no") << '\n';
+            return plan.ready ? 0 : 1;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 5 && std::string(argv[2]) == "--plan-song-install") {
         try {
             const std::filesystem::path output_path = argv[4];
@@ -25,6 +38,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "Usage: " << argv[0] << " <header.hdr> --plan <plan.json>\n"
                   << "   or: " << argv[0] << " <installation-dir> --scan-custom-songs <catalog.json>\n";
         std::cerr << "   or: " << argv[0] << " <source-dir> --plan-song-install <target-dir> <plan.json>\n";
+        std::cerr << "   or: " << argv[0] << " <notes.mid> --plan-midi-session <session.json>\n";
         return 2;
     }
     try {

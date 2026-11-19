@@ -26,6 +26,7 @@
 #include "rb4pc/runtime/five_fret_session.hpp"
 #include "rb4pc/runtime/audio_transport.hpp"
 #include "rb4pc/runtime/pcm_playback_queue.hpp"
+#include "rb4pc/builder/midi_session_plan.hpp"
 
 #include <array>
 #include <filesystem>
@@ -154,6 +155,10 @@ int main() {
     const auto custom_song_catalog = rb4pc::builder::scan_custom_songs(directory);
     const auto midi_header = rb4pc::runtime::parse_standard_midi_header(midi_path);
     const auto track_midi_summary = rb4pc::runtime::parse_standard_midi(track_midi_path);
+    auto session_midi = track_midi_summary;
+    session_midi.tracks[0].name = "PART GUITAR";
+    session_midi.tracks[0].notes[0].key = 96;
+    const auto midi_session_plan = rb4pc::builder::create_midi_session_plan(session_midi, "synthetic-sha256");
     const auto easy_five_fret = rb4pc::runtime::build_five_fret_chart(
         track_midi_summary.tracks[0], rb4pc::runtime::ChartDifficulty::easy);
     rb4pc::runtime::MidiTrackSummary chord_track;
@@ -218,6 +223,11 @@ int main() {
                          rb4pc::runtime::midi_tick_to_seconds(track_midi_summary, 480) == 0.5 &&
                          track_midi_summary.tracks[0].end_tick == 480,
                      "standard MIDI track parse mismatch");
+    passed &= expect(midi_session_plan.ready && midi_session_plan.guitar.easy_chords == 0 &&
+                         midi_session_plan.guitar.expert_chords == 1 &&
+                         midi_session_plan.duration_seconds == 0.5 &&
+                         rb4pc::builder::format_json(midi_session_plan).find("\"readyForFiveFretSession\": true") != std::string::npos,
+                     "MIDI session-plan mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,
                      "five-fret chart mapping mismatch");
