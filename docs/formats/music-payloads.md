@@ -122,3 +122,16 @@ ForgeTool: its `rbmid2mid` output is accepted as standard MIDI by the new
 five-fret importer. On the round-trip fixture, `PART GUITAR` imports 154 expert
 chords ending at 36.0833 seconds. This is currently the supported bridge from a
 ForgeTool-readable raw RBMID to the RB4PC runtime.
+
+## MOGG v10 compatibility
+
+Version 0.39.0 validates the container boundary of an unencrypted PS4 MOGG.
+The tested 14,515,799-byte file reports version 10 and an Ogg payload offset of
+3,140. The bytes at that offset begin with `OggS`, and extracting from the
+declared offset produces a 14,512,659-byte Ogg/Vorbis stream. The runtime now
+performs those checks and extraction without modifying the source MOGG.
+
+This does not generalize to opaque installed PC payloads. The extracted
+`angel3.mogg` begins with the unidentified word `0x1473cd2a`, so the v10 parser
+rejects it instead of guessing an encryption or serialization scheme. Ogg
+decoding, PCM validation, channel mapping, and playback remain separate work.

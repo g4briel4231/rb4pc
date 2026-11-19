@@ -20,6 +20,7 @@
 #include "rb4pc/runtime/midi_parser.hpp"
 #include "rb4pc/runtime/rbmid_parser.hpp"
 #include "rb4pc/runtime/five_fret_import.hpp"
+#include "rb4pc/runtime/mogg_parser.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
 #include "rb4pc/runtime/five_fret_gameplay.hpp"
@@ -123,6 +124,8 @@ int main() {
     write_file(midi_path, std::string("MThd\0\0\0\6\0\1\0\2\x01\xe0", 14));
     const auto track_midi_path = directory / "track.mid";
     const auto rbmid_path = directory / "generated.rbmid_pc";
+    const auto mogg_path = directory / "audio.mogg";
+    const auto ogg_path = directory / "audio.ogg";
     const std::array<unsigned char, 50> track_midi = {
         'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 1, 0xe0,
         'M', 'T', 'r', 'k', 0, 0, 0, 28,
@@ -133,6 +136,7 @@ int main() {
         0, 0xff, 0x2f, 0};
     write_file(track_midi_path, std::string(track_midi.begin(), track_midi.end()));
     write_file(rbmid_path, std::string("\x10\0\0\0synthetic-rbmid", 19));
+    write_file(mogg_path, std::string("\x0a\0\0\0\x0c\0\0\0\0\0\0\0OggSabc", 19));
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -162,6 +166,8 @@ int main() {
     const auto imported_five_fret = rb4pc::runtime::import_five_fret_midi(
         track_midi_path, "Test", rb4pc::runtime::ChartDifficulty::easy);
     const auto rbmid_header = rb4pc::runtime::parse_rbmid_header(rbmid_path);
+    const auto mogg_header = rb4pc::runtime::parse_mogg_header(mogg_path);
+    rb4pc::runtime::extract_mogg_ogg(mogg_path, mogg_header, ogg_path);
     auto session_midi = track_midi_summary;
     session_midi.tracks[0].name = "PART GUITAR";
     session_midi.tracks[0].notes[0].key = 96;
@@ -241,6 +247,9 @@ int main() {
                          imported_five_fret.chart.chords[0].start_seconds == 0.0 &&
                          imported_five_fret.chart.chords[0].end_seconds == 0.5,
                      "five-fret MIDI import mismatch");
+    passed &= expect(mogg_header.version == 10 && mogg_header.ogg_offset == 12 && mogg_header.embedded_ogg &&
+                         read_file(ogg_path) == "OggSabc",
+                     "MOGG embedded-Ogg extraction mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,
                      "five-fret chart mapping mismatch");
