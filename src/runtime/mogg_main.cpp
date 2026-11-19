@@ -1,14 +1,17 @@
 #include "rb4pc/runtime/mogg_parser.hpp"
+#include "rb4pc/runtime/mogg_mix.hpp"
 #include "rb4pc/runtime/vorbis_decoder.hpp"
 #include "rb4pc/runtime/vorbis_playback_queue.hpp"
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <string>
 int main(int argc, char* argv[]) {
     if (argc != 2 && !(argc == 3 && std::string(argv[2]) == "--verify-stream") &&
-        !(argc == 4 && std::string(argv[2]) == "--extract-ogg")) {
+        !(argc == 4 && (std::string(argv[2]) == "--extract-ogg" ||
+                        std::string(argv[2]) == "--verify-mix"))) {
         std::cerr << "Usage: " << argv[0]
-                  << " <input.mogg> [--verify-stream | --extract-ogg <output.ogg>]\n";
+                  << " <input.mogg> [--verify-stream | --verify-mix <mogg.dta> | --extract-ogg <output.ogg>]\n";
         return 2;
     }
     try { const auto h = rb4pc::runtime::parse_mogg_header(argv[1]);
@@ -46,7 +49,36 @@ int main(int argc, char* argv[]) {
             seek_check.mark_completed(seek_block.frame_count());
             std::cout << "Seek verification frame: " << seek_target << '\n';
         }
-        if (argc == 4) { rb4pc::runtime::extract_mogg_ogg(argv[1], h, argv[3]); std::cout << "Extracted Ogg: " << argv[3] << '\n'; }
+        if (argc == 4 && std::string(argv[2]) == "--verify-mix") {
+            const auto metadata = rb4pc::runtime::parse_mogg_mix_metadata(argv[3], vorbis.channels);
+            rb4pc::runtime::VorbisPlaybackQueue queue(argv[1], h.ogg_offset);
+            queue.play();
+            float mixed_peak = 0.0F;
+            float pre_clamp_peak = 0.0F;
+            std::uint64_t clipped_samples = 0;
+            bool finite_mix = true;
+            while (!queue.source_exhausted()) {
+                const auto block = queue.queue_next(4096);
+                if (block.frame_count() == 0) throw std::runtime_error("Vorbis mix decoder stalled");
+                const auto mixed = rb4pc::runtime::mix_mogg_to_stereo(block, metadata);
+                mixed_peak = std::max(mixed_peak, mixed.peak_amplitude);
+                pre_clamp_peak = std::max(pre_clamp_peak, mixed.pre_clamp_peak_amplitude);
+                clipped_samples += mixed.clipped_samples;
+                for (const auto sample : mixed.samples) finite_mix = finite_mix && std::isfinite(sample);
+                queue.mark_completed(block.frame_count());
+            }
+            std::cout << "Mix stems: " << metadata.stems.size()
+                      << "\nMixed frames: " << queue.transport().completed_frames()
+                      << "\nStereo peak amplitude: " << mixed_peak
+                      << "\nPre-clamp peak amplitude: " << pre_clamp_peak
+                      << "\nClipped stereo samples: " << clipped_samples
+                      << "\nFinite stereo PCM: " << (finite_mix ? "yes" : "no") << '\n';
+            if (!finite_mix || !queue.transport().finished()) return 1;
+        }
+        if (argc == 4 && std::string(argv[2]) == "--extract-ogg") {
+            rb4pc::runtime::extract_mogg_ogg(argv[1], h, argv[3]);
+            std::cout << "Extracted Ogg: " << argv[3] << '\n';
+        }
         return h.embedded_ogg ? 0 : 1;
     } catch (const std::exception& e) { std::cerr << "rb4pc-mogg-probe: " << e.what() << '\n'; return 1; }
 }

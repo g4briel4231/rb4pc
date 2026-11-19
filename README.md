@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.43.0 Streaming Vorbis Transport
+## Current milestone: v0.44.0 Metadata-driven Stem Mixing
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -336,8 +336,14 @@ completed frames with the runtime audio clock, supports safe seeking when no
 blocks are outstanding, and can verify an entire compatible MOGG without
 materializing the decoded song in memory.
 
+Version 0.44.0 parses `mogg.dta` track, pan, and volume declarations and mixes
+multichannel PCM to stereo through explicit metadata. Each named stem has an
+independent runtime level, enabling later instrument muting without assuming a
+channel order. Duplicate, missing, and out-of-range mappings are rejected.
+
 ```powershell
 ./build/default/rb4pc-mogg-probe.exe "./song.mogg" --verify-stream
+./build/default/rb4pc-mogg-probe.exe "./song.mogg" --verify-mix "./song.mogg.dta"
 ```
 
 ```powershell

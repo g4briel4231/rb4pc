@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.43.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.44.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -47,6 +47,7 @@ add_library(rb4pc_inspection
     src/runtime/mogg_parser.cpp
     src/runtime/vorbis_decoder.cpp
     src/runtime/vorbis_playback_queue.cpp
+    src/runtime/mogg_mix.cpp
     src/runtime/five_fret_chart.cpp
     src/runtime/timed_chart.cpp
     src/runtime/five_fret_gameplay.cpp

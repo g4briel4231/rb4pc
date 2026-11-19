@@ -22,6 +22,7 @@
 #include "rb4pc/runtime/rbmid_parser.hpp"
 #include "rb4pc/runtime/five_fret_import.hpp"
 #include "rb4pc/runtime/mogg_parser.hpp"
+#include "rb4pc/runtime/mogg_mix.hpp"
 #include "rb4pc/runtime/vorbis_decoder.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
@@ -132,6 +133,7 @@ int main() {
     const auto rbmid_path = directory / "generated.rbmid_pc";
     const auto mogg_path = directory / "audio.mogg";
     const auto ogg_path = directory / "audio.ogg";
+    const auto mogg_mix_path = directory / "audio.mogg.dta";
     const std::array<unsigned char, 50> track_midi = {
         'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 1, 0xe0,
         'M', 'T', 'r', 'k', 0, 0, 0, 28,
@@ -163,6 +165,9 @@ int main() {
     synthetic_mogg.push_back(0xb8);
     synthetic_mogg.push_back(1);
     write_file(mogg_path, std::string(synthetic_mogg.begin(), synthetic_mogg.end()));
+    write_file(mogg_mix_path,
+               "; synthetic mix\n(tracks ((drum (0 1))))\n"
+               "(pans (-1.0 1.0))\n(vols (0.0 0.0))\n");
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -194,6 +199,13 @@ int main() {
     const auto rbmid_header = rb4pc::runtime::parse_rbmid_header(rbmid_path);
     const auto mogg_header = rb4pc::runtime::parse_mogg_header(mogg_path);
     const auto vorbis_info = rb4pc::runtime::inspect_ogg_vorbis(mogg_path, mogg_header.ogg_offset);
+    const auto mogg_mix = rb4pc::runtime::parse_mogg_mix_metadata(mogg_mix_path, 2);
+    rb4pc::runtime::VorbisPcmBlock synthetic_multichannel{100, 2, 48'000, {0.25F, -0.5F}};
+    const auto stereo_mix = rb4pc::runtime::mix_mogg_to_stereo(synthetic_multichannel, mogg_mix);
+    rb4pc::runtime::MoggMixConfig muted_drums;
+    muted_drums.stem_levels["drum"] = 0.0F;
+    const auto muted_mix = rb4pc::runtime::mix_mogg_to_stereo(
+        synthetic_multichannel, mogg_mix, muted_drums);
     bool incomplete_vorbis_rejected = false;
     try {
         static_cast<void>(rb4pc::runtime::decode_vorbis_preview(mogg_path, mogg_header.ogg_offset, 32));
@@ -286,6 +298,13 @@ int main() {
                          vorbis_info.page_count == 1 && vorbis_info.final_granule == 48'000 &&
                          vorbis_info.duration_seconds == 1.0 && incomplete_vorbis_rejected,
                      "MOGG embedded-Ogg extraction mismatch");
+    passed &= expect(mogg_mix.stems.size() == 1 && mogg_mix.stems[0].name == "drum" &&
+                         mogg_mix.stems[0].channels == std::vector<std::uint32_t>({0, 1}) &&
+                         stereo_mix.first_frame == 100 && stereo_mix.sample_rate == 48'000 &&
+                         stereo_mix.frame_count() == 1 && stereo_mix.samples[0] == 0.25F &&
+                         stereo_mix.samples[1] == -0.5F && stereo_mix.clipped_samples == 0 &&
+                         muted_mix.peak_amplitude == 0.0F,
+                     "MOGG metadata stereo-mix mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,
                      "five-fret chart mapping mismatch");

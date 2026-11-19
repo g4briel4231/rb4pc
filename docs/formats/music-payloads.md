@@ -160,3 +160,17 @@ On the reference MOGG, the stream verifier decoded all 7,799,738 frames in
 4,096-frame blocks, found only finite PCM samples, and advanced the transport to
 176.865 seconds. It also sought to frame 3,899,869 and decoded a nonempty block
 beginning at that exact position.
+
+## Stem mix metadata
+
+Version 0.44.0 reads the reference `mogg.dta` instead of inferring channel
+semantics. It assigns drums to channels 0/1, bass to 2/3, guitar to 4/5, vocals
+to 6/7, and the backing (`fake`) stem to 8/9. Every pair uses hard left/right
+pan and the file declares -4 dB per channel. The mixer applies those values and
+independent named-stem levels while producing bounded stereo float blocks.
+
+The real-file mix verifier processed all 7,799,738 frames and five declared
+stems with finite output. The unbounded sum peaked at 1.25755; the safety clamp
+kept output at 1.0 and reported 94 clipped samples out of 15,599,476 stereo
+samples. This measurement is retained so a later loudness policy can replace
+hard limiting with evidence rather than hiding the overload.
