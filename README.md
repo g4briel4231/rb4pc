@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.36.0 MIDI Session Planning
+## Current milestone: v0.37.0 ForgeTool RBMID Compatibility Probe
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -302,6 +302,15 @@ Version 0.36.0 adds a Builder plan for a user-supplied standard MIDI chart. It
 records the input SHA-256, timing information, chart duration, and five-fret
 guitar/bass counts without copying the chart. This is a source-side session plan;
 compiled RBMID payloads remain unsupported.
+
+Version 0.37.0 recognizes the outer RBMID format value emitted by ForgeTool for
+raw RB4/RBVR RBMID files. `rb4pc-rbmid-probe` validates that envelope without
+claiming to decode the gameplay structures inside it. Installed opaque RBMID
+records that lack this header remain unsupported.
+
+```powershell
+./build/default/rb4pc-rbmid-probe.exe "./converted.rbmid_pc"
+```
 
 ```powershell
 ./build/default/rb4pc-builder.exe "../path/to/notes.mid" `

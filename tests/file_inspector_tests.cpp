@@ -18,6 +18,7 @@
 #include "rb4pc/runtime/shell.hpp"
 #include "rb4pc/runtime/shell_render.hpp"
 #include "rb4pc/runtime/midi_parser.hpp"
+#include "rb4pc/runtime/rbmid_parser.hpp"
 #include "rb4pc/runtime/five_fret_chart.hpp"
 #include "rb4pc/runtime/timed_chart.hpp"
 #include "rb4pc/runtime/five_fret_gameplay.hpp"
@@ -120,6 +121,7 @@ int main() {
     const auto midi_path = directory / "notes.mid";
     write_file(midi_path, std::string("MThd\0\0\0\6\0\1\0\2\x01\xe0", 14));
     const auto track_midi_path = directory / "track.mid";
+    const auto rbmid_path = directory / "generated.rbmid_pc";
     const std::array<unsigned char, 50> track_midi = {
         'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 1, 0xe0,
         'M', 'T', 'r', 'k', 0, 0, 0, 28,
@@ -129,6 +131,7 @@ int main() {
         0x83, 0x60, 0x80, 0x3c, 0,
         0, 0xff, 0x2f, 0};
     write_file(track_midi_path, std::string(track_midi.begin(), track_midi.end()));
+    write_file(rbmid_path, std::string("\x10\0\0\0synthetic-rbmid", 19));
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -155,6 +158,7 @@ int main() {
     const auto custom_song_catalog = rb4pc::builder::scan_custom_songs(directory);
     const auto midi_header = rb4pc::runtime::parse_standard_midi_header(midi_path);
     const auto track_midi_summary = rb4pc::runtime::parse_standard_midi(track_midi_path);
+    const auto rbmid_header = rb4pc::runtime::parse_rbmid_header(rbmid_path);
     auto session_midi = track_midi_summary;
     session_midi.tracks[0].name = "PART GUITAR";
     session_midi.tracks[0].notes[0].key = 96;
@@ -228,6 +232,8 @@ int main() {
                          midi_session_plan.duration_seconds == 0.5 &&
                          rb4pc::builder::format_json(midi_session_plan).find("\"readyForFiveFretSession\": true") != std::string::npos,
                      "MIDI session-plan mismatch");
+    passed &= expect(rbmid_header.format == rb4pc::runtime::RBMidFormat::rb4 && rbmid_header.file_size == 19,
+                     "RBMID envelope parse mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,
                      "five-fret chart mapping mismatch");

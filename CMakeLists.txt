@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.36.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.37.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -33,6 +33,7 @@ add_library(rb4pc_inspection
     src/runtime/shell.cpp
     src/runtime/shell_render.cpp
     src/runtime/midi_parser.cpp
+    src/runtime/rbmid_parser.cpp
     src/runtime/five_fret_chart.cpp
     src/runtime/timed_chart.cpp
     src/runtime/five_fret_gameplay.cpp
@@ -83,6 +84,9 @@ target_link_libraries(rb4pc-prealpha PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-midi-probe src/runtime/midi_main.cpp)
 target_link_libraries(rb4pc-midi-probe PRIVATE rb4pc_inspection)
+
+add_executable(rb4pc-rbmid-probe src/runtime/rbmid_main.cpp)
+target_link_libraries(rb4pc-rbmid-probe PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-runtime src/runtime/session_main.cpp)
 target_link_libraries(rb4pc-runtime PRIVATE rb4pc_inspection)

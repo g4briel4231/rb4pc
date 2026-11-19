@@ -106,3 +106,13 @@ Version 0.35.0 wires frame progress into the Windows `waveOut` backend through
 `TIME_SAMPLES`. The backend path compiles and the non-device test suite passes;
 automated tests deliberately do not open an audio device. A real-device playback
 run remains required before treating backend timing as hardware-validated.
+
+## ForgeTool conversion compatibility
+
+Version 0.37.0 tested a ForgeTool-generated RBMID from the public `hopos.mid`
+fixture. The resulting 32,320-byte file begins with the little-endian value
+`0x10`, which the new RBMID envelope probe recognizes as the raw RB4 format.
+The same probe rejects the extracted installed `angel3.rbmid_pc`, whose leading
+word is `0xb61e81e7`. Therefore ForgeTool outputs can now be identified by the
+runtime at the container boundary, while the installed opaque RBMID layer still
+requires separate format work.
