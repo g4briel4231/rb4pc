@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.46.0 Complete Song Session Planning
+## Current milestone: v0.47.0 End-to-end Song Session Verification
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -350,6 +350,16 @@ Version 0.46.0 lets Builder validate a complete five-fret session from a
 standard MIDI, compatible MOGG, and its `mogg.dta`. The versioned JSON records
 source hashes, chart readiness, audio format and duration, declared stems, and
 whether the MIDI timeline fits the audio. It contains no song payload bytes.
+
+Version 0.47.0 executes that contract headlessly: audio decoding and stem mixing
+advance the frame transport while deterministic autoplay consumes the timed
+expert guitar chart. Success requires finite PCM, completed audio transport,
+completed gameplay, every chord hit, and zero misses.
+
+```powershell
+./build/default/rb4pc-song-verify.exe `
+  "./notes.mid" "./song.mogg" "./song.mogg.dta"
+```
 
 ```powershell
 ./build/default/rb4pc-builder.exe "./notes.mid" --plan-song-session `
