@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.52.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.53.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -53,6 +53,7 @@ add_library(rb4pc_inspection
     src/runtime/mogg_audio_output.cpp
     src/runtime/song_session_verifier.cpp
     src/runtime/song_directory.cpp
+    src/runtime/song_library.cpp
     src/runtime/five_fret_chart.cpp
     src/runtime/timed_chart.cpp
     src/runtime/five_fret_gameplay.cpp
@@ -128,6 +129,9 @@ target_link_libraries(rb4pc-song-verify PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-song-play src/runtime/song_play_main.cpp)
 target_link_libraries(rb4pc-song-play PRIVATE rb4pc_inspection)
+
+add_executable(rb4pc-song-library src/runtime/song_library_main.cpp)
+target_link_libraries(rb4pc-song-library PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-runtime src/runtime/session_main.cpp)
 target_link_libraries(rb4pc-runtime PRIVATE rb4pc_inspection)

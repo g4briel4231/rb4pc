@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.52.0 Song-directory Integrity
+## Current milestone: v0.53.0 Verified Song Library
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
@@ -384,6 +384,15 @@ parsing or playing content. SHA-256 is recalculated for MIDI, MOGG, and mix
 metadata; missing manifests, malformed hash sets, and modified files are
 rejected. The explicit three-file expert interface remains available for format
 research.
+
+Version 0.53.0 scans a `songs/` root into a deterministic library. Every child
+directory is integrity-checked independently; valid songs remain selectable
+while malformed or modified entries are retained with an error instead of
+hiding them or aborting the whole library.
+
+```powershell
+./build/default/rb4pc-song-library.exe "./output/songs"
+```
 
 ```powershell
 ./build/default/rb4pc-builder.exe "./notes.mid" --assemble-song `

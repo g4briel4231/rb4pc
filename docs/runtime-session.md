@@ -37,6 +37,14 @@ pausing gameplay without pausing the device would violate synchronization.
 Compilation and deterministic subsystems are automated; a human/device run is
 still required before claiming hardware-interactive validation.
 
+## Verified song library
+
+Version 0.53.0 scans the conventional `songs/` directory in short-name order.
+Each child is resolved and hash-verified independently. Invalid entries include
+their diagnostic error and do not prevent valid songs from loading. This is the
+runtime data model for the upcoming song browser; it does not ingest any song
+content into the executable or repository.
+
 Version 0.10.0 adds a machine-readable diagnostic report whose capability flags
 explicitly keep audio playback, rendering, and gameplay false until those
 subsystems genuinely exist.
