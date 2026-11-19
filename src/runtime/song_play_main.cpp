@@ -16,6 +16,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Song session ended at " << result.seconds << " seconds\n"
                   << "Hits: " << result.hits << "\nMisses: " << result.misses
                   << "\nScore: " << result.score
+                  << "\nGuitar mute events: " << result.guitar_mute_events
                   << "\nCancelled: " << (result.cancelled ? "yes" : "no") << '\n';
         return 0;
     } catch (const std::exception& error) {

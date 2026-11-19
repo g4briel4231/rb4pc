@@ -56,6 +56,11 @@ and `waveOutRestart`. The audio worker continues checking cancellation while
 paused, and completed device frames remain the only gameplay time source. This
 supersedes the deliberately disabled pause behavior in v0.48.0.
 
+Version 0.56.0 connects gameplay results to the metadata-declared guitar stem.
+The mixer obtains a thread-safe configuration for each decoded output block:
+the first miss while audible lowers guitar to 0.25, and a later hit restores it
+to 1.0. The backing, drum, bass, and vocal stems are unchanged.
+
 Version 0.10.0 adds a machine-readable diagnostic report whose capability flags
 explicitly keep audio playback, rendering, and gameplay false until those
 subsystems genuinely exist.

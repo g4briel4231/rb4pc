@@ -12,6 +12,7 @@ struct InteractiveSongResult {
     std::size_t hits = 0;
     std::size_t misses = 0;
     std::uint64_t score = 0;
+    std::size_t guitar_mute_events = 0;
     bool cancelled = false;
 };
 

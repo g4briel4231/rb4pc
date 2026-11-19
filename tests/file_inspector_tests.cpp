@@ -254,6 +254,10 @@ int main() {
     const auto midi_session_plan = rb4pc::builder::create_midi_session_plan(session_midi, "synthetic-sha256");
     auto session_mix = mogg_mix;
     session_mix.stems[0].name = "guitar";
+    rb4pc::runtime::MoggMixConfig reduced_guitar;
+    reduced_guitar.stem_levels["guitar"] = 0.25F;
+    const auto reduced_guitar_mix = rb4pc::runtime::mix_mogg_to_stereo(
+        synthetic_multichannel, session_mix, reduced_guitar);
     const auto song_session_plan = rb4pc::builder::create_song_session_plan(
         midi_session_plan, mogg_header, vorbis_info, session_mix,
         "synthetic-mogg-sha256", "synthetic-mix-sha256");
@@ -350,7 +354,9 @@ int main() {
                          stereo_mix.frame_count() == 1 && stereo_mix.samples[0] == 0.25F &&
                          stereo_mix.samples[1] == -0.5F && stereo_mix.clipped_samples == 0 &&
                          pcm16_mix == std::vector<std::int16_t>({8192, -16384}) &&
-                         muted_mix.peak_amplitude == 0.0F,
+                         muted_mix.peak_amplitude == 0.0F &&
+                         reduced_guitar_mix.samples[0] == 0.0625F &&
+                         reduced_guitar_mix.samples[1] == -0.125F,
                      "MOGG metadata stereo-mix mismatch");
     passed &= expect(resolved_song.midi.filename() == "notes.mid" &&
                          resolved_song.mogg.filename() == "example.mogg" &&
