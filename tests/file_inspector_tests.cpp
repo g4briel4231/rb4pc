@@ -126,7 +126,8 @@ void write_test_texture(const std::filesystem::path& path, std::uint32_t version
     std::vector<unsigned char> bytes;
     append_u32(bytes, magic);
     append_u32(bytes, version);
-    const auto header_size = magic == 4 && version == 8 ? 164U : (version == 12 ? 124U : 172U);
+    const auto header_size = magic == 3 ? 140U :
+        (magic == 4 && version == 8 ? 164U : (version == 12 ? 124U : 172U));
     bytes.resize(bytes.size() + header_size, 0);
     append_u32(bytes, 2);
     for (const auto size : {4U, 2U}) {
@@ -139,6 +140,12 @@ void write_test_texture(const std::filesystem::path& path, std::uint32_t version
         }
     }
     append_u32(bytes, marker);
+    if (magic == 3) {
+        for (unsigned char value = 0; value < 10; ++value) bytes.push_back(value + payload_delta);
+        bytes.resize(bytes.size() + 28, 0);
+        write_file(path, std::string(bytes.begin(), bytes.end()));
+        return;
+    }
     append_u32(bytes, 8);
     for (unsigned char value = 0; value < 8; ++value) bytes.push_back(value + payload_delta);
     append_u32(bytes, 2);
@@ -164,14 +171,17 @@ int main() {
     const auto pc_texture_path = texture_directory / "texture-pc.texture";
     const auto changed_texture_path = texture_directory / "texture-changed.texture";
     const auto legacy_texture_path = texture_directory / "texture-legacy.texture";
+    const auto opaque_texture_path = texture_directory / "texture-opaque.texture";
     write_test_texture(ps4_texture_path, 12, 7);
     write_test_texture(pc_texture_path, 9, 6);
     write_test_texture(changed_texture_path, 9, 6, 1);
     write_test_texture(legacy_texture_path, 8, 6, 0, 4);
+    write_test_texture(opaque_texture_path, 7, 5, 0, 3);
     const auto ps4_texture = rb4pc::inspector::inspect_texture_container(ps4_texture_path);
     const auto pc_texture = rb4pc::inspector::inspect_texture_container(pc_texture_path);
     const auto changed_texture = rb4pc::inspector::inspect_texture_container(changed_texture_path);
     const auto legacy_texture = rb4pc::inspector::inspect_texture_container(legacy_texture_path);
+    const auto opaque_texture = rb4pc::inspector::inspect_texture_container(opaque_texture_path);
     const auto texture_match = rb4pc::inspector::compare_texture_payloads(ps4_texture, pc_texture);
     const auto texture_mismatch = rb4pc::inspector::compare_texture_payloads(ps4_texture, changed_texture);
     const auto texture_corpus = rb4pc::inspector::inspect_texture_corpus(texture_directory, ".texture");
@@ -752,10 +762,12 @@ int main() {
                          pc_texture.platform_version == 9 && pc_texture.marker == 6 &&
                          pc_texture.header_data_size == 172 && pc_texture.mipmap_entry_size == 12 &&
                          legacy_texture.magic == 4 && legacy_texture.header_data_size == 164 &&
+                         opaque_texture.magic == 3 && opaque_texture.header_data_size == 140 &&
+                         !opaque_texture.individual_mipmap_payloads && opaque_texture.payload_size == 10 &&
                          ps4_texture.mipmaps.size() == 2 && ps4_texture.mipmaps[0].data_size == 8 &&
                          texture_match.compatible && !texture_mismatch.compatible &&
-                         texture_corpus.candidate_count == 4 && texture_corpus.parsed_count == 4 &&
-                         texture_corpus.families.size() == 3 && texture_corpus.rejected_signatures.empty(),
+                         texture_corpus.candidate_count == 5 && texture_corpus.parsed_count == 5 &&
+                         texture_corpus.families.size() == 4 && texture_corpus.rejected_signatures.empty(),
                      "texture container compatibility mismatch");
     passed &= expect(json.find("\"hashIndexValidated\": true") != std::string::npos,
                      "JSON path hash validation missing");

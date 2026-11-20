@@ -44,9 +44,9 @@ TextureContainer inspect_texture_container(const std::filesystem::path& path) {
     result.path = path;
     result.magic = read_u32(input);
     result.platform_version = read_u32(input);
-    if (result.magic != 6 && result.magic != 4)
+    if (result.magic != 6 && result.magic != 4 && result.magic != 3)
         throw std::runtime_error("unsupported texture magic " + std::to_string(result.magic));
-    result.header_data_size = result.magic == 6
+    result.header_data_size = result.magic == 3 ? 0x8cU : result.magic == 6
         ? (result.platform_version == 0x0c ? 0x7cU : 0xacU)
         : (result.platform_version == 0x08 ? 0xa4U : 0xa8U);
     result.mipmap_entry_size = result.platform_version == 0x0c ? 20U : 12U;
@@ -64,6 +64,17 @@ TextureContainer inspect_texture_container(const std::filesystem::path& path) {
         result.mipmaps.push_back(mip);
     }
     result.marker = read_u32(input);
+    if (result.magic == 3) {
+        const auto position = input.tellg();
+        if (position < 0) throw std::runtime_error("could not locate opaque texture payload");
+        result.individual_mipmap_payloads = false;
+        result.payload_offset = static_cast<std::uint64_t>(position);
+        if (file_size < result.payload_offset + 0x1cU) throw std::runtime_error("truncated opaque texture payload");
+        result.payload_size = file_size - result.payload_offset - 0x1cU;
+        result.payload_sha256 = sha256_range(input, result.payload_offset, result.payload_size);
+        result.footer_size = 0x1cU;
+        return result;
+    }
     for (auto& mip : result.mipmaps) {
         mip.data_size = read_u32(input);
         const auto position = input.tellg();
@@ -80,6 +91,10 @@ TextureContainer inspect_texture_container(const std::filesystem::path& path) {
     const auto remaining = file_size - static_cast<std::uint64_t>(payload_end);
     if (remaining != 0x1c) throw std::runtime_error("unexpected texture footer size " + std::to_string(remaining));
     result.footer_size = static_cast<std::uint32_t>(remaining);
+    result.payload_offset = result.mipmaps.front().data_offset;
+    const auto last_end = result.mipmaps.back().data_offset + result.mipmaps.back().data_size;
+    result.payload_size = last_end - result.payload_offset;
+    result.payload_sha256 = sha256_range(input, result.payload_offset, result.payload_size);
     return result;
 }
 
@@ -91,10 +106,19 @@ TextureCompatibility compare_texture_payloads(const TextureContainer& source,
         const auto& right = reference.mipmaps[i];
         if (left.width != right.width || left.height != right.height) return {false, "mipmap dimensions differ"};
         if (left.flags != right.flags) return {false, "mipmap flags differ"};
-        if (left.data_size != right.data_size) return {false, "mipmap payload size differs"};
-        if (left.sha256 != right.sha256) return {false, "mipmap payload bytes differ"};
+        if (source.individual_mipmap_payloads != reference.individual_mipmap_payloads)
+            return {false, "payload layout differs"};
+        if (source.individual_mipmap_payloads) {
+            if (left.data_size != right.data_size) return {false, "mipmap payload size differs"};
+            if (left.sha256 != right.sha256) return {false, "mipmap payload bytes differ"};
+        }
     }
-    return {true, "all mipmap dimensions, flags, sizes, and payload hashes match"};
+    if (!source.individual_mipmap_payloads &&
+        (source.payload_size != reference.payload_size || source.payload_sha256 != reference.payload_sha256))
+        return {false, "opaque aggregate payload differs"};
+    return {true, source.individual_mipmap_payloads
+        ? "all mipmap dimensions, flags, sizes, and payload hashes match"
+        : "all mipmap metadata and the opaque aggregate payload hash match"};
 }
 
 std::string format_texture_report(const TextureContainer& texture) {
@@ -109,9 +133,15 @@ std::string format_texture_report(const TextureContainer& texture) {
     for (std::size_t i = 0; i < texture.mipmaps.size(); ++i) {
         const auto& mip = texture.mipmaps[i];
         output << "  [" << i << "] " << mip.width << 'x' << mip.height
-               << ", flags=" << mip.flags << ", size=" << mip.data_size
-               << ", sha256=" << mip.sha256 << '\n';
+               << ", flags=" << mip.flags;
+        if (texture.individual_mipmap_payloads)
+            output << ", size=" << mip.data_size << ", sha256=" << mip.sha256;
+        output << '\n';
     }
+    output << "Payload layout: " << (texture.individual_mipmap_payloads ? "individual mipmaps" : "opaque aggregate") << '\n'
+           << "Payload offset: " << texture.payload_offset << '\n'
+           << "Payload size: " << texture.payload_size << '\n'
+           << "Payload SHA-256: " << texture.payload_sha256 << '\n';
     output << "Footer: " << texture.footer_size << " bytes\n";
     return output.str();
 }
@@ -138,8 +168,17 @@ TextureCorpus inspect_texture_corpus(const std::filesystem::path& root, std::str
             version = read_u32(signature);
             const auto texture = inspect_texture_container(entry.path());
             const auto& first = texture.mipmaps.front();
-            const auto pixels = static_cast<std::uint64_t>(first.width) * static_cast<std::uint64_t>(first.height);
-            const auto bpp = pixels == 0 ? 0U : static_cast<std::uint32_t>(first.data_size * 8ULL / pixels);
+            std::uint32_t bpp = 0;
+            if (texture.individual_mipmap_payloads) {
+                const auto pixels = static_cast<std::uint64_t>(first.width) * static_cast<std::uint64_t>(first.height);
+                bpp = pixels == 0 ? 0U : static_cast<std::uint32_t>(first.data_size * 8ULL / pixels);
+            } else {
+                std::uint64_t pixels = 0;
+                for (const auto& mip : texture.mipmaps)
+                    pixels += static_cast<std::uint64_t>(mip.width) * static_cast<std::uint64_t>(mip.height);
+                bpp = pixels == 0 ? 0U : static_cast<std::uint32_t>(
+                    (texture.payload_size * 8ULL + pixels / 2ULL) / pixels);
+            }
             ++families[{texture.magic, texture.platform_version, first.width, first.height, first.flags,
                         static_cast<std::uint32_t>(texture.mipmaps.size()), texture.marker, bpp}];
             ++result.parsed_count;

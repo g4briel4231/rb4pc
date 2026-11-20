@@ -69,3 +69,22 @@ and does not extrapolate the difference to other versions.
 
 These results also establish that renaming based on `_ps4`/`_pc` is unreliable.
 A future converter must inspect the binary signature and structural family.
+
+## v0.59 magic-3 payloads
+
+Magic-3 versions 7 and 8 place the mipmap count at offset `0x94`, followed by
+12-byte `(width, height, flags)` entries and marker 5. The aggregate texture
+storage begins immediately after the marker. Unlike magic 4 and 6, it has no
+per-mipmap length prefixes.
+
+Across the observed corpus, aggregate lengths correspond approximately to 4,
+8, or 16 stored bits per pixel, with format- and dimension-dependent
+alignment overhead. Because that overhead prevents proven per-level boundaries,
+RB4PC reports these containers as an opaque aggregate payload. It records and
+hashes the entire range from the post-marker offset through the 28-byte footer.
+This makes all files censusable and comparable without pretending the GPU
+tiling or swizzle layout has been decoded.
+
+With this opaque representation enabled, the same 3,017-file corpus produces
+18 structural families with 3,017 successful parses and zero rejected
+signatures.

@@ -23,6 +23,10 @@ struct TextureContainer {
     std::uint32_t header_data_size = 0;
     std::uint32_t mipmap_entry_size = 0;
     std::uint32_t footer_size = 0;
+    bool individual_mipmap_payloads = true;
+    std::uint64_t payload_offset = 0;
+    std::uint64_t payload_size = 0;
+    std::string payload_sha256;
     std::vector<TextureMipmap> mipmaps;
 };
 

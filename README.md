@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.58.0 Texture Corpus Census
+## Current milestone: v0.59.0 Opaque Texture Payloads
 
 The read-only `rb4pc-texture-probe` parses Forge texture containers and compares
 each mipmap by dimensions, flags, byte length, and SHA-256. A matched PS4/PC
@@ -25,6 +25,11 @@ discarded:
 ```text
 rb4pc-texture-probe --scan <directory> <extension>
 ```
+
+Magic-3/version-7 and magic-3/version-8 containers are now parsed without
+guessing platform-specific mipmap boundaries. Their dimensions and flags are
+reported per level, while the aligned/swizzled storage is preserved as one
+opaque payload with an exact offset, size, and SHA-256.
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
