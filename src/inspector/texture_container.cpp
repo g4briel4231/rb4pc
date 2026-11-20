@@ -29,6 +29,39 @@ void skip(std::ifstream& input, std::uint64_t count) {
     input.seekg(static_cast<std::streamoff>(count), std::ios::cur);
     if (!input) throw std::runtime_error("truncated texture container");
 }
+
+void set_u32(std::array<unsigned char, 172>& bytes, std::size_t offset, std::uint32_t value) {
+    for (int shift = 0; shift < 32; shift += 8)
+        bytes[offset + static_cast<std::size_t>(shift / 8)] = static_cast<unsigned char>(value >> shift);
+}
+
+void write_u32(std::ofstream& output, std::uint32_t value) {
+    std::array<unsigned char, 4> bytes{};
+    for (int shift = 0; shift < 32; shift += 8)
+        bytes[static_cast<std::size_t>(shift / 8)] = static_cast<unsigned char>(value >> shift);
+    output.write(reinterpret_cast<const char*>(bytes.data()), 4);
+}
+
+std::array<unsigned char, 172> canonical_pc_header(std::uint32_t bits_per_pixel) {
+    std::array<unsigned char, 172> header{};
+    set_u32(header, 0x08, 0x10);
+    set_u32(header, 0x1c, 0x04);
+    set_u32(header, 0x24, 0x20);
+    set_u32(header, 0x58, 0x06);
+    set_u32(header, 0x5c, 0x10);
+    set_u32(header, 0x64, bits_per_pixel == 8 ? 3U : 1U);
+    set_u32(header, 0x68, bits_per_pixel == 8 ? 3U : 1U);
+    set_u32(header, 0x70, 0xffffffffU);
+    set_u32(header, 0x74, 0xffffffffU);
+    set_u32(header, 0x78, bits_per_pixel == 8 ? 8U : 4U);
+    set_u32(header, 0x7c, 0x02);
+    set_u32(header, 0x80, bits_per_pixel == 8 ? 4U : 1U);
+    set_u32(header, 0x84, 0x02);
+    set_u32(header, 0x88, 0x02);
+    set_u32(header, 0x90, 0x02);
+    set_u32(header, 0x94, 0x03);
+    return header;
+}
 } // namespace
 
 TextureContainer inspect_texture_container(const std::filesystem::path& path) {
@@ -215,5 +248,103 @@ std::string format_texture_corpus_report(const TextureCorpus& corpus) {
                << ", version=0x" << std::hex << std::uppercase << rejected.platform_version << std::dec << '\n';
     }
     return output.str();
+}
+
+TextureConversionResult convert_linear_ps4_texture_to_pc(
+    const std::filesystem::path& source, const std::filesystem::path& destination) {
+    if (destination.empty() || std::filesystem::exists(destination))
+        throw std::runtime_error("texture conversion destination is empty or exists");
+    const auto parent = destination.has_parent_path() ? destination.parent_path() : std::filesystem::path{"."};
+    if (!std::filesystem::is_directory(parent)) throw std::runtime_error("texture conversion directory does not exist");
+    const auto texture = inspect_texture_container(source);
+    if (texture.magic != 6 || texture.platform_version != 0x0c ||
+        !texture.individual_mipmap_payloads || texture.mipmaps.size() != 7)
+        throw std::runtime_error("conversion supports only linear magic-6/version-12 textures with seven mipmaps");
+    std::uint32_t expected_dimension = 256;
+    std::uint32_t bits_per_pixel = 0;
+    for (const auto& mip : texture.mipmaps) {
+        if (mip.width != static_cast<std::int32_t>(expected_dimension) ||
+            mip.height != static_cast<std::int32_t>(expected_dimension) || mip.flags != 1)
+            throw std::runtime_error("texture does not match the supported 256x256 square mipmap chain");
+        const auto pixels = static_cast<std::uint64_t>(expected_dimension) * expected_dimension;
+        const auto level_bpp = static_cast<std::uint32_t>(mip.data_size * 8ULL / pixels);
+        if ((level_bpp != 4 && level_bpp != 8) || mip.data_size * 8ULL != pixels * level_bpp)
+            throw std::runtime_error("texture mipmap is not a supported linear 4bpp or 8bpp payload");
+        if (bits_per_pixel == 0) bits_per_pixel = level_bpp;
+        if (level_bpp != bits_per_pixel) throw std::runtime_error("texture mipmap storage rate changes between levels");
+        expected_dimension /= 2;
+    }
+
+    std::ifstream input(source, std::ios::binary);
+    input.seekg(0, std::ios::end);
+    const auto source_size = input.tellg();
+    if (source_size < 28) throw std::runtime_error("texture source is truncated");
+    input.seekg(0);
+    std::vector<unsigned char> source_bytes(static_cast<std::size_t>(source_size));
+    input.read(reinterpret_cast<char*>(source_bytes.data()), source_size);
+    if (!input) throw std::runtime_error("could not read texture source");
+
+    auto temporary = destination;
+    temporary += ".rb4pc-part";
+    auto manifest = destination;
+    manifest += ".rb4pc-conversion.json";
+    auto manifest_temporary = manifest;
+    manifest_temporary += ".rb4pc-part";
+    if (std::filesystem::exists(temporary) || std::filesystem::exists(manifest) ||
+        std::filesystem::exists(manifest_temporary))
+        throw std::runtime_error("texture conversion temporary or manifest path exists");
+    TextureConversionResult result;
+    result.destination = destination;
+    result.manifest = manifest;
+    result.bits_per_pixel = bits_per_pixel;
+    result.source_sha256 = sha256_file(source);
+    result.payload_sha256 = texture.payload_sha256;
+    try {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        write_u32(output, 6);
+        write_u32(output, 9);
+        const auto header = canonical_pc_header(bits_per_pixel);
+        output.write(reinterpret_cast<const char*>(header.data()), static_cast<std::streamsize>(header.size()));
+        write_u32(output, static_cast<std::uint32_t>(texture.mipmaps.size()));
+        for (const auto& mip : texture.mipmaps) {
+            write_u32(output, static_cast<std::uint32_t>(mip.width));
+            write_u32(output, static_cast<std::uint32_t>(mip.height));
+            write_u32(output, static_cast<std::uint32_t>(mip.flags));
+        }
+        write_u32(output, 6);
+        for (const auto& mip : texture.mipmaps) {
+            write_u32(output, mip.data_size);
+            output.write(reinterpret_cast<const char*>(source_bytes.data() + mip.data_offset), mip.data_size);
+        }
+        output.write(reinterpret_cast<const char*>(source_bytes.data() + source_bytes.size() - 28), 28);
+        output.close();
+        if (!output) throw std::runtime_error("could not write converted texture");
+        std::filesystem::rename(temporary, destination);
+        const auto converted = inspect_texture_container(destination);
+        const auto comparison = compare_texture_payloads(texture, converted);
+        if (converted.magic != 6 || converted.platform_version != 9 || converted.marker != 6 ||
+            !comparison.compatible)
+            throw std::runtime_error("converted texture failed structural or payload verification");
+        result.destination_sha256 = sha256_file(destination);
+        std::ofstream manifest_output(manifest_temporary, std::ios::binary | std::ios::trunc);
+        if (!manifest_output) throw std::runtime_error("could not create texture conversion manifest");
+        manifest_output << "{\n  \"schemaVersion\": 1,\n"
+                        << "  \"conversion\": \"linear-ps4-v12-to-pc-v9\",\n"
+                        << "  \"bitsPerPixel\": " << bits_per_pixel << ",\n"
+                        << "  \"sourceSha256\": \"" << result.source_sha256 << "\",\n"
+                        << "  \"destinationSha256\": \"" << result.destination_sha256 << "\",\n"
+                        << "  \"payloadSha256\": \"" << result.payload_sha256 << "\"\n}\n";
+        manifest_output.close();
+        if (!manifest_output) throw std::runtime_error("could not finalize texture conversion manifest");
+        std::filesystem::rename(manifest_temporary, manifest);
+    } catch (...) {
+        std::error_code ignored;
+        std::filesystem::remove(temporary, ignored);
+        std::filesystem::remove(manifest_temporary, ignored);
+        std::filesystem::remove(manifest, ignored);
+        std::filesystem::remove(destination, ignored);
+        throw;
+    }
+    return result;
 }
 } // namespace rb4pc::inspector

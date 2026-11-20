@@ -62,6 +62,15 @@ struct TextureCorpus {
     std::vector<TextureRejectedSignature> rejected_signatures;
 };
 
+struct TextureConversionResult {
+    std::filesystem::path destination;
+    std::filesystem::path manifest;
+    std::uint32_t bits_per_pixel = 0;
+    std::string source_sha256;
+    std::string destination_sha256;
+    std::string payload_sha256;
+};
+
 [[nodiscard]] TextureContainer inspect_texture_container(const std::filesystem::path& path);
 [[nodiscard]] TextureCompatibility compare_texture_payloads(
     const TextureContainer& source, const TextureContainer& reference);
@@ -69,4 +78,6 @@ struct TextureCorpus {
 [[nodiscard]] TextureCorpus inspect_texture_corpus(
     const std::filesystem::path& root, std::string extension);
 [[nodiscard]] std::string format_texture_corpus_report(const TextureCorpus& corpus);
+[[nodiscard]] TextureConversionResult convert_linear_ps4_texture_to_pc(
+    const std::filesystem::path& source, const std::filesystem::path& destination);
 } // namespace rb4pc::inspector

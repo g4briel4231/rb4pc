@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.59.0 Opaque Texture Payloads
+## Current milestone: v0.60.0 Verified Linear Texture Conversion
 
 The read-only `rb4pc-texture-probe` parses Forge texture containers and compares
 each mipmap by dimensions, flags, byte length, and SHA-256. A matched PS4/PC
@@ -30,6 +30,19 @@ Magic-3/version-7 and magic-3/version-8 containers are now parsed without
 guessing platform-specific mipmap boundaries. Their dimensions and flags are
 reported per level, while the aligned/swizzled storage is preserved as one
 opaque payload with an exact offset, size, and SHA-256.
+
+The probe can now convert the proven linear PS4 family—magic 6/version 12,
+256x256, seven mipmaps, and 4 or 8 stored bits per pixel—to the canonical PC
+magic-6/version-9 container:
+
+```text
+rb4pc-texture-probe --convert-pc <source.png_ps4> <destination.png_pc>
+```
+
+The operation preserves every mipmap and the footer, writes a hash manifest,
+refuses unsupported families or existing destinations, and reopens the result
+before success. Generated 4bpp and 8bpp samples were also accepted by
+LibForge's independent `TextureReader`.
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,

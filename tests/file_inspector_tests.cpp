@@ -155,6 +155,30 @@ void write_test_texture(const std::filesystem::path& path, std::uint32_t version
     write_file(path, std::string(bytes.begin(), bytes.end()));
 }
 
+void write_convertible_ps4_texture(const std::filesystem::path& path, std::uint32_t bits_per_pixel) {
+    std::vector<unsigned char> bytes;
+    append_u32(bytes, 6);
+    append_u32(bytes, 12);
+    bytes.resize(bytes.size() + 124, 0);
+    append_u32(bytes, 7);
+    for (std::uint32_t size = 256; size >= 4; size /= 2) {
+        append_u32(bytes, size);
+        append_u32(bytes, size);
+        append_u32(bytes, 1);
+        append_u32(bytes, 0);
+        append_u32(bytes, 0);
+    }
+    append_u32(bytes, 7);
+    unsigned char value = 0;
+    for (std::uint32_t size = 256; size >= 4; size /= 2) {
+        const auto payload_size = size * size * bits_per_pixel / 8;
+        append_u32(bytes, payload_size);
+        for (std::uint32_t i = 0; i < payload_size; ++i) bytes.push_back(value++);
+    }
+    bytes.resize(bytes.size() + 28, 0);
+    write_file(path, std::string(bytes.begin(), bytes.end()));
+}
+
 } // namespace
 
 int main() {
@@ -185,6 +209,22 @@ int main() {
     const auto texture_match = rb4pc::inspector::compare_texture_payloads(ps4_texture, pc_texture);
     const auto texture_mismatch = rb4pc::inspector::compare_texture_payloads(ps4_texture, changed_texture);
     const auto texture_corpus = rb4pc::inspector::inspect_texture_corpus(texture_directory, ".texture");
+    const auto convertible_texture_path = texture_directory / "convertible.texture";
+    const auto converted_texture_path = texture_directory / "converted.texture";
+    const auto convertible_texture_8bpp_path = texture_directory / "convertible-8bpp.texture";
+    const auto converted_texture_8bpp_path = texture_directory / "converted-8bpp.texture";
+    write_convertible_ps4_texture(convertible_texture_path, 4);
+    write_convertible_ps4_texture(convertible_texture_8bpp_path, 8);
+    const auto texture_conversion = rb4pc::inspector::convert_linear_ps4_texture_to_pc(
+        convertible_texture_path, converted_texture_path);
+    const auto converted_texture = rb4pc::inspector::inspect_texture_container(converted_texture_path);
+    const auto texture_conversion_8bpp = rb4pc::inspector::convert_linear_ps4_texture_to_pc(
+        convertible_texture_8bpp_path, converted_texture_8bpp_path);
+    const auto converted_texture_8bpp = rb4pc::inspector::inspect_texture_container(converted_texture_8bpp_path);
+    std::ifstream converted_texture_8bpp_stream(converted_texture_8bpp_path, std::ios::binary);
+    const auto converted_texture_8bpp_header_hash = rb4pc::inspector::sha256_range(
+        converted_texture_8bpp_stream, 8, 172);
+    converted_texture_8bpp_stream.close();
 
     write_file(hash_path, contents);
     write_file(directory / "main_ps4_2.ark", "two");
@@ -767,7 +807,16 @@ int main() {
                          ps4_texture.mipmaps.size() == 2 && ps4_texture.mipmaps[0].data_size == 8 &&
                          texture_match.compatible && !texture_mismatch.compatible &&
                          texture_corpus.candidate_count == 5 && texture_corpus.parsed_count == 5 &&
-                         texture_corpus.families.size() == 4 && texture_corpus.rejected_signatures.empty(),
+                         texture_corpus.families.size() == 4 && texture_corpus.rejected_signatures.empty() &&
+                         texture_conversion.bits_per_pixel == 4 && converted_texture.platform_version == 9 &&
+                         texture_conversion_8bpp.bits_per_pixel == 8 && converted_texture_8bpp.platform_version == 9 &&
+                         converted_texture_8bpp_header_hash ==
+                             "315085bf74c6a6bc6a52a380eb8d3cffdd70d6fce5acc7688efe9cfca884f06c" &&
+                         converted_texture.marker == 6 && converted_texture.mipmaps.size() == 7 &&
+                         std::filesystem::is_regular_file(texture_conversion.manifest) &&
+                         rb4pc::inspector::compare_texture_payloads(
+                             rb4pc::inspector::inspect_texture_container(convertible_texture_path),
+                             converted_texture).compatible,
                      "texture container compatibility mismatch");
     passed &= expect(json.find("\"hashIndexValidated\": true") != std::string::npos,
                      "JSON path hash validation missing");

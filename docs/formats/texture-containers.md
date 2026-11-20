@@ -88,3 +88,32 @@ tiling or swizzle layout has been decoded.
 With this opaque representation enabled, the same 3,017-file corpus produces
 18 structural families with 3,017 successful parses and zero rejected
 signatures.
+
+## v0.60 linear PS4-to-PC conversion
+
+The first write path is intentionally restricted to the family for which the
+PC container metadata is supported by a large corpus:
+
+- source magic 6, version `0x0c`, marker 7;
+- 256x256 base image with seven square mipmaps through 4x4;
+- flag 1 on every level;
+- a consistent linear storage rate of either 4 or 8 bits per pixel.
+
+The canonical 172-byte PC header is constant across 201 observed 4bpp files and
+89 observed 8bpp files. The 4bpp header also matches byte-for-byte the public
+LibForge 256x256 header template after separating its embedded version field.
+The 8bpp family differs at only four header byte positions and the generated
+header hash matches all 89 observed examples.
+
+Conversion changes the platform version to `0x09`, emits the canonical header,
+drops the PS4-only eight bytes from each mipmap entry, changes marker 7 to 6,
+and copies every length-prefixed mipmap and the 28-byte footer without altering
+them. It creates a JSON manifest containing source, destination, and payload
+SHA-256 values. The output is parsed again and compared to the source before
+the operation succeeds.
+
+Two real conversions, one 4bpp and one 8bpp, were accepted by both the RB4PC
+parser and the independent LibForge `TextureReader`. This proves container
+readability and payload preservation; it does not yet prove rendering by the
+Rock Band VR engine. Magic-3, magic-4, version-8, 512x512, and other families
+remain read-only.
