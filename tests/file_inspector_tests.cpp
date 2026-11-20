@@ -8,6 +8,7 @@
 #include "rb4pc/inspector/record_extractor.hpp"
 #include "rb4pc/inspector/riff_parser.hpp"
 #include "rb4pc/inspector/sha256.hpp"
+#include "rb4pc/inspector/texture_container.hpp"
 #include "rb4pc/runtime/archive_file_system.hpp"
 #include "rb4pc/runtime/wave_loader.hpp"
 #include "rb4pc/runtime/pcm_stream.hpp"
@@ -119,6 +120,32 @@ void write_test_hdr(const std::filesystem::path& path) {
     output.write(reinterpret_cast<const char*>(encoded.data()), static_cast<std::streamsize>(encoded.size()));
 }
 
+void write_test_texture(const std::filesystem::path& path, std::uint32_t version,
+                        std::uint32_t marker, unsigned char payload_delta = 0) {
+    std::vector<unsigned char> bytes;
+    append_u32(bytes, 6);
+    append_u32(bytes, version);
+    bytes.resize(bytes.size() + (version == 12 ? 124 : 172), 0);
+    append_u32(bytes, 2);
+    for (const auto size : {4U, 2U}) {
+        append_u32(bytes, size);
+        append_u32(bytes, size);
+        append_u32(bytes, 1);
+        if (version == 12) {
+            append_u32(bytes, 0);
+            append_u32(bytes, 0);
+        }
+    }
+    append_u32(bytes, marker);
+    append_u32(bytes, 8);
+    for (unsigned char value = 0; value < 8; ++value) bytes.push_back(value + payload_delta);
+    append_u32(bytes, 2);
+    bytes.push_back(0xaa + payload_delta);
+    bytes.push_back(0x55 + payload_delta);
+    bytes.resize(bytes.size() + 28, 0);
+    write_file(path, std::string(bytes.begin(), bytes.end()));
+}
+
 } // namespace
 
 int main() {
@@ -128,6 +155,18 @@ int main() {
     const auto hash_path = directory / "hash-test.bin";
     const auto path = directory / "main_ps4.hdr";
     const std::string contents = "abc";
+
+    const auto ps4_texture_path = directory / "texture-ps4.bin";
+    const auto pc_texture_path = directory / "texture-pc.bin";
+    const auto changed_texture_path = directory / "texture-changed.bin";
+    write_test_texture(ps4_texture_path, 12, 7);
+    write_test_texture(pc_texture_path, 9, 6);
+    write_test_texture(changed_texture_path, 9, 6, 1);
+    const auto ps4_texture = rb4pc::inspector::inspect_texture_container(ps4_texture_path);
+    const auto pc_texture = rb4pc::inspector::inspect_texture_container(pc_texture_path);
+    const auto changed_texture = rb4pc::inspector::inspect_texture_container(changed_texture_path);
+    const auto texture_match = rb4pc::inspector::compare_texture_payloads(ps4_texture, pc_texture);
+    const auto texture_mismatch = rb4pc::inspector::compare_texture_payloads(ps4_texture, changed_texture);
 
     write_file(hash_path, contents);
     write_file(directory / "main_ps4_2.ark", "two");
@@ -700,6 +739,13 @@ int main() {
                      "JSON analysis method missing");
     passed &= expect(json.find("\"version\": 10") != std::string::npos,
                      "JSON decoded HDR version missing");
+    passed &= expect(ps4_texture.platform_version == 12 && ps4_texture.marker == 7 &&
+                         ps4_texture.header_data_size == 124 && ps4_texture.mipmap_entry_size == 20 &&
+                         pc_texture.platform_version == 9 && pc_texture.marker == 6 &&
+                         pc_texture.header_data_size == 172 && pc_texture.mipmap_entry_size == 12 &&
+                         ps4_texture.mipmaps.size() == 2 && ps4_texture.mipmaps[0].data_size == 8 &&
+                         texture_match.compatible && !texture_mismatch.compatible,
+                     "texture container compatibility mismatch");
     passed &= expect(json.find("\"hashIndexValidated\": true") != std::string::npos,
                      "JSON path hash validation missing");
 

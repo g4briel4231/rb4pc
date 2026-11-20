@@ -1,5 +1,6 @@
 #include "rb4pc/inspector/sha256.hpp"
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cstdint>
@@ -90,21 +91,34 @@ private:
 
 } // namespace
 
-std::string sha256_file(const std::filesystem::path& path) {
-    std::ifstream input(path, std::ios::binary);
-    if (!input) throw std::runtime_error("could not open file for hashing: " + path.string());
-
+std::string sha256_range(std::istream& input, std::uint64_t offset, std::uint64_t size) {
+    input.clear();
+    input.seekg(static_cast<std::streamoff>(offset));
+    if (!input) throw std::runtime_error("could not seek to hash range");
     Sha256 hash;
     std::array<unsigned char, 64 * 1024> chunk{};
-    while (input) {
-        input.read(reinterpret_cast<char*>(chunk.data()), static_cast<std::streamsize>(chunk.size()));
-        hash.update(chunk.data(), static_cast<std::size_t>(input.gcount()));
+    while (size != 0) {
+        const auto count = static_cast<std::size_t>(std::min<std::uint64_t>(size, chunk.size()));
+        input.read(reinterpret_cast<char*>(chunk.data()), static_cast<std::streamsize>(count));
+        if (static_cast<std::size_t>(input.gcount()) != count)
+            throw std::runtime_error("unexpected end of hash range");
+        hash.update(chunk.data(), count);
+        size -= count;
     }
-
     std::ostringstream output;
     output << std::hex << std::setfill('0');
     for (const auto word : hash.finish()) output << std::setw(8) << word;
     return output.str();
+}
+
+std::string sha256_file(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) throw std::runtime_error("could not open file for hashing: " + path.string());
+
+    input.seekg(0, std::ios::end);
+    const auto size = input.tellg();
+    if (size < 0) throw std::runtime_error("could not determine file size for hashing");
+    return sha256_range(input, 0, static_cast<std::uint64_t>(size));
 }
 
 } // namespace rb4pc::inspector

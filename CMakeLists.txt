@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.56.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.57.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -31,6 +31,7 @@ add_library(rb4pc_inspection
     src/inspector/record_extractor.cpp
     src/inspector/riff_parser.cpp
     src/inspector/sha256.cpp
+    src/inspector/texture_container.cpp
     src/runtime/archive_file_system.cpp
     src/runtime/wave_loader.cpp
     src/runtime/pcm_stream.cpp
@@ -85,6 +86,9 @@ add_executable(rb4pc-forge-inspector
     src/inspector/main.cpp
 )
 target_link_libraries(rb4pc-forge-inspector PRIVATE rb4pc_inspection)
+
+add_executable(rb4pc-texture-probe src/inspector/texture_main.cpp)
+target_link_libraries(rb4pc-texture-probe PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-builder src/builder/main.cpp)
 target_link_libraries(rb4pc-builder PRIVATE rb4pc_inspection)

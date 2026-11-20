@@ -8,7 +8,14 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.56.0 Gameplay-driven Guitar Stem
+## Current milestone: v0.57.0 Texture Container Probe
+
+The read-only `rb4pc-texture-probe` parses Forge texture containers and compares
+each mipmap by dimensions, flags, byte length, and SHA-256. A matched PS4/PC
+sample proved byte-identical mipmap payloads despite different platform headers;
+see [`docs/formats/texture-containers.md`](docs/formats/texture-containers.md).
+No texture conversion is emitted until the opaque PC header fields are verified
+across multiple paired samples.
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
