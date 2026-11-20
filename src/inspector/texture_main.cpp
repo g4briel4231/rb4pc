@@ -2,10 +2,22 @@
 
 #include <exception>
 #include <iostream>
+#include <string>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[1]) == "--scan") {
+        try {
+            const auto corpus = rb4pc::inspector::inspect_texture_corpus(argv[2], argv[3]);
+            std::cout << rb4pc::inspector::format_texture_corpus_report(corpus);
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "texture-probe: " << error.what() << '\n';
+            return 1;
+        }
+    }
     if (argc != 2 && argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " <texture-container> [reference-container]\n";
+        std::cerr << "Usage: " << argv[0] << " <texture-container> [reference-container]\n"
+                  << "       " << argv[0] << " --scan <directory> <extension>\n";
         return 2;
     }
     try {

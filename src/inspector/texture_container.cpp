@@ -5,8 +5,11 @@
 #include <fstream>
 #include <iomanip>
 #include <limits>
+#include <map>
 #include <sstream>
 #include <stdexcept>
+#include <tuple>
+#include <utility>
 
 namespace rb4pc::inspector {
 namespace {
@@ -44,7 +47,8 @@ TextureContainer inspect_texture_container(const std::filesystem::path& path) {
     if (result.magic != 6 && result.magic != 4)
         throw std::runtime_error("unsupported texture magic " + std::to_string(result.magic));
     result.header_data_size = result.magic == 6
-        ? (result.platform_version == 0x0c ? 0x7cU : 0xacU) : 0xa8U;
+        ? (result.platform_version == 0x0c ? 0x7cU : 0xacU)
+        : (result.platform_version == 0x08 ? 0xa4U : 0xa8U);
     result.mipmap_entry_size = result.platform_version == 0x0c ? 20U : 12U;
     skip(input, result.header_data_size);
     const auto level_count = read_u32(input);
@@ -109,6 +113,68 @@ std::string format_texture_report(const TextureContainer& texture) {
                << ", sha256=" << mip.sha256 << '\n';
     }
     output << "Footer: " << texture.footer_size << " bytes\n";
+    return output.str();
+}
+
+TextureCorpus inspect_texture_corpus(const std::filesystem::path& root, std::string extension) {
+    if (!std::filesystem::is_directory(root)) throw std::runtime_error("texture corpus root is not a directory");
+    if (extension.empty() || extension.front() != '.') throw std::runtime_error("texture corpus extension must begin with a dot");
+    TextureCorpus result;
+    result.root = root;
+    result.extension = std::move(extension);
+    using FamilyKey = std::tuple<std::uint32_t, std::uint32_t, std::int32_t, std::int32_t,
+                                 std::int32_t, std::uint32_t, std::uint32_t, std::uint32_t>;
+    std::map<FamilyKey, std::uint64_t> families;
+    std::map<std::pair<std::uint32_t, std::uint32_t>, std::uint64_t> rejected;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+        if (!entry.is_regular_file() || entry.path().extension().string() != result.extension) continue;
+        ++result.candidate_count;
+        std::ifstream signature(entry.path(), std::ios::binary);
+        if (!signature) continue;
+        std::uint32_t magic = 0;
+        std::uint32_t version = 0;
+        try {
+            magic = read_u32(signature);
+            version = read_u32(signature);
+            const auto texture = inspect_texture_container(entry.path());
+            const auto& first = texture.mipmaps.front();
+            const auto pixels = static_cast<std::uint64_t>(first.width) * static_cast<std::uint64_t>(first.height);
+            const auto bpp = pixels == 0 ? 0U : static_cast<std::uint32_t>(first.data_size * 8ULL / pixels);
+            ++families[{texture.magic, texture.platform_version, first.width, first.height, first.flags,
+                        static_cast<std::uint32_t>(texture.mipmaps.size()), texture.marker, bpp}];
+            ++result.parsed_count;
+        } catch (const std::exception&) {
+            ++rejected[{magic, version}];
+        }
+    }
+    for (const auto& [key, count] : families) {
+        const auto& [magic, version, width, height, flags, levels, marker, bpp] = key;
+        result.families.push_back({magic, version, width, height, flags, levels, marker, bpp, count});
+    }
+    for (const auto& [key, count] : rejected)
+        result.rejected_signatures.push_back({key.first, key.second, count});
+    return result;
+}
+
+std::string format_texture_corpus_report(const TextureCorpus& corpus) {
+    std::ostringstream output;
+    output << "Texture corpus: " << corpus.root.string() << '\n'
+           << "Extension: " << corpus.extension << '\n'
+           << "Candidates: " << corpus.candidate_count << '\n'
+           << "Parsed: " << corpus.parsed_count << '\n'
+           << "Families: " << corpus.families.size() << '\n';
+    for (const auto& family : corpus.families) {
+        output << "  count=" << family.file_count << ", magic=" << family.magic
+               << ", version=0x" << std::hex << std::uppercase << family.platform_version << std::dec
+               << ", base=" << family.width << 'x' << family.height
+               << ", flags=" << family.flags << ", mipmaps=" << family.mipmap_count
+               << ", marker=" << family.marker << ", bpp=" << family.bits_per_pixel << '\n';
+    }
+    output << "Rejected signatures: " << corpus.rejected_signatures.size() << '\n';
+    for (const auto& rejected : corpus.rejected_signatures) {
+        output << "  count=" << rejected.file_count << ", magic=" << rejected.magic
+               << ", version=0x" << std::hex << std::uppercase << rejected.platform_version << std::dec << '\n';
+    }
     return output.str();
 }
 } // namespace rb4pc::inspector

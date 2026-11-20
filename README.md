@@ -8,7 +8,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.57.0 Texture Container Probe
+## Current milestone: v0.58.0 Texture Corpus Census
 
 The read-only `rb4pc-texture-probe` parses Forge texture containers and compares
 each mipmap by dimensions, flags, byte length, and SHA-256. A matched PS4/PC
@@ -16,6 +16,15 @@ sample proved byte-identical mipmap payloads despite different platform headers;
 see [`docs/formats/texture-containers.md`](docs/formats/texture-containers.md).
 No texture conversion is emitted until the opaque PC header fields are verified
 across multiple paired samples.
+
+The probe can now scan a directory recursively and group supported containers
+by magic, platform version, base dimensions, flags, mipmap count, marker, and
+stored bits per pixel. Unsupported signatures are counted rather than silently
+discarded:
+
+```text
+rb4pc-texture-probe --scan <directory> <extension>
+```
 
 The first executable is `rb4pc-forge-inspector`, a read-only tool for recording
 verifiable properties of candidate files. It reports the file size, SHA-256,
