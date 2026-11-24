@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.61.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.62.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -56,6 +56,7 @@ add_library(rb4pc_inspection
     src/runtime/song_directory.cpp
     src/runtime/song_library.cpp
     src/runtime/song_browser.cpp
+    src/runtime/artwork_texture.cpp
     src/runtime/interactive_song.cpp
     src/runtime/five_fret_chart.cpp
     src/runtime/timed_chart.cpp

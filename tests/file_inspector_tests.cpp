@@ -38,6 +38,7 @@
 #include "rb4pc/runtime/five_fret_session.hpp"
 #include "rb4pc/runtime/audio_transport.hpp"
 #include "rb4pc/runtime/pcm_playback_queue.hpp"
+#include "rb4pc/runtime/artwork_texture.hpp"
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
 #include "rb4pc/builder/song_assembler.hpp"
@@ -170,11 +171,15 @@ void write_convertible_ps4_texture(const std::filesystem::path& path, std::uint3
         append_u32(bytes, 0);
     }
     append_u32(bytes, 7);
-    unsigned char value = 0;
     for (std::uint32_t size = 256; size >= 4; size /= 2) {
         const auto payload_size = size * size * bits_per_pixel / 8;
         append_u32(bytes, payload_size);
-        for (std::uint32_t i = 0; i < payload_size; ++i) bytes.push_back(value++);
+        const std::array<unsigned char, 16> red_bc3 = {
+            0xff, 0xff, 0, 0, 0, 0, 0, 0,
+            0x00, 0xf8, 0, 0, 0, 0, 0, 0};
+        const auto block_size = bits_per_pixel == 4 ? 8U : 16U;
+        for (std::uint32_t offset = 0; offset < payload_size; offset += block_size)
+            bytes.insert(bytes.end(), red_bc3.end() - block_size, red_bc3.end());
     }
     bytes.resize(bytes.size() + 28, 0);
     write_file(path, std::string(bytes.begin(), bytes.end()));
@@ -222,6 +227,8 @@ int main() {
     const auto texture_conversion_8bpp = rb4pc::inspector::convert_linear_ps4_texture_to_pc(
         convertible_texture_8bpp_path, converted_texture_8bpp_path);
     const auto converted_texture_8bpp = rb4pc::inspector::inspect_texture_container(converted_texture_8bpp_path);
+    const auto decoded_texture = rb4pc::runtime::decode_artwork_texture(converted_texture_path);
+    const auto decoded_texture_8bpp = rb4pc::runtime::decode_artwork_texture(converted_texture_8bpp_path);
     std::ifstream converted_texture_8bpp_stream(converted_texture_8bpp_path, std::ios::binary);
     const auto converted_texture_8bpp_header_hash = rb4pc::inspector::sha256_range(
         converted_texture_8bpp_stream, 8, 172);
@@ -318,6 +325,11 @@ int main() {
         assembly_midi_path, mogg_path, assembly_mix_path, convertible_texture_path,
         directory / "assembly-output", "synthart");
     const auto resolved_with_art = rb4pc::runtime::resolve_song_directory(assembled_with_art.directory);
+    const auto artwork_library = rb4pc::runtime::scan_song_library(directory / "assembly-output" / "songs");
+    rb4pc::runtime::SongBrowserModel artwork_browser(artwork_library);
+    rb4pc::runtime::SoftwareFramebuffer artwork_browser_framebuffer(640, 360);
+    rb4pc::runtime::render_song_browser(
+        artwork_browser_framebuffer, artwork_library, artwork_browser, true);
     const auto valid_artwork_manifest = read_file(assembled_with_art.manifest);
     write_file(assembled_with_art.manifest,
                "{\"schemaVersion\":2,\"hashes\":{\"midi\":\"" +
@@ -449,6 +461,8 @@ int main() {
                          resolved_with_art.integrity_verified && resolved_with_art.artwork_integrity_verified &&
                          resolved_with_art.artwork.has_value() &&
                          resolved_with_art.artwork_conversion_manifest.has_value() &&
+                         artwork_library.valid_entries == 1 &&
+                         artwork_browser_framebuffer.pixels()[90U * 640U + 34U] == 0xffff0000U &&
                          malformed_artwork_rejected &&
                          tampered_artwork_rejected,
                      "artwork song assembly or integrity validation mismatch");
@@ -858,6 +872,9 @@ int main() {
                          texture_corpus.families.size() == 4 && texture_corpus.rejected_signatures.empty() &&
                          texture_conversion.bits_per_pixel == 4 && converted_texture.platform_version == 9 &&
                          texture_conversion_8bpp.bits_per_pixel == 8 && converted_texture_8bpp.platform_version == 9 &&
+                         decoded_texture.width == 256 && decoded_texture.height == 256 &&
+                         decoded_texture.pixels.front() == 0xffff0000U &&
+                         decoded_texture_8bpp.pixels.front() == 0xffff0000U &&
                          converted_texture_8bpp_header_hash ==
                              "315085bf74c6a6bc6a52a380eb8d3cffdd70d6fce5acc7688efe9cfca884f06c" &&
                          converted_texture.marker == 6 && converted_texture.mipmaps.size() == 7 &&

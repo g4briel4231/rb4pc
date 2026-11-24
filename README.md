@@ -20,7 +20,7 @@ The official RB4PC visual identity is stored in
 `rb4pc-icon2.png` is the selected repository icon, while
 `rb4pc-icon1.png` is retained as its first variant.
 
-## Current milestone: v0.61.0 Artwork-Aware Song Assembly
+## Current milestone: v0.62.0 Runtime Artwork Rendering
 
 The builder can now assemble a conventional `songs/<shortname>/` directory from
 validated MIDI, MOGG, mix metadata, and a supported PS4 artwork texture. Artwork
@@ -35,6 +35,9 @@ rb4pc-builder --assemble-song-with-art <notes.mid> <song.mogg> <song.mogg.dta> <
 The runtime accepts legacy manifests and schema version 1 core-song manifests.
 For schema version 2 it requires a complete artwork block, the canonical
 filenames, both files, and matching hashes before exposing the song directory.
+The song browser now decodes the selected song's validated BC1/BC3 artwork and
+renders it directly into the software framebuffer, with the previous layout as
+a fallback for songs without artwork.
 
 The probe can now scan a directory recursively and group supported containers
 by magic, platform version, base dimensions, flags, mipmap count, marker, and

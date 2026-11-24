@@ -137,3 +137,10 @@ Artwork assemblies use session schema version 2. The runtime requires the
 canonical artwork filenames and verifies the SHA-256 of both the converted
 texture and its conversion manifest. A missing, malformed, renamed, or modified
 artwork artifact rejects the directory before it can be used by the runtime.
+
+## v0.62 runtime artwork decoding
+
+The runtime decodes the first mipmap of the supported PC texture family as BC1
+for 4bpp payloads and BC3 for 8bpp payloads. Decoded pixels use the runtime's
+32-bit framebuffer format and can be scaled into the song browser. Automated
+fixtures cover both compression modes with a known opaque-red result.

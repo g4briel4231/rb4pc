@@ -1,5 +1,6 @@
 #include "rb4pc/runtime/song_browser.hpp"
 
+#include "rb4pc/runtime/artwork_texture.hpp"
 #include "rb4pc/runtime/controller_icons.hpp"
 #include "rb4pc/runtime/ui.hpp"
 
@@ -35,14 +36,25 @@ void render_song_browser(SoftwareFramebuffer& framebuffer, const SongLibrary& li
     fill_rect(framebuffer, {0, 0, framebuffer.width(), 10},
               controller_connected ? 0xff2a9d50 : 0xffb43b3b);
     const auto selected = browser.empty() ? library.entries.size() : browser.selected_library_index();
-    const auto width = framebuffer.width() > 160 ? framebuffer.width() - 160 : framebuffer.width();
+    auto list_x = 80U;
+    if (!browser.empty() && browser.selected().files.artwork && framebuffer.width() >= 360) {
+        try {
+            const auto artwork = decode_artwork_texture(*browser.selected().files.artwork);
+            render_artwork(framebuffer, artwork, 24, 80, 128, 128);
+            stroke_rect(framebuffer, {24, 80, 128, 128}, 0xff88a3bd, 2);
+            list_x = 176;
+        } catch (const std::exception&) {
+        }
+    }
+    const auto width = framebuffer.width() > list_x + 80 ? framebuffer.width() - list_x - 80
+                                                         : framebuffer.width() - list_x;
     for (std::size_t index = 0; index < library.entries.size(); ++index) {
         const auto y = static_cast<std::uint32_t>(80 + index * 52);
         if (y + 36 >= framebuffer.height()) break;
         const auto color = !library.entries[index].valid ? 0xff6c2730
                          : index == selected ? 0xffd08a28 : 0xff263d52;
-        fill_rect(framebuffer, {80, y, width, 36}, color);
-        stroke_rect(framebuffer, {80, y, width, 36}, 0xff88a3bd, 1);
+        fill_rect(framebuffer, {list_x, y, width, 36}, color);
+        stroke_rect(framebuffer, {list_x, y, width, 36}, 0xff88a3bd, 1);
     }
     if (framebuffer.width() >= 120 && framebuffer.height() >= 60) {
         render_controller_icon(framebuffer, ControllerPrompt::a,
