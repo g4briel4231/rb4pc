@@ -151,7 +151,9 @@ std::size_t PcMetadataCatalog::classified_sampled_target_fields() const {
         (void)name;
         for (const auto& [offset, field] : stats.prefix_u32_fields) {
             (void)offset;
-            if (field.observed == 0 || field.sampled_target_bytes != field.observed) continue;
+            if (field.observed == 0 || field.sampled_target_bytes != field.observed ||
+                field.sampled_target_zero_bytes > field.sampled_target_bytes ||
+                field.sampled_target_printable_bytes > field.sampled_target_bytes) continue;
             if (field.sampled_target_zero_bytes == field.observed ||
                 field.sampled_target_printable_bytes == field.observed ||
                 (field.sampled_target_zero_bytes != field.observed &&

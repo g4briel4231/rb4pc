@@ -1,6 +1,6 @@
 # Complete PC corpus audit
 
-Version 0.600.0 consolidates the read-only PC asset, audio,
+Version 0.700.0 consolidates the read-only PC asset, audio,
 character/animation, and metadata inspectors into one reproducible audit.
 
 ```text
@@ -14,7 +14,7 @@ directory and never overwrites an existing audit.
 
 The output contains:
 
-- `summary.json`: schema version 6, completion state, cross-catalog HDR-count consistency, aggregate counts, and file list;
+- `summary.json`: schema version 8, completion state, cross-catalog HDR-count consistency, aggregate counts, and file list;
 - `assets.json`: namespaces, extensions, categories, and path-family status;
 - `audio.json`: MOGG, Ogg, RIFF/WAVE, FEV, opaque, and unreadable counts;
 - `characters.json`: structural fields, candidates, and privacy-preserving ASCII signals;
@@ -24,7 +24,8 @@ The output contains:
 no invalid HDRs or unreadable records, and agree on both candidate and valid HDR
 counts, and every profiled metadata field has exactly one evidence class.
 `consistentHeaderCounts`, `metadataEvidenceComplete`, and
-`metadataBoundedOffsetRegionsComplete` expose those invariants separately.
+`metadataBoundedOffsetRegionsComplete`, and
+`metadataSampledTargetsComplete` expose those invariants separately.
 
 The operation is also available in the Windows Builder under
 `Tools > Complete PC Corpus Audit...`. The GUI accepts one `*_pc.hdr` or a

@@ -47,3 +47,15 @@ For the v0.520.0 to v0.600.0 cycle, the real milestones were:
 - v0.560.0: mutually exclusive bounded target-region classes;
 - v0.580.0: relation totals and integrity status in the catalog, audit, CLI, and GUI;
 - v0.600.0: relation integrity enforced by the corpus-audit completion contract.
+
+For the v0.620.0 to v0.700.0 cycle, the real milestones were:
+
+- v0.620.0: sampled target-byte and target-word measurements;
+- v0.640.0: strict fully sampled target candidate lists;
+- v0.660.0: privacy-preserving target-byte shape classes;
+- v0.680.0: sampled target totals and integrity in the catalog, audit, CLI, and GUI;
+- v0.700.0: sampled target integrity enforced by the audit completion contract.
+
+## Stable version numbering
+
+Pre-1.0 development and the first stable release use three components through `1.0.0`. After `1.0.0`, maintenance releases use two components with a zero-padded revision: `1.01`, `1.02`, `1.03`, and so on.

@@ -1,6 +1,6 @@
 # PC metadata structural catalog
 
-Version 0.680.0 extends a read-only catalog for native PC metadata records:
+Version 0.700.0 extends a read-only catalog for native PC metadata records:
 
 ```text
 rb4pc-builder <hdr-or-directory> --catalog-pc-metadata <catalog.json>
@@ -72,6 +72,9 @@ the catalog does not store the byte values or strings.
 Schema version 14 publishes fully sampled and classified target-field totals
 plus an explicit classification completeness invariant. The CLI, GUI, and
 combined audit expose that status directly.
+
+Version 0.700.0 rejects impossible sampled-target counters and requires sampled
+target classification completeness for a complete combined corpus audit.
 
 This milestone establishes the structural baseline needed before assigning
 semantics to song declarations, object references, localization tables, or mix
