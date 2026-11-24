@@ -363,6 +363,9 @@ void generate_metadata_catalog(HWND window) {
                 << L"\nFully sampled target fields: " << catalog.fully_sampled_target_fields()
                 << L"\nSampled target classification complete: "
                 << (catalog.sampled_target_classification_complete() ? L"yes" : L"no")
+                << L"\nBounded second-hop fields: " << catalog.bounded_second_hop_fields()
+                << L"\nSecond-hop region classification complete: "
+                << (catalog.second_hop_region_classification_complete() ? L"yes" : L"no")
                 << L"\nUnreadable: " << catalog.unreadable_records
                 << L"\n\nOutput: " << destination.wstring();
         MessageBoxW(window, message.str().c_str(), L"Metadata catalog generated",
@@ -410,6 +413,8 @@ void generate_corpus_audit(HWND window) {
                 << (audit.metadata.bounded_offset_region_classification_complete() ? L"yes" : L"no")
                 << L"\nMetadata sampled target classification complete: "
                 << (audit.metadata.sampled_target_classification_complete() ? L"yes" : L"no")
+                << L"\nMetadata second-hop regions complete: "
+                << (audit.metadata.second_hop_region_classification_complete() ? L"yes" : L"no")
                 << L"\n\nFiles: summary.json, assets.json, audio.json, characters.json, metadata.json"
                 << L"\nOutput: " << publication.directory.wstring();
         MessageBoxW(window, message.str().c_str(), L"PC corpus audit generated",

@@ -167,6 +167,40 @@ bool PcMetadataCatalog::sampled_target_classification_complete() const {
     return fully_sampled_target_fields() == classified_sampled_target_fields();
 }
 
+std::size_t PcMetadataCatalog::bounded_second_hop_fields() const {
+    std::size_t total = 0;
+    for (const auto& [name, stats] : families) {
+        (void)name;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            (void)offset;
+            if (field.observed > 0 && field.sampled_target_words == field.observed &&
+                field.sampled_target_words_within_record_bounds == field.observed) ++total;
+        }
+    }
+    return total;
+}
+
+std::size_t PcMetadataCatalog::region_classified_second_hop_fields() const {
+    std::size_t total = 0;
+    for (const auto& [name, stats] : families) {
+        (void)name;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            (void)offset;
+            if (field.observed == 0 || field.sampled_target_words != field.observed ||
+                field.sampled_target_words_within_record_bounds != field.observed) continue;
+            if (field.sampled_target_words_within_profile_prefix == field.observed ||
+                field.sampled_target_words_within_payload_region == field.observed ||
+                field.sampled_target_words_within_profile_prefix +
+                    field.sampled_target_words_within_payload_region == field.observed) ++total;
+        }
+    }
+    return total;
+}
+
+bool PcMetadataCatalog::second_hop_region_classification_complete() const {
+    return bounded_second_hop_fields() == region_classified_second_hop_fields();
+}
+
 PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
     const auto headers = find_headers(source);
     PcMetadataCatalog catalog;
@@ -306,7 +340,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 17,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 18,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -324,6 +358,11 @@ std::string format_json(const PcMetadataCatalog& catalog) {
            << ", \"classifiedSampledTargetFields\": " << catalog.classified_sampled_target_fields()
            << ", \"sampledTargetClassificationComplete\": "
            << (catalog.sampled_target_classification_complete() ? "true" : "false")
+           << ", \"boundedSecondHopFields\": " << catalog.bounded_second_hop_fields()
+           << ", \"regionClassifiedSecondHopFields\": "
+           << catalog.region_classified_second_hop_fields()
+           << ", \"secondHopRegionClassificationComplete\": "
+           << (catalog.second_hop_region_classification_complete() ? "true" : "false")
            << "},\n  \"families\": {";
     bool first_family = true;
     for (const auto& [name, stats] : catalog.families) {

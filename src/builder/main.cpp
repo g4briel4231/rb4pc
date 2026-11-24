@@ -40,6 +40,9 @@ int main(int argc, char* argv[]) {
                       << "\nFully sampled target fields: " << catalog.fully_sampled_target_fields()
                       << "\nSampled target classification complete: "
                       << (catalog.sampled_target_classification_complete() ? "yes" : "no")
+                      << "\nBounded second-hop fields: " << catalog.bounded_second_hop_fields()
+                      << "\nSecond-hop region classification complete: "
+                      << (catalog.second_hop_region_classification_complete() ? "yes" : "no")
                       << "\nUnreadable: " << catalog.unreadable_records << '\n';
             return catalog.invalid_headers == 0 && catalog.unreadable_records == 0 ? 0 : 1;
         } catch (const std::exception& error) {
@@ -63,7 +66,9 @@ int main(int argc, char* argv[]) {
                       << "\nMetadata bounded offset regions complete: "
                       << (publication.audit.metadata.bounded_offset_region_classification_complete() ? "yes" : "no")
                       << "\nMetadata sampled target classification complete: "
-                      << (publication.audit.metadata.sampled_target_classification_complete() ? "yes" : "no") << '\n';
+                      << (publication.audit.metadata.sampled_target_classification_complete() ? "yes" : "no")
+                      << "\nMetadata second-hop regions complete: "
+                      << (publication.audit.metadata.second_hop_region_classification_complete() ? "yes" : "no") << '\n';
             return publication.audit.complete() ? 0 : 1;
         } catch (const std::exception& error) {
             std::cerr << "rb4pc-builder: " << error.what() << '\n';
