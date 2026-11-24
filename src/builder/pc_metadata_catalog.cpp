@@ -79,6 +79,29 @@ std::string escape_json(std::string_view value) {
 
 } // namespace
 
+std::size_t PcMetadataCatalog::profiled_fields() const {
+    std::size_t total = 0;
+    for (const auto& [name, stats] : families) {
+        (void)name;
+        total += stats.prefix_u32_fields.size();
+    }
+    return total;
+}
+
+std::size_t PcMetadataCatalog::classified_fields() const {
+    std::size_t total = 0;
+    for (const auto& [name, stats] : families) {
+        (void)name;
+        total += stats.cross_header_constant_fields + stats.header_variant_constant_fields +
+                 stats.record_variable_fields + stats.incomplete_header_coverage_fields;
+    }
+    return total;
+}
+
+bool PcMetadataCatalog::evidence_classification_complete() const {
+    return profiled_fields() == classified_fields();
+}
+
 PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
     const auto headers = find_headers(source);
     PcMetadataCatalog catalog;
@@ -192,11 +215,16 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 5,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 6,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
-           << ", \"unreadable\": " << catalog.unreadable_records << "},\n  \"families\": {";
+           << ", \"unreadable\": " << catalog.unreadable_records
+           << ", \"profiledFields\": " << catalog.profiled_fields()
+           << ", \"classifiedFields\": " << catalog.classified_fields()
+           << ", \"evidenceClassificationComplete\": "
+           << (catalog.evidence_classification_complete() ? "true" : "false")
+           << "},\n  \"families\": {";
     bool first_family = true;
     for (const auto& [name, stats] : catalog.families) {
         if (!first_family) output << ',';

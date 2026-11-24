@@ -31,6 +31,9 @@ int main(int argc, char* argv[]) {
                       << "\nValid HDRs: " << catalog.valid_headers << '/' << catalog.candidate_headers
                       << "\nMetadata records: " << catalog.records
                       << "\nFamilies: " << catalog.families.size()
+                      << "\nProfiled fields: " << catalog.profiled_fields()
+                      << "\nEvidence classification complete: "
+                      << (catalog.evidence_classification_complete() ? "yes" : "no")
                       << "\nUnreadable: " << catalog.unreadable_records << '\n';
             return catalog.invalid_headers == 0 && catalog.unreadable_records == 0 ? 0 : 1;
         } catch (const std::exception& error) {
@@ -48,7 +51,9 @@ int main(int argc, char* argv[]) {
                       << "\nCharacter/animation records: " << publication.audit.characters.records
                       << "\nMetadata records: " << publication.audit.metadata.records
                       << "\nConsistent header counts: "
-                      << (publication.audit.consistent_header_counts() ? "yes" : "no") << '\n';
+                      << (publication.audit.consistent_header_counts() ? "yes" : "no")
+                      << "\nMetadata evidence classification complete: "
+                      << (publication.audit.metadata.evidence_classification_complete() ? "yes" : "no") << '\n';
             return publication.audit.complete() ? 0 : 1;
         } catch (const std::exception& error) {
             std::cerr << "rb4pc-builder: " << error.what() << '\n';

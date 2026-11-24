@@ -354,6 +354,9 @@ void generate_metadata_catalog(HWND window) {
                 << catalog.valid_headers << L" / " << catalog.candidate_headers
                 << L"\nMetadata records: " << catalog.records
                 << L"\nFamilies: " << catalog.families.size()
+                << L"\nProfiled fields: " << catalog.profiled_fields()
+                << L"\nEvidence classification complete: "
+                << (catalog.evidence_classification_complete() ? L"yes" : L"no")
                 << L"\nUnreadable: " << catalog.unreadable_records
                 << L"\n\nOutput: " << destination.wstring();
         MessageBoxW(window, message.str().c_str(), L"Metadata catalog generated",
@@ -395,6 +398,8 @@ void generate_corpus_audit(HWND window) {
                 << L"\nCharacter/animation records: " << audit.characters.records
                 << L"\nMetadata records: " << audit.metadata.records
                 << L"\nConsistent header counts: " << (audit.consistent_header_counts() ? L"yes" : L"no")
+                << L"\nMetadata evidence classification complete: "
+                << (audit.metadata.evidence_classification_complete() ? L"yes" : L"no")
                 << L"\n\nFiles: summary.json, assets.json, audio.json, characters.json, metadata.json"
                 << L"\nOutput: " << publication.directory.wstring();
         MessageBoxW(window, message.str().c_str(), L"PC corpus audit generated",

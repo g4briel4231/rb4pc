@@ -40,7 +40,7 @@ PcCorpusAudit audit_pc_corpus(const std::filesystem::path& source) {
 
 std::string format_summary_json(const PcCorpusAudit& audit) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 2,\n"
+    output << "{\n  \"schemaVersion\": 3,\n"
            << "  \"complete\": " << (audit.complete() ? "true" : "false") << ",\n"
            << "  \"consistentHeaderCounts\": " << (audit.consistent_header_counts() ? "true" : "false") << ",\n"
            << "  \"headers\": {\"assets\": " << audit.assets.valid_headers
@@ -65,6 +65,10 @@ std::string format_summary_json(const PcCorpusAudit& audit) {
            << "  \"metadata\": {\"records\": " << audit.metadata.records
            << ", \"bytes\": " << audit.metadata.bytes
            << ", \"families\": " << audit.metadata.families.size()
+           << ", \"profiledFields\": " << audit.metadata.profiled_fields()
+           << ", \"classifiedFields\": " << audit.metadata.classified_fields()
+           << ", \"evidenceClassificationComplete\": "
+           << (audit.metadata.evidence_classification_complete() ? "true" : "false")
            << ", \"unreadable\": " << audit.metadata.unreadable_records << "},\n"
            << "  \"files\": [\"summary.json\", \"assets.json\", \"audio.json\", \"characters.json\", \"metadata.json\"]\n}\n";
     return output.str();

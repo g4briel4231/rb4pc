@@ -56,6 +56,10 @@ struct PcMetadataCatalog {
     std::size_t unreadable_records = 0;
     std::map<std::string, PcMetadataFamilyStats> families;
     std::vector<std::string> errors;
+
+    [[nodiscard]] std::size_t profiled_fields() const;
+    [[nodiscard]] std::size_t classified_fields() const;
+    [[nodiscard]] bool evidence_classification_complete() const;
 };
 
 [[nodiscard]] PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source);
