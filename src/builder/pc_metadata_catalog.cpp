@@ -340,7 +340,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 18,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 19,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -422,13 +422,31 @@ std::string format_json(const PcMetadataCatalog& catalog) {
                    << field.sampled_target_words_within_payload_region
                    << ", \"sampledTargetZeroBytes\": " << field.sampled_target_zero_bytes
                    << ", \"sampledTargetPrintableBytes\": " << field.sampled_target_printable_bytes
+                   << ", \"evidenceScope\": \""
+                   << (field.headers_observed > 1 ? "multiHeader" :
+                       field.observed > 1 ? "singleHeader" : "singleRecord") << "\""
                    << ", \"headerStability\": {\"observed\": " << field.headers_observed
                    << ", \"constantWithinHeader\": " << field.headers_constant
                    << ", \"distinctConstants\": " << field.distinct_header_constants.size() << "}"
                    << ", \"minimum\": " << field.minimum << ", \"maximum\": " << field.maximum << '}';
             first = false;
         }
-        output << "}, \"candidateFields\": {\"constant\": ["; first = true;
+        output << "}, \"evidenceScopeFields\": {\"singleRecord\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed != 1) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"singleHeader\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed <= 1 || field.headers_observed > 1) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"multiHeader\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.headers_observed <= 1) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "]}, \"candidateFields\": {\"constant\": ["; first = true;
         for (const auto& [offset, field] : stats.prefix_u32_fields) {
             if (field.observed != stats.records || field.distinct_values.size() != 1) continue;
             if (!first) output << ", "; output << offset; first = false;

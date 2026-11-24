@@ -1038,8 +1038,13 @@ int main() {
                          pc_metadata_catalog.bounded_second_hop_fields() ==
                              pc_metadata_catalog.region_classified_second_hop_fields() &&
                          pc_metadata_catalog.second_hop_region_classification_complete() &&
-                         pc_metadata_catalog_json.find("\"schemaVersion\": 18") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"schemaVersion\": 19") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"headerCoverage\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"evidenceScope\": \"singleRecord\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"evidenceScopeFields\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"singleRecord\": [0") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"singleHeader\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"multiHeader\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedOffset\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedPrefixOffset\": [0]") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedPayloadOffset\"") != std::string::npos &&
