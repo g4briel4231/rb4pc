@@ -72,6 +72,9 @@ struct PcMetadataCatalog {
     [[nodiscard]] std::size_t bounded_offset_fields() const;
     [[nodiscard]] std::size_t region_classified_bounded_offset_fields() const;
     [[nodiscard]] bool bounded_offset_region_classification_complete() const;
+    [[nodiscard]] std::size_t fully_sampled_target_fields() const;
+    [[nodiscard]] std::size_t classified_sampled_target_fields() const;
+    [[nodiscard]] bool sampled_target_classification_complete() const;
 };
 
 [[nodiscard]] PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source);

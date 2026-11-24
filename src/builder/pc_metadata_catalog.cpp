@@ -133,6 +133,38 @@ bool PcMetadataCatalog::bounded_offset_region_classification_complete() const {
     return bounded_offset_fields() == region_classified_bounded_offset_fields();
 }
 
+std::size_t PcMetadataCatalog::fully_sampled_target_fields() const {
+    std::size_t total = 0;
+    for (const auto& [name, stats] : families) {
+        (void)name;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            (void)offset;
+            if (field.observed > 0 && field.sampled_target_bytes == field.observed) ++total;
+        }
+    }
+    return total;
+}
+
+std::size_t PcMetadataCatalog::classified_sampled_target_fields() const {
+    std::size_t total = 0;
+    for (const auto& [name, stats] : families) {
+        (void)name;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            (void)offset;
+            if (field.observed == 0 || field.sampled_target_bytes != field.observed) continue;
+            if (field.sampled_target_zero_bytes == field.observed ||
+                field.sampled_target_printable_bytes == field.observed ||
+                (field.sampled_target_zero_bytes != field.observed &&
+                 field.sampled_target_printable_bytes != field.observed)) ++total;
+        }
+    }
+    return total;
+}
+
+bool PcMetadataCatalog::sampled_target_classification_complete() const {
+    return fully_sampled_target_fields() == classified_sampled_target_fields();
+}
+
 PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
     const auto headers = find_headers(source);
     PcMetadataCatalog catalog;
@@ -260,7 +292,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 13,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 14,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -274,6 +306,10 @@ std::string format_json(const PcMetadataCatalog& catalog) {
            << catalog.region_classified_bounded_offset_fields()
            << ", \"boundedOffsetRegionClassificationComplete\": "
            << (catalog.bounded_offset_region_classification_complete() ? "true" : "false")
+           << ", \"fullySampledTargetFields\": " << catalog.fully_sampled_target_fields()
+           << ", \"classifiedSampledTargetFields\": " << catalog.classified_sampled_target_fields()
+           << ", \"sampledTargetClassificationComplete\": "
+           << (catalog.sampled_target_classification_complete() ? "true" : "false")
            << "},\n  \"families\": {";
     bool first_family = true;
     for (const auto& [name, stats] : catalog.families) {
