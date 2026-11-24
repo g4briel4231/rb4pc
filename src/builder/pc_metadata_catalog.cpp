@@ -340,7 +340,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 19,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 20,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -425,6 +425,9 @@ std::string format_json(const PcMetadataCatalog& catalog) {
                    << ", \"evidenceScope\": \""
                    << (field.headers_observed > 1 ? "multiHeader" :
                        field.observed > 1 ? "singleHeader" : "singleRecord") << "\""
+                   << ", \"valueVariation\": \""
+                   << (field.distinct_values.size() == 1 ? "constant" :
+                       field.distinct_values.size() < field.observed ? "repeated" : "allDistinct") << "\""
                    << ", \"headerStability\": {\"observed\": " << field.headers_observed
                    << ", \"constantWithinHeader\": " << field.headers_constant
                    << ", \"distinctConstants\": " << field.distinct_header_constants.size() << "}"
@@ -444,6 +447,21 @@ std::string format_json(const PcMetadataCatalog& catalog) {
         output << "], \"multiHeader\": ["; first = true;
         for (const auto& [offset, field] : stats.prefix_u32_fields) {
             if (field.headers_observed <= 1) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "]}, \"valueVariationFields\": {\"constant\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.distinct_values.size() != 1) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"repeated\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.distinct_values.size() <= 1 || field.distinct_values.size() >= field.observed) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"allDistinct\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.distinct_values.size() <= 1 || field.distinct_values.size() != field.observed) continue;
             if (!first) output << ", "; output << offset; first = false;
         }
         output << "]}, \"candidateFields\": {\"constant\": ["; first = true;
