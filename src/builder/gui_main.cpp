@@ -7,6 +7,8 @@
 #include <shobjidl.h>
 #include <shellapi.h>
 
+#include "rb4pc/builder/pc_asset_catalog.hpp"
+#include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 
@@ -99,9 +101,9 @@ std::filesystem::path select_pc_header(HWND owner) {
     return path;
 }
 
-std::filesystem::path select_catalog_output(HWND owner) {
+std::filesystem::path select_catalog_output(HWND owner, const wchar_t* suggested_name) {
     std::wstring path(32768, L'\0');
-    const std::wstring suggested = L"pc-character-catalog.json";
+    const std::wstring suggested = suggested_name;
     std::copy(suggested.begin(), suggested.end(), path.begin());
     OPENFILENAMEW dialog{};
     dialog.lStructSize = sizeof(dialog);
@@ -249,6 +251,44 @@ void open_selected_folder(HWND window) {
     set_status(L"Opened ForgeTool PC folder: " + path.wstring());
 }
 
+void generate_asset_catalog(HWND window) {
+    const auto choice = MessageBoxW(window,
+        L"Choose the PC source for the asset catalog.\n\n"
+        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
+        L"PC Asset Catalog", MB_YESNOCANCEL | MB_ICONQUESTION);
+    if (choice == IDCANCEL) return;
+    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    if (source.empty()) return;
+    const auto destination = select_catalog_output(window, L"pc-asset-catalog.json");
+    if (destination.empty()) return;
+    set_status(L"Generating PC asset catalog…");
+    try {
+        const auto catalog = rb4pc::builder::catalog_pc_assets(source);
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create the selected JSON catalog");
+        output << rb4pc::builder::format_json(catalog);
+        if (!output) throw std::runtime_error("could not finish the selected JSON catalog");
+        std::wostringstream message;
+        message << L"PC asset catalog generated.\n\nValid PC HDRs: "
+                << catalog.valid_headers << L" / " << catalog.candidate_headers
+                << L"\nARK volumes: " << catalog.archive_volumes
+                << L"\nRecords: " << catalog.records
+                << L"\nNative paths: " << catalog.native_path_records
+                << L"\nIntermediate paths: " << catalog.intermediate_path_records
+                << L"\nUnknown paths: " << catalog.unknown_path_records
+                << L"\n\nOutput: " << destination.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Catalog generated",
+                    MB_OK | (catalog.invalid_headers ? MB_ICONWARNING : MB_ICONINFORMATION));
+        set_status(L"Generated PC asset catalog: " + destination.filename().wstring());
+    } catch (const std::exception& error) {
+        std::wstring message = L"The PC asset catalog could not be generated.\n\n";
+        const std::string detail = error.what();
+        message.append(detail.begin(), detail.end());
+        MessageBoxW(window, message.c_str(), L"Catalog generation failed", MB_OK | MB_ICONERROR);
+        set_status(L"PC asset catalog generation failed");
+    }
+}
+
 void generate_character_catalog(HWND window) {
     const auto choice = MessageBoxW(window,
         L"Choose the PC source for the character/animation catalog.\n\n"
@@ -257,7 +297,7 @@ void generate_character_catalog(HWND window) {
     if (choice == IDCANCEL) return;
     const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
     if (source.empty()) return;
-    const auto destination = select_catalog_output(window);
+    const auto destination = select_catalog_output(window, L"pc-character-catalog.json");
     if (destination.empty()) return;
     set_status(L"Generating character/animation structural profile…");
     try {
@@ -427,7 +467,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                     return 0;
                 case id_open_archive: open_selected_archive(window); return 0;
                 case id_open_folder: open_selected_folder(window); return 0;
-                case id_asset_catalog: show_tool(window, L"PC Asset Catalog", L"--catalog-pc-assets"); return 0;
+                case id_asset_catalog: generate_asset_catalog(window); return 0;
                 case id_audio_catalog: show_tool(window, L"PC Audio Audit", L"--catalog-pc-audio"); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_texture_converter: show_tool(window, L"Texture Converter", L"rb4pc-texture-probe --convert-pc"); return 0;
