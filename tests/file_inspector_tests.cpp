@@ -1002,10 +1002,16 @@ int main() {
                          pc_metadata_catalog.families.at("rbsong").prefix_u32_fields.at(0).headers_constant == 1 &&
                          pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).distinct_values.size() == 1 &&
                          pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).distinct_header_constants.size() == 1 &&
-                         pc_metadata_catalog_json.find("\"schemaVersion\": 4") != std::string::npos &&
+                         pc_metadata_catalog.families.at("songdta_pc").cross_header_constant_fields ==
+                             pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.size() &&
+                         pc_metadata_catalog_json.find("\"schemaVersion\": 5") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"headerCoverage\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"headerStability\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"crossHeaderConstant\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"fieldEvidence\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"headerVariantConstant\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"recordVariable\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"incompleteHeaderCoverage\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"candidateFields\"") != std::string::npos &&
                          pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
                          pc_corpus_audit.metadata.records == 2 &&

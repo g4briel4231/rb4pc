@@ -172,12 +172,27 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
             if (catalog.errors.size() < 32) catalog.errors.push_back(header.filename().string() + ": " + error.what());
         }
     }
+    for (auto& [family, stats] : catalog.families) {
+        (void)family;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            (void)offset;
+            if (field.headers_observed != stats.headers_observed) {
+                ++stats.incomplete_header_coverage_fields;
+            } else if (field.headers_constant != field.headers_observed) {
+                ++stats.record_variable_fields;
+            } else if (field.distinct_header_constants.size() == 1) {
+                ++stats.cross_header_constant_fields;
+            } else {
+                ++stats.header_variant_constant_fields;
+            }
+        }
+    }
     return catalog;
 }
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 4,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 5,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -190,6 +205,10 @@ std::string format_json(const PcMetadataCatalog& catalog) {
                << ", \"headerCoverage\": {\"observed\": " << stats.headers_observed
                << ", \"minimumRecords\": " << stats.minimum_records_per_header
                << ", \"maximumRecords\": " << stats.maximum_records_per_header << "}"
+               << ", \"fieldEvidence\": {\"crossHeaderConstant\": " << stats.cross_header_constant_fields
+               << ", \"headerVariantConstant\": " << stats.header_variant_constant_fields
+               << ", \"recordVariable\": " << stats.record_variable_fields
+               << ", \"incompleteHeaderCoverage\": " << stats.incomplete_header_coverage_fields << "}"
                << ", \"minimumSize\": " << stats.minimum_size
                << ", \"maximumSize\": " << stats.maximum_size << ", \"empty\": " << stats.empty_records
                << ", \"unreadable\": " << stats.unreadable_records
@@ -234,6 +253,24 @@ std::string format_json(const PcMetadataCatalog& catalog) {
             if (field.headers_observed != stats.headers_observed ||
                 field.headers_constant != field.headers_observed ||
                 field.distinct_header_constants.size() != 1) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"headerVariantConstant\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.headers_observed != stats.headers_observed ||
+                field.headers_constant != field.headers_observed ||
+                field.distinct_header_constants.size() <= 1) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"recordVariable\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.headers_observed != stats.headers_observed ||
+                field.headers_constant == field.headers_observed) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"incompleteHeaderCoverage\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.headers_observed == stats.headers_observed) continue;
             if (!first) output << ", "; output << offset; first = false;
         }
         output << "], \"recordSize\": {"; first = true;
