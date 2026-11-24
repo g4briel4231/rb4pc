@@ -44,3 +44,11 @@ Version 0.50.0 adds `rb4pc-input-probe --watch <seconds>` for physical-device
 evidence. The bounded probe prints state transitions and summarizes observed
 button masks and trigger ranges. It is read-only and does not install drivers,
 rewrite mappings, or bundle an XInput DLL.
+
+## Keyboard fallback
+
+Version 0.64.0 polls the Windows keyboard alongside XInput. Up and Down navigate
+the library and strum during gameplay, Enter confirms, Escape cancels, P pauses,
+and the number keys 1 through 5 select green through orange. Both backends are
+combined each frame, so connecting or disconnecting a controller does not
+restart the launcher or the active song.

@@ -55,12 +55,15 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
         playback_done.store(true);
     });
     try {
-        run_window_loop("RB4PC v0.63.0 Interactive Song", framebuffer, [&] {
+        run_window_loop("RB4PC v0.64.0 Interactive Song", framebuffer, [&] {
             const auto controllers = poll_controllers();
             const auto selected = select_connected_controller(controllers, active_controller_index);
             if (selected) active_controller_index = selected->index;
             else active_controller_index.reset();
-            const auto controller = selected.value_or(ControllerState{});
+            auto controller = selected.value_or(ControllerState{});
+            const auto keyboard = poll_keyboard();
+            controller.connected = controller.connected || keyboard.available;
+            controller.buttons = static_cast<std::uint16_t>(controller.buttons | keyboard.gameplay_buttons);
             const auto seconds = static_cast<double>(completed_frames.load()) / vorbis.sample_rate;
             const auto frame = session.step_to(seconds, controller);
             if (session.gameplay().miss_count() > observed_misses) {
@@ -72,7 +75,7 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
             pause_audio.store(session.paused());
             static_cast<void>(session.render(framebuffer));
             fill_rect(framebuffer, {0, 0, framebuffer.width(), 8},
-                      selected ? 0xff2a9d50 : 0xffb43b3b);
+                      controller.connected ? 0xff2a9d50 : 0xffb43b3b);
             fill_rect(framebuffer, {0, 8, framebuffer.width(), 5},
                       guitar_level.load() < 1.0F ? 0xffd08a28 : 0xff315b83);
             constexpr std::array prompts{ControllerPrompt::a, ControllerPrompt::b,

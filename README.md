@@ -20,7 +20,7 @@ The official RB4PC visual identity is stored in
 `rb4pc-icon2.png` is the selected repository icon, while
 `rb4pc-icon1.png` is retained as its first variant.
 
-## Current milestone: v0.63.0 Windows Application Identity
+## Current milestone: v0.64.0 Keyboard and Default Library
 
 The builder can now assemble a conventional `songs/<shortname>/` directory from
 validated MIDI, MOGG, mix metadata, and a supported PS4 artwork texture. Artwork
@@ -43,6 +43,11 @@ Windows builds now embed the selected RB4PC repository icon in every generated
 executable. The source artwork remains in `assets/branding`, while the generated
 multi-purpose Windows resource is tracked in `assets/windows` for reproducible
 CMake builds. Window titles also report the current project version.
+
+The launcher now opens `./songs` when no directory argument is supplied. Keyboard
+input works alongside XInput: Up/Down navigate and strum, Enter confirms, Escape
+cancels, P pauses, and 1–5 map to the five fret lanes. A controller can connect
+or disconnect without disabling the keyboard fallback.
 
 The probe can now scan a directory recursively and group supported containers
 by magic, platform version, base dimensions, flags, mipmap count, marker, and
@@ -469,6 +474,8 @@ without restart, and the highway displays the muted state with an amber strip.
 
 ```powershell
 ./build/default/rb4pc-launcher.exe "./output/songs"
+# Or place assembled songs in ./songs and run without arguments:
+./build/default/rb4pc-launcher.exe
 ```
 
 ```powershell

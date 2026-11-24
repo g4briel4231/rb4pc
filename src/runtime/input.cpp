@@ -37,6 +37,31 @@ std::vector<ControllerState> poll_controllers() {
     return result;
 }
 
+KeyboardState poll_keyboard() {
+    KeyboardState result;
+#ifdef _WIN32
+    result.available = true;
+    const auto pressed = [](int key) { return (GetAsyncKeyState(key) & 0x8000) != 0; };
+    if (pressed(VK_UP)) {
+        result.navigation_buttons |= 0x0001;
+        result.gameplay_buttons |= 0x0001;
+    }
+    if (pressed(VK_DOWN)) {
+        result.navigation_buttons |= 0x0002;
+        result.gameplay_buttons |= 0x0002;
+    }
+    if (pressed(VK_RETURN)) result.navigation_buttons |= 0x1000;
+    if (pressed(VK_ESCAPE)) result.navigation_buttons |= 0x2000;
+    if (pressed('1')) result.gameplay_buttons |= 0x1000;
+    if (pressed('2')) result.gameplay_buttons |= 0x2000;
+    if (pressed('4')) result.gameplay_buttons |= 0x4000;
+    if (pressed('3')) result.gameplay_buttons |= 0x8000;
+    if (pressed('5')) result.gameplay_buttons |= 0x0200;
+    if (pressed('P')) result.gameplay_buttons |= 0x0010;
+#endif
+    return result;
+}
+
 std::optional<ControllerState> select_connected_controller(
     const std::vector<ControllerState>& states,
     std::optional<std::uint32_t> preferred_index) {
