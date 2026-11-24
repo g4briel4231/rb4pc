@@ -89,10 +89,12 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
             ++catalog.valid_headers;
             std::vector<std::ifstream> archives;
             for (const auto& archive : report.archives) archives.emplace_back(archive.path, std::ios::binary);
+            std::map<std::string, std::size_t> header_family_records;
             for (std::size_t index = 0; index < report.metadata.file_records.size(); ++index) {
                 const auto& record = report.metadata.file_records[index];
                 const auto family = family_of(record.path);
                 if (family.empty()) continue;
+                ++header_family_records[family];
                 ++catalog.records;
                 catalog.bytes += record.size;
                 auto& stats = catalog.families[family];
@@ -145,6 +147,13 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
                 }
                 if (has_ascii) ++stats.records_with_ascii;
             }
+            for (const auto& [family, records] : header_family_records) {
+                auto& stats = catalog.families[family];
+                ++stats.headers_observed;
+                if (stats.headers_observed == 1) stats.minimum_records_per_header = records;
+                else stats.minimum_records_per_header = std::min(stats.minimum_records_per_header, records);
+                stats.maximum_records_per_header = std::max(stats.maximum_records_per_header, records);
+            }
         } catch (const std::exception& error) {
             ++catalog.invalid_headers;
             if (catalog.errors.size() < 32) catalog.errors.push_back(header.filename().string() + ": " + error.what());
@@ -155,7 +164,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 2,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 3,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -164,7 +173,11 @@ std::string format_json(const PcMetadataCatalog& catalog) {
     for (const auto& [name, stats] : catalog.families) {
         if (!first_family) output << ',';
         output << "\n    \"" << escape_json(name) << "\": {\"records\": " << stats.records
-               << ", \"bytes\": " << stats.bytes << ", \"minimumSize\": " << stats.minimum_size
+               << ", \"bytes\": " << stats.bytes
+               << ", \"headerCoverage\": {\"observed\": " << stats.headers_observed
+               << ", \"minimumRecords\": " << stats.minimum_records_per_header
+               << ", \"maximumRecords\": " << stats.maximum_records_per_header << "}"
+               << ", \"minimumSize\": " << stats.minimum_size
                << ", \"maximumSize\": " << stats.maximum_size << ", \"empty\": " << stats.empty_records
                << ", \"unreadable\": " << stats.unreadable_records
                << ", \"recordsWithAscii\": " << stats.records_with_ascii

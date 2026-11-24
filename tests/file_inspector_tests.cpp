@@ -994,10 +994,14 @@ int main() {
                          pc_metadata_catalog.valid_headers == 1 && pc_metadata_catalog.records == 2 &&
                          pc_metadata_catalog.unreadable_records == 0 &&
                          pc_metadata_catalog.families.at("songdta_pc").records == 1 &&
+                         pc_metadata_catalog.families.at("songdta_pc").headers_observed == 1 &&
+                         pc_metadata_catalog.families.at("songdta_pc").minimum_records_per_header == 1 &&
+                         pc_metadata_catalog.families.at("songdta_pc").maximum_records_per_header == 1 &&
                          pc_metadata_catalog.families.at("rbsong").records_with_ascii == 1 &&
                          pc_metadata_catalog.families.at("rbsong").prefix_u32_fields.at(0).observed == 1 &&
                          pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).distinct_values.size() == 1 &&
-                         pc_metadata_catalog_json.find("\"schemaVersion\": 2") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"schemaVersion\": 3") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"headerCoverage\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"candidateFields\"") != std::string::npos &&
                          pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
                          pc_corpus_audit.metadata.records == 2 &&

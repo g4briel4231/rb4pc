@@ -23,6 +23,9 @@ struct PcMetadataWordStats {
 struct PcMetadataFamilyStats {
     std::size_t records = 0;
     std::uint64_t bytes = 0;
+    std::size_t headers_observed = 0;
+    std::size_t minimum_records_per_header = 0;
+    std::size_t maximum_records_per_header = 0;
     std::uint32_t minimum_size = 0;
     std::uint32_t maximum_size = 0;
     std::size_t empty_records = 0;
