@@ -25,7 +25,14 @@ introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
 full game
 conversion is complete.
 
-## Current milestone: v0.320.0 PC Metadata Structure Catalog
+## Current milestone: v0.340.0 Metadata-Aware Corpus Audit
+
+Version 0.340.0 integrates the native PC metadata catalog into the combined
+audit. Every successful audit now publishes five reports: `summary.json`,
+`assets.json`, `audio.json`, `characters.json`, and `metadata.json`. Completion
+requires the metadata scan to finish without invalid HDRs or unreadable records.
+
+## v0.320.0 PC Metadata Structure Catalog
 
 Version 0.320.0 begins the next porting boundary with a dedicated read-only
 catalog for `.rbsong`, `.songdta_pc`, `.moggsong_dta_pc`, `.csv_pc`, and `.dta`

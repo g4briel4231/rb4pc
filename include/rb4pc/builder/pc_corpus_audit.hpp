@@ -3,6 +3,7 @@
 #include "rb4pc/builder/pc_asset_catalog.hpp"
 #include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/builder/pc_character_catalog.hpp"
+#include "rb4pc/builder/pc_metadata_catalog.hpp"
 
 #include <filesystem>
 #include <string>
@@ -13,6 +14,7 @@ struct PcCorpusAudit {
     PcAssetCatalog assets;
     PcAudioCatalog audio;
     PcCharacterCatalog characters;
+    PcMetadataCatalog metadata;
 
     [[nodiscard]] bool complete() const;
 };

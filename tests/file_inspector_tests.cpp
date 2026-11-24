@@ -997,11 +997,14 @@ int main() {
                          pc_metadata_catalog.families.at("rbsong").records_with_ascii == 1 &&
                          pc_metadata_catalog_json.find("\"schemaVersion\": 1") != std::string::npos &&
                          pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
+                         pc_corpus_audit.metadata.records == 2 &&
                          pc_corpus_audit_json.find("\"schemaVersion\": 1") != std::string::npos &&
+                         pc_corpus_audit_json.find("\"metadata\"") != std::string::npos &&
                          std::filesystem::is_regular_file(pc_corpus_audit_output / "summary.json") &&
                          std::filesystem::is_regular_file(pc_corpus_audit_output / "assets.json") &&
                          std::filesystem::is_regular_file(pc_corpus_audit_output / "audio.json") &&
                          std::filesystem::is_regular_file(pc_corpus_audit_output / "characters.json") &&
+                         std::filesystem::is_regular_file(pc_corpus_audit_output / "metadata.json") &&
                          std::all_of(pc_archive_split_report.record_locations.begin(),
                                      pc_archive_split_report.record_locations.end(),
                                      [](const auto& location) { return location.has_value(); }) &&

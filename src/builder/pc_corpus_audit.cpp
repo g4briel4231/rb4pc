@@ -19,12 +19,14 @@ void write_json(const std::filesystem::path& path, const std::string& content) {
 bool PcCorpusAudit::complete() const {
     return assets.invalid_headers == 0 && audio.invalid_headers == 0 &&
            audio.unreadable_records == 0 && characters.invalid_headers == 0 &&
-           characters.unreadable_records == 0 && assets.valid_headers > 0 &&
-           audio.valid_headers > 0 && characters.valid_headers > 0;
+           characters.unreadable_records == 0 && metadata.invalid_headers == 0 &&
+           metadata.unreadable_records == 0 && assets.valid_headers > 0 &&
+           audio.valid_headers > 0 && characters.valid_headers > 0 && metadata.valid_headers > 0;
 }
 
 PcCorpusAudit audit_pc_corpus(const std::filesystem::path& source) {
-    return {catalog_pc_assets(source), catalog_pc_audio(source), catalog_pc_characters(source)};
+    return {catalog_pc_assets(source), catalog_pc_audio(source), catalog_pc_characters(source),
+            catalog_pc_metadata(source)};
 }
 
 std::string format_summary_json(const PcCorpusAudit& audit) {
@@ -33,7 +35,8 @@ std::string format_summary_json(const PcCorpusAudit& audit) {
            << "  \"complete\": " << (audit.complete() ? "true" : "false") << ",\n"
            << "  \"headers\": {\"assets\": " << audit.assets.valid_headers
            << ", \"audio\": " << audit.audio.valid_headers
-           << ", \"characters\": " << audit.characters.valid_headers << "},\n"
+           << ", \"characters\": " << audit.characters.valid_headers
+           << ", \"metadata\": " << audit.metadata.valid_headers << "},\n"
            << "  \"assets\": {\"records\": " << audit.assets.records
            << ", \"payloadBytes\": " << audit.assets.payload_bytes
            << ", \"nativePaths\": " << audit.assets.native_path_records
@@ -49,7 +52,11 @@ std::string format_summary_json(const PcCorpusAudit& audit) {
            << ", \"bytes\": " << audit.characters.bytes
            << ", \"families\": " << audit.characters.families.size()
            << ", \"unreadable\": " << audit.characters.unreadable_records << "},\n"
-           << "  \"files\": [\"summary.json\", \"assets.json\", \"audio.json\", \"characters.json\"]\n} \n";
+           << "  \"metadata\": {\"records\": " << audit.metadata.records
+           << ", \"bytes\": " << audit.metadata.bytes
+           << ", \"families\": " << audit.metadata.families.size()
+           << ", \"unreadable\": " << audit.metadata.unreadable_records << "},\n"
+           << "  \"files\": [\"summary.json\", \"assets.json\", \"audio.json\", \"characters.json\", \"metadata.json\"]\n}\n";
     return output.str();
 }
 
@@ -69,6 +76,7 @@ PcCorpusAuditPublication write_pc_corpus_audit(
         write_json(temporary / "assets.json", format_json(audit.assets));
         write_json(temporary / "audio.json", format_json(audit.audio));
         write_json(temporary / "characters.json", format_json(audit.characters));
+        write_json(temporary / "metadata.json", format_json(audit.metadata));
         std::filesystem::rename(temporary, destination);
     } catch (...) {
         std::error_code error;
