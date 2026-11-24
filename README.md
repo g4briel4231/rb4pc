@@ -20,7 +20,7 @@ The official RB4PC visual identity is stored in
 `rb4pc-icon2.png` is the selected repository icon, while
 `rb4pc-icon1.png` is retained as its first variant.
 
-## Current milestone: v0.62.0 Runtime Artwork Rendering
+## Current milestone: v0.63.0 Windows Application Identity
 
 The builder can now assemble a conventional `songs/<shortname>/` directory from
 validated MIDI, MOGG, mix metadata, and a supported PS4 artwork texture. Artwork
@@ -38,6 +38,11 @@ filenames, both files, and matching hashes before exposing the song directory.
 The song browser now decodes the selected song's validated BC1/BC3 artwork and
 renders it directly into the software framebuffer, with the previous layout as
 a fallback for songs without artwork.
+
+Windows builds now embed the selected RB4PC repository icon in every generated
+executable. The source artwork remains in `assets/branding`, while the generated
+multi-purpose Windows resource is tracked in `assets/windows` for reproducible
+CMake builds. Window titles also report the current project version.
 
 The probe can now scan a directory recursively and group supported containers
 by magic, platform version, base dimensions, flags, mipmap count, marker, and

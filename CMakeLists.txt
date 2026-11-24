@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.62.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.63.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -145,6 +145,18 @@ target_link_libraries(rb4pc-launcher PRIVATE rb4pc_inspection)
 
 add_executable(rb4pc-runtime src/runtime/session_main.cpp)
 target_link_libraries(rb4pc-runtime PRIVATE rb4pc_inspection)
+
+if(WIN32)
+    foreach(target IN ITEMS
+        rb4pc-forge-inspector rb4pc-texture-probe rb4pc-builder
+        rb4pc-runtime-probe rb4pc-audio-probe rb4pc-audio-play
+        rb4pc-input-probe rb4pc-window rb4pc-prealpha rb4pc-midi-probe
+        rb4pc-rbmid-probe rb4pc-session-probe rb4pc-mogg-probe
+        rb4pc-mogg-play rb4pc-song-verify rb4pc-song-play
+        rb4pc-song-library rb4pc-launcher rb4pc-runtime)
+        target_sources(${target} PRIVATE assets/windows/rb4pc.rc)
+    endforeach()
+endif()
 
 if(RB4PC_BUILD_TESTS)
     enable_testing()
