@@ -7,11 +7,13 @@
 #include <shobjidl.h>
 #include <shellapi.h>
 
+#include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 
 #include <algorithm>
 #include <cwctype>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -79,6 +81,37 @@ std::filesystem::path select_file(HWND owner) {
     dialog.nMaxFile = static_cast<DWORD>(path.size());
     dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
     if (!GetOpenFileNameW(&dialog)) return {};
+    path.resize(std::wcslen(path.c_str()));
+    return path;
+}
+
+std::filesystem::path select_pc_header(HWND owner) {
+    std::wstring path(32768, L'\0');
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog);
+    dialog.hwndOwner = owner;
+    dialog.lpstrFilter = L"PC HDR files (*_pc.hdr)\0*_pc.hdr\0";
+    dialog.lpstrFile = path.data();
+    dialog.nMaxFile = static_cast<DWORD>(path.size());
+    dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+    if (!GetOpenFileNameW(&dialog)) return {};
+    path.resize(std::wcslen(path.c_str()));
+    return path;
+}
+
+std::filesystem::path select_catalog_output(HWND owner) {
+    std::wstring path(32768, L'\0');
+    const std::wstring suggested = L"pc-character-catalog.json";
+    std::copy(suggested.begin(), suggested.end(), path.begin());
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog);
+    dialog.hwndOwner = owner;
+    dialog.lpstrFilter = L"JSON catalog (*.json)\0*.json\0";
+    dialog.lpstrFile = path.data();
+    dialog.nMaxFile = static_cast<DWORD>(path.size());
+    dialog.lpstrDefExt = L"json";
+    dialog.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+    if (!GetSaveFileNameW(&dialog)) return {};
     path.resize(std::wcslen(path.c_str()));
     return path;
 }
@@ -214,6 +247,43 @@ void open_selected_folder(HWND window) {
     MessageBoxW(window, message.str().c_str(), L"ForgeTool PC folder opened",
                 MB_OK | MB_ICONINFORMATION);
     set_status(L"Opened ForgeTool PC folder: " + path.wstring());
+}
+
+void generate_character_catalog(HWND window) {
+    const auto choice = MessageBoxW(window,
+        L"Choose the PC source for the character/animation catalog.\n\n"
+        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
+        L"Character/Animation Structural Profile", MB_YESNOCANCEL | MB_ICONQUESTION);
+    if (choice == IDCANCEL) return;
+    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    if (source.empty()) return;
+    const auto destination = select_catalog_output(window);
+    if (destination.empty()) return;
+    set_status(L"Generating character/animation structural profile…");
+    try {
+        const auto catalog = rb4pc::builder::catalog_pc_characters(source);
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create the selected JSON catalog");
+        output << rb4pc::builder::format_json(catalog);
+        if (!output) throw std::runtime_error("could not finish the selected JSON catalog");
+        std::wostringstream message;
+        message << L"Character/animation structural profile generated.\n\n"
+                << L"Valid PC HDRs: " << catalog.valid_headers << L" / " << catalog.candidate_headers
+                << L"\nRecords: " << catalog.records
+                << L"\nFamilies: " << catalog.families.size()
+                << L"\nUnreadable records: " << catalog.unreadable_records
+                << L"\n\nOutput: " << destination.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Catalog generated",
+                    MB_OK | (catalog.invalid_headers || catalog.unreadable_records
+                                 ? MB_ICONWARNING : MB_ICONINFORMATION));
+        set_status(L"Generated character catalog: " + destination.filename().wstring());
+    } catch (const std::exception& error) {
+        std::wstring message = L"The character/animation catalog could not be generated.\n\n";
+        const std::string detail = error.what();
+        message.append(detail.begin(), detail.end());
+        MessageBoxW(window, message.c_str(), L"Catalog generation failed", MB_OK | MB_ICONERROR);
+        set_status(L"Character catalog generation failed");
+    }
 }
 
 void show_planned(HWND window, const wchar_t* title, const wchar_t* detail) {
@@ -359,7 +429,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_open_folder: open_selected_folder(window); return 0;
                 case id_asset_catalog: show_tool(window, L"PC Asset Catalog", L"--catalog-pc-assets"); return 0;
                 case id_audio_catalog: show_tool(window, L"PC Audio Audit", L"--catalog-pc-audio"); return 0;
-                case id_character_catalog: show_tool(window, L"Character/Animation Inventory", L"--catalog-pc-characters"); return 0;
+                case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_texture_converter: show_tool(window, L"Texture Converter", L"rb4pc-texture-probe --convert-pc"); return 0;
                 case id_documentation: {
                     const auto docs = find_asset(L"docs");

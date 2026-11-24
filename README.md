@@ -25,7 +25,19 @@ introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
 full game
 conversion is complete.
 
-## Current milestone: v0.170.0 Character Structure Profile
+## Current milestone: v0.200.0 GUI Structural Catalog
+
+Version 0.200.0 connects the character/animation structural catalog directly
+to the Windows Builder GUI. `Tools > Character/Animation Inventory...` accepts
+one validated `*_pc.hdr` or a PC folder, then writes the aggregate JSON report
+to a user-selected destination. PS4 inputs remain outside this workflow.
+
+Version 0.190.0 added privacy-preserving ASCII signals from the first 256 bytes:
+counts and length distributions only, never the discovered strings themselves.
+Version 0.180.0 added explicit constant, record-size, and remaining-size field
+candidates. The catalog schema is now version 4.
+
+## v0.170.0 Character Structure Profile
 
 Version 0.170.0 extends the character and animation catalog from a four-byte
 inventory to a bounded 64-byte structural profile. For each aligned 32-bit word
