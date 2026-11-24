@@ -45,6 +45,7 @@
 #include "rb4pc/builder/song_session_plan.hpp"
 #include "rb4pc/builder/song_assembler.hpp"
 #include "rb4pc/builder/pc_archive_builder.hpp"
+#include "rb4pc/builder/pc_asset_catalog.hpp"
 
 #include <array>
 #include <filesystem>
@@ -358,6 +359,8 @@ int main() {
     const auto pc_archive_split = rb4pc::builder::build_pc_song_archive(
         assembled_with_art.directory, pc_archive_split_output, "synthart", {45'000});
     const auto pc_archive_split_report = rb4pc::inspector::inspect_header_set(pc_archive_split.header);
+    const auto pc_asset_catalog = rb4pc::builder::catalog_pc_assets(pc_archive_output);
+    const auto pc_asset_catalog_json = rb4pc::builder::format_json(pc_asset_catalog);
     const auto resolved_with_art = rb4pc::runtime::resolve_song_directory(assembled_with_art.directory);
     const auto artwork_library = rb4pc::runtime::scan_song_library(directory / "assembly-output" / "songs");
     rb4pc::runtime::SongBrowserModel artwork_browser(artwork_library);
@@ -938,6 +941,12 @@ int main() {
                          pc_archive.archive_sha256 == pc_archive_repeat.archive_sha256 &&
                          pc_archive_split.archives.size() > 1 &&
                          pc_archive_split_report.archives.size() == pc_archive_split.archives.size() &&
+                         pc_asset_catalog.valid_headers == 1 && pc_asset_catalog.invalid_headers == 0 &&
+                         pc_asset_catalog.records == 6 && pc_asset_catalog.intermediate_path_records >= 3 &&
+                         pc_asset_catalog.categories.at("audio") == 1 &&
+                         pc_asset_catalog.categories.at("texture") == 1 &&
+                         pc_asset_catalog.unknown_extensions.at(".json") == 2 &&
+                         pc_asset_catalog_json.find("\"schemaVersion\": 1") != std::string::npos &&
                          std::all_of(pc_archive_split_report.record_locations.begin(),
                                      pc_archive_split_report.record_locations.end(),
                                      [](const auto& location) { return location.has_value(); }) &&
