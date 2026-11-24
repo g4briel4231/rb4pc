@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.64.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.70.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -164,4 +164,34 @@ if(RB4PC_BUILD_TESTS)
     target_link_libraries(rb4pc-inspector-tests PRIVATE rb4pc_inspection)
     add_test(NAME rb4pc-inspector-tests COMMAND rb4pc-inspector-tests)
 endif()
+
+install(TARGETS
+    rb4pc-launcher rb4pc-builder rb4pc-song-verify rb4pc-song-play
+    rb4pc-song-library rb4pc-texture-probe
+    RUNTIME DESTINATION .)
+install(FILES README.md THIRD_PARTY_NOTICES.md DESTINATION .)
+install(DIRECTORY docs/ DESTINATION docs FILES_MATCHING PATTERN "*.md")
+install(DIRECTORY assets/branding/ DESTINATION assets/branding)
+install(DIRECTORY DESTINATION songs)
+
+if(WIN32)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|aarch64)$")
+        set(RB4PC_PACKAGE_ARCH "arm64")
+    elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(RB4PC_PACKAGE_ARCH "x64")
+    else()
+        set(RB4PC_PACKAGE_ARCH "x86")
+    endif()
+    set(RB4PC_PACKAGE_PLATFORM "win")
+else()
+    string(TOLOWER "${CMAKE_SYSTEM_NAME}" RB4PC_PACKAGE_PLATFORM)
+    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" RB4PC_PACKAGE_ARCH)
+endif()
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_PACKAGE_NAME "RB4PC")
+set(CPACK_PACKAGE_VENDOR "RB4PC contributors")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME "rb4pc-${PROJECT_VERSION}-${RB4PC_PACKAGE_PLATFORM}-${RB4PC_PACKAGE_ARCH}")
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+include(CPack)
 
