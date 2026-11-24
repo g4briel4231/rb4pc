@@ -289,6 +289,45 @@ void generate_asset_catalog(HWND window) {
     }
 }
 
+void generate_audio_catalog(HWND window) {
+    const auto choice = MessageBoxW(window,
+        L"Choose the PC source for the audio audit.\n\n"
+        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
+        L"PC Audio Audit", MB_YESNOCANCEL | MB_ICONQUESTION);
+    if (choice == IDCANCEL) return;
+    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    if (source.empty()) return;
+    const auto destination = select_catalog_output(window, L"pc-audio-audit.json");
+    if (destination.empty()) return;
+    set_status(L"Generating PC audio audit…");
+    try {
+        const auto catalog = rb4pc::builder::catalog_pc_audio(source);
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create the selected JSON audit");
+        output << rb4pc::builder::format_json(catalog);
+        if (!output) throw std::runtime_error("could not finish the selected JSON audit");
+        std::wostringstream message;
+        message << L"PC audio audit generated.\n\nValid PC HDRs: "
+                << catalog.valid_headers << L" / " << catalog.candidate_headers
+                << L"\nAudio records: " << catalog.audio_records
+                << L"\nMOGG v10 / embedded Ogg: " << catalog.mogg_version_10
+                << L" / " << catalog.mogg_embedded_ogg
+                << L"\nRIFF WAVE / FEV: " << catalog.riff_wave << L" / " << catalog.riff_fev
+                << L"\nUnreadable: " << catalog.unreadable_records
+                << L"\n\nOutput: " << destination.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Audio audit generated",
+                    MB_OK | (catalog.invalid_headers || catalog.unreadable_records
+                                 ? MB_ICONWARNING : MB_ICONINFORMATION));
+        set_status(L"Generated PC audio audit: " + destination.filename().wstring());
+    } catch (const std::exception& error) {
+        std::wstring message = L"The PC audio audit could not be generated.\n\n";
+        const std::string detail = error.what();
+        message.append(detail.begin(), detail.end());
+        MessageBoxW(window, message.c_str(), L"Audio audit failed", MB_OK | MB_ICONERROR);
+        set_status(L"PC audio audit generation failed");
+    }
+}
+
 void generate_character_catalog(HWND window) {
     const auto choice = MessageBoxW(window,
         L"Choose the PC source for the character/animation catalog.\n\n"
@@ -468,7 +507,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_open_archive: open_selected_archive(window); return 0;
                 case id_open_folder: open_selected_folder(window); return 0;
                 case id_asset_catalog: generate_asset_catalog(window); return 0;
-                case id_audio_catalog: show_tool(window, L"PC Audio Audit", L"--catalog-pc-audio"); return 0;
+                case id_audio_catalog: generate_audio_catalog(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_texture_converter: show_tool(window, L"Texture Converter", L"rb4pc-texture-probe --convert-pc"); return 0;
                 case id_documentation: {
