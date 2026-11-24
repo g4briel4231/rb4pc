@@ -25,7 +25,15 @@ introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
 full game
 conversion is complete.
 
-## Current milestone: v0.380.0 Metadata Field Candidates
+## Current milestone: v0.400.0 Consistent Complete Corpus Audit
+
+Version 0.400.0 consolidates the four PC catalog families into one verified,
+read-only audit contract. Summary schema version 2 records whether asset, audio,
+character/animation, and metadata passes observed identical candidate and valid
+HDR counts. The CLI and GUI expose that result, metadata totals, and the complete
+five-file output set.
+
+## v0.380.0 Metadata Field Candidates
 
 Version 0.380.0 upgrades the metadata catalog to schema version 2 with aligned
 32-bit profiles and explicit constant, record-size, and remaining-size candidate

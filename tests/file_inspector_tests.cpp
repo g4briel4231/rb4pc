@@ -1001,7 +1001,9 @@ int main() {
                          pc_metadata_catalog_json.find("\"candidateFields\"") != std::string::npos &&
                          pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
                          pc_corpus_audit.metadata.records == 2 &&
-                         pc_corpus_audit_json.find("\"schemaVersion\": 1") != std::string::npos &&
+                         pc_corpus_audit.consistent_header_counts() &&
+                         pc_corpus_audit_json.find("\"schemaVersion\": 2") != std::string::npos &&
+                         pc_corpus_audit_json.find("\"consistentHeaderCounts\": true") != std::string::npos &&
                          pc_corpus_audit_json.find("\"metadata\"") != std::string::npos &&
                          std::filesystem::is_regular_file(pc_corpus_audit_output / "summary.json") &&
                          std::filesystem::is_regular_file(pc_corpus_audit_output / "assets.json") &&

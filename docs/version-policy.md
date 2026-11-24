@@ -23,3 +23,11 @@ For the v0.200.0 to v0.300.0 cycle, the real milestones were:
 - v0.240.0: functional PC audio audit in the GUI;
 - v0.270.0: atomic combined PC corpus audit in the core and CLI;
 - v0.300.0: combined audit workflow in the GUI and release packaging.
+
+For the v0.320.0 to v0.400.0 cycle, the real milestones were:
+
+- v0.320.0: dedicated native PC metadata structure catalog;
+- v0.340.0: metadata integrated into the transactional corpus audit;
+- v0.360.0: functional PC metadata catalog in the GUI;
+- v0.380.0: aligned metadata field-candidate profiles;
+- v0.400.0: cross-catalog HDR consistency contract, unified reporting, and release validation.

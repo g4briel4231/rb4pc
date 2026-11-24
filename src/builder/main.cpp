@@ -45,7 +45,10 @@ int main(int argc, char* argv[]) {
                       << "\nComplete: " << (publication.audit.complete() ? "yes" : "no")
                       << "\nAsset records: " << publication.audit.assets.records
                       << "\nAudio records: " << publication.audit.audio.audio_records
-                      << "\nCharacter/animation records: " << publication.audit.characters.records << '\n';
+                      << "\nCharacter/animation records: " << publication.audit.characters.records
+                      << "\nMetadata records: " << publication.audit.metadata.records
+                      << "\nConsistent header counts: "
+                      << (publication.audit.consistent_header_counts() ? "yes" : "no") << '\n';
             return publication.audit.complete() ? 0 : 1;
         } catch (const std::exception& error) {
             std::cerr << "rb4pc-builder: " << error.what() << '\n';

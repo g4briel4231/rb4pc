@@ -16,8 +16,17 @@ void write_json(const std::filesystem::path& path, const std::string& content) {
 
 } // namespace
 
+bool PcCorpusAudit::consistent_header_counts() const {
+    return assets.candidate_headers == audio.candidate_headers &&
+           assets.candidate_headers == characters.candidate_headers &&
+           assets.candidate_headers == metadata.candidate_headers &&
+           assets.valid_headers == audio.valid_headers &&
+           assets.valid_headers == characters.valid_headers &&
+           assets.valid_headers == metadata.valid_headers;
+}
+
 bool PcCorpusAudit::complete() const {
-    return assets.invalid_headers == 0 && audio.invalid_headers == 0 &&
+    return consistent_header_counts() && assets.invalid_headers == 0 && audio.invalid_headers == 0 &&
            audio.unreadable_records == 0 && characters.invalid_headers == 0 &&
            characters.unreadable_records == 0 && metadata.invalid_headers == 0 &&
            metadata.unreadable_records == 0 && assets.valid_headers > 0 &&
@@ -31,8 +40,9 @@ PcCorpusAudit audit_pc_corpus(const std::filesystem::path& source) {
 
 std::string format_summary_json(const PcCorpusAudit& audit) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 1,\n"
+    output << "{\n  \"schemaVersion\": 2,\n"
            << "  \"complete\": " << (audit.complete() ? "true" : "false") << ",\n"
+           << "  \"consistentHeaderCounts\": " << (audit.consistent_header_counts() ? "true" : "false") << ",\n"
            << "  \"headers\": {\"assets\": " << audit.assets.valid_headers
            << ", \"audio\": " << audit.audio.valid_headers
            << ", \"characters\": " << audit.characters.valid_headers

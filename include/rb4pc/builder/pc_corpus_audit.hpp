@@ -16,6 +16,7 @@ struct PcCorpusAudit {
     PcCharacterCatalog characters;
     PcMetadataCatalog metadata;
 
+    [[nodiscard]] bool consistent_header_counts() const;
     [[nodiscard]] bool complete() const;
 };
 

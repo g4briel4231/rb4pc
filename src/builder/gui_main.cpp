@@ -393,7 +393,9 @@ void generate_corpus_audit(HWND window) {
                 << L"\nAsset records: " << audit.assets.records
                 << L"\nAudio records: " << audit.audio.audio_records
                 << L"\nCharacter/animation records: " << audit.characters.records
-                << L"\n\nFiles: summary.json, assets.json, audio.json, characters.json"
+                << L"\nMetadata records: " << audit.metadata.records
+                << L"\nConsistent header counts: " << (audit.consistent_header_counts() ? L"yes" : L"no")
+                << L"\n\nFiles: summary.json, assets.json, audio.json, characters.json, metadata.json"
                 << L"\nOutput: " << publication.directory.wstring();
         MessageBoxW(window, message.str().c_str(), L"PC corpus audit generated",
                     MB_OK | (audit.complete() ? MB_ICONINFORMATION : MB_ICONWARNING));
