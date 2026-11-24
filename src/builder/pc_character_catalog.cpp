@@ -152,7 +152,7 @@ PcCharacterCatalog catalog_pc_characters(const std::filesystem::path& source) {
 
 std::string format_json(const PcCharacterCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 2,\n"
+    output << "{\n  \"schemaVersion\": 3,\n"
            << "  \"headers\": {\"candidates\": " << catalog.candidate_headers
            << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n"
@@ -197,7 +197,31 @@ std::string format_json(const PcCharacterCatalog& catalog) {
             first_field = false;
         }
         if (!stats.prefix_u32_fields.empty()) output << "\n    ";
-        output << "}}";
+        output << "}, \"candidateFields\": {\"constant\": [";
+        bool first_candidate = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed != stats.records || field.distinct_values.size() != 1) continue;
+            if (!first_candidate) output << ", ";
+            output << offset;
+            first_candidate = false;
+        }
+        output << "], \"recordSize\": {";
+        first_candidate = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.values_equal_record_size == 0) continue;
+            if (!first_candidate) output << ", ";
+            output << '"' << offset << "\": " << field.values_equal_record_size;
+            first_candidate = false;
+        }
+        output << "}, \"remainingSize\": {";
+        first_candidate = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.values_equal_remaining_size == 0) continue;
+            if (!first_candidate) output << ", ";
+            output << '"' << offset << "\": " << field.values_equal_remaining_size;
+            first_candidate = false;
+        }
+        output << "}}}";
         first_family = false;
     }
     if (!catalog.families.empty()) output << '\n';

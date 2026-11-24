@@ -973,8 +973,9 @@ int main() {
                          pc_character_catalog.families.at("charanim").prefix_u32_fields.at(0).observed == 1 &&
                          pc_character_catalog.families.at("charanim").prefix_u32_fields.at(0).distinct_values.size() == 1 &&
                          pc_character_catalog.families.at("charanim").prefix_u32_fields.at(8).values_within_record == 0 &&
-                         pc_character_catalog_json.find("\"schemaVersion\": 2") != std::string::npos &&
+                         pc_character_catalog_json.find("\"schemaVersion\": 3") != std::string::npos &&
                          pc_character_catalog_json.find("\"prefixU32Fields\"") != std::string::npos &&
+                         pc_character_catalog_json.find("\"candidateFields\"") != std::string::npos &&
                          std::all_of(pc_archive_split_report.record_locations.begin(),
                                      pc_archive_split_report.record_locations.end(),
                                      [](const auto& location) { return location.has_value(); }) &&
