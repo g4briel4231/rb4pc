@@ -46,6 +46,7 @@
 #include "rb4pc/builder/song_assembler.hpp"
 #include "rb4pc/builder/pc_archive_builder.hpp"
 #include "rb4pc/builder/pc_asset_catalog.hpp"
+#include "rb4pc/builder/pc_audio_catalog.hpp"
 
 #include <array>
 #include <filesystem>
@@ -361,6 +362,8 @@ int main() {
     const auto pc_archive_split_report = rb4pc::inspector::inspect_header_set(pc_archive_split.header);
     const auto pc_asset_catalog = rb4pc::builder::catalog_pc_assets(pc_archive_output);
     const auto pc_asset_catalog_json = rb4pc::builder::format_json(pc_asset_catalog);
+    const auto pc_audio_catalog = rb4pc::builder::catalog_pc_audio(pc_archive_output);
+    const auto pc_audio_catalog_json = rb4pc::builder::format_json(pc_audio_catalog);
     const auto resolved_with_art = rb4pc::runtime::resolve_song_directory(assembled_with_art.directory);
     const auto artwork_library = rb4pc::runtime::scan_song_library(directory / "assembly-output" / "songs");
     rb4pc::runtime::SongBrowserModel artwork_browser(artwork_library);
@@ -947,6 +950,10 @@ int main() {
                          pc_asset_catalog.categories.at("texture") == 1 &&
                          pc_asset_catalog.unknown_extensions.at(".json") == 2 &&
                          pc_asset_catalog_json.find("\"schemaVersion\": 1") != std::string::npos &&
+                         pc_audio_catalog.valid_headers == 1 && pc_audio_catalog.audio_records == 1 &&
+                         pc_audio_catalog.mogg_records == 1 && pc_audio_catalog.mogg_version_10 == 1 &&
+                         pc_audio_catalog.mogg_embedded_ogg == 1 && pc_audio_catalog.unreadable_records == 0 &&
+                         pc_audio_catalog_json.find("\"embeddedOgg\": 1") != std::string::npos &&
                          std::all_of(pc_archive_split_report.record_locations.begin(),
                                      pc_archive_split_report.record_locations.end(),
                                      [](const auto& location) { return location.has_value(); }) &&

@@ -6,6 +6,7 @@
 #include "rb4pc/builder/song_assembler.hpp"
 #include "rb4pc/builder/pc_archive_builder.hpp"
 #include "rb4pc/builder/pc_asset_catalog.hpp"
+#include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 
@@ -14,6 +15,23 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--catalog-pc-audio") {
+        try {
+            const std::filesystem::path output_path = argv[3];
+            if (std::filesystem::exists(output_path)) throw std::runtime_error("catalog destination already exists");
+            const auto catalog = rb4pc::builder::catalog_pc_audio(argv[1]);
+            std::ofstream output(output_path, std::ios::binary);
+            if (!output) throw std::runtime_error("could not create PC audio catalog");
+            output << rb4pc::builder::format_json(catalog);
+            if (!output) throw std::runtime_error("could not finalize PC audio catalog");
+            std::cout << "PC audio catalog: " << output_path.string()
+                      << "\nValid HDRs: " << catalog.valid_headers << '/' << catalog.candidate_headers
+                      << "\nAudio records: " << catalog.audio_records
+                      << "\nMOGG v10/Ogg: " << catalog.mogg_version_10 << '/' << catalog.mogg_embedded_ogg
+                      << "\nRIFF WAVE/FEV: " << catalog.riff_wave << '/' << catalog.riff_fev << '\n';
+            return catalog.invalid_headers == 0 && catalog.unreadable_records == 0 ? 0 : 1;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 4 && std::string(argv[2]) == "--catalog-pc-assets") {
         try {
             const std::filesystem::path output_path = argv[3];
@@ -123,6 +141,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <notes.mid> --assemble-song-with-art <song.mogg> <song.mogg.dta> <art.png_ps4> <output-root> <shortname>\n";
         std::cerr << "   or: " << argv[0] << " <song-directory> --build-pc-archive <output-dir> <shortname> [max-ark-bytes]\n";
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --catalog-pc-assets <catalog.json>\n";
+        std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --catalog-pc-audio <catalog.json>\n";
         return 2;
     }
     try {

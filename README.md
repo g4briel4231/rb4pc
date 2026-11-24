@@ -12,7 +12,26 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.130.0 Native PC Asset Catalog
+## Current milestone: v0.150.0 Native PC Audio Audit
+
+Version 0.150.0 inspects audio records directly inside one HDR/ARK set or an
+entire PC corpus without extracting them:
+
+```text
+rb4pc-builder <hdr-or-directory> --catalog-pc-audio <catalog.json>
+```
+
+The audit validates MOGG headers and embedded `OggS`, RIFF/WAVE records, and
+RIFF/FEV banks. It separately counts opaque audio, unreadable records, missing
+signatures, and MOGGs with unsupported or potentially protected headers.
+
+Across the user-owned RBVR corpus it inspected 4,806 audio records representing
+3,981,520,152 bytes. Results: 1,640 version-10 MOGGs with valid embedded Ogg,
+98 unsupported/protected MOGG headers, 3,051 valid RIFF/WAVE records, 13 valid
+RIFF/FEV banks, three `.wav` records without RIFF, one opaque noise asset, and
+zero unreadable records.
+
+Version 0.130.0 introduced the native PC asset catalog.
 
 Version 0.130.0 adds a reproducible catalog across one HDR or a directory tree
 of PC/Rock Band VR archive sets:
