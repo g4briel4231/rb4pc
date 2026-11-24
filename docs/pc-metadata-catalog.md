@@ -1,6 +1,6 @@
 # PC metadata structural catalog
 
-Version 0.780.0 extends a read-only catalog for native PC metadata records:
+Version 0.800.0 extends a read-only catalog for native PC metadata records:
 
 ```text
 rb4pc-builder <hdr-or-directory> --catalog-pc-metadata <catalog.json>
@@ -91,6 +91,10 @@ are mutually exclusive and remain structural evidence only.
 Schema version 18 publishes bounded and region-classified second-hop field
 totals plus an explicit completeness invariant in the catalog, CLI, GUI, and
 combined audit.
+
+Version 0.800.0 requires complete second-hop target-region classification
+for a complete combined corpus audit. The catalog still does not dereference a
+second target or claim that either value is a pointer.
 
 This milestone establishes the structural baseline needed before assigning
 semantics to song declarations, object references, localization tables, or mix

@@ -29,6 +29,7 @@ bool PcCorpusAudit::complete() const {
     return consistent_header_counts() && metadata.evidence_classification_complete() &&
            metadata.bounded_offset_region_classification_complete() &&
            metadata.sampled_target_classification_complete() &&
+           metadata.second_hop_region_classification_complete() &&
            assets.invalid_headers == 0 && audio.invalid_headers == 0 &&
            audio.unreadable_records == 0 && characters.invalid_headers == 0 &&
            characters.unreadable_records == 0 && metadata.invalid_headers == 0 &&
@@ -43,7 +44,7 @@ PcCorpusAudit audit_pc_corpus(const std::filesystem::path& source) {
 
 std::string format_summary_json(const PcCorpusAudit& audit) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 9,\n"
+    output << "{\n  \"schemaVersion\": 10,\n"
            << "  \"complete\": " << (audit.complete() ? "true" : "false") << ",\n"
            << "  \"consistentHeaderCounts\": " << (audit.consistent_header_counts() ? "true" : "false") << ",\n"
            << "  \"metadataEvidenceComplete\": "

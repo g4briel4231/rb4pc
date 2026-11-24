@@ -58,4 +58,4 @@ For the v0.620.0 to v0.700.0 cycle, the real milestones were:
 
 ## Stable version numbering
 
-Pre-1.0 development and the first stable release use three components through `1.0.0`. After `1.0.0`, maintenance releases use two components with a zero-padded revision: `1.01`, `1.02`, `1.03`, and so on.
+The first stable release uses `1.00` as its primary version. It may also appear as `1.0.0`, the only release allowed to use both forms as equivalent aliases. Later maintenance releases use only the two-component zero-padded sequence: `1.01`, `1.02`, `1.03`, and so on.
