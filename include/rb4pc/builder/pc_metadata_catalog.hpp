@@ -22,6 +22,11 @@ struct PcMetadataWordStats {
     std::size_t values_within_payload_region = 0;
     std::size_t sampled_target_bytes = 0;
     std::size_t sampled_target_words = 0;
+    std::size_t sampled_target_zero_words = 0;
+    std::size_t sampled_target_words_within_record_bounds = 0;
+    std::size_t sampled_target_aligned_words_within_record_bounds = 0;
+    std::size_t sampled_target_words_within_profile_prefix = 0;
+    std::size_t sampled_target_words_within_payload_region = 0;
     std::size_t sampled_target_zero_bytes = 0;
     std::size_t sampled_target_printable_bytes = 0;
     std::size_t headers_observed = 0;
