@@ -31,3 +31,11 @@ For the v0.320.0 to v0.400.0 cycle, the real milestones were:
 - v0.360.0: functional PC metadata catalog in the GUI;
 - v0.380.0: aligned metadata field-candidate profiles;
 - v0.400.0: cross-catalog HDR consistency contract, unified reporting, and release validation.
+
+For the v0.420.0 to v0.500.0 cycle, the real milestones were:
+
+- v0.420.0: privacy-preserving metadata family coverage per HDR cohort;
+- v0.440.0: aligned-word stability measured within and across HDR sets;
+- v0.460.0: mutually exclusive structural evidence classes;
+- v0.480.0: evidence completeness integrated into the catalog, audit, CLI, and GUI;
+- v0.500.0: evidence completeness enforced by the corpus-audit completion contract.

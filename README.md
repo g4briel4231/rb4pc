@@ -25,7 +25,37 @@ introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
 full game
 conversion is complete.
 
-## Current milestone: v0.400.0 Consistent Complete Corpus Audit
+## Current milestone: v0.500.0 Metadata Cohort Evidence
+
+Version 0.500.0 makes cross-HDR metadata evidence part of the complete PC corpus
+audit contract. Metadata schema version 6 measures family coverage per HDR,
+field stability across HDRs, and mutually exclusive evidence classes. Corpus
+summary schema version 4 requires every profiled field to be classified before
+an audit can report `complete: true`. The CLI and GUI expose the invariant.
+
+## v0.480.0 Integrated Evidence Status
+
+Version 0.480.0 added profiled/classified field totals and the explicit
+`evidenceClassificationComplete` invariant to the metadata catalog, combined
+audit, CLI, and Windows Builder.
+
+## v0.460.0 Metadata Evidence Classes
+
+Version 0.460.0 classified each aligned metadata word as cross-HDR constant,
+per-HDR constant with differing values, variable between records, or incomplete
+across the HDR cohort without assigning speculative semantic names.
+
+## v0.440.0 Cross-HDR Field Stability
+
+Version 0.440.0 began measuring whether aligned words are present and constant
+within and across independent HDR sets.
+
+## v0.420.0 Metadata HDR Cohort Coverage
+
+Version 0.420.0 added privacy-preserving per-family HDR coverage and per-HDR
+record-count ranges without publishing filenames or internal paths.
+
+## v0.400.0 Consistent Complete Corpus Audit
 
 Version 0.400.0 consolidates the four PC catalog families into one verified,
 read-only audit contract. Summary schema version 2 records whether asset, audio,

@@ -26,7 +26,8 @@ bool PcCorpusAudit::consistent_header_counts() const {
 }
 
 bool PcCorpusAudit::complete() const {
-    return consistent_header_counts() && assets.invalid_headers == 0 && audio.invalid_headers == 0 &&
+    return consistent_header_counts() && metadata.evidence_classification_complete() &&
+           assets.invalid_headers == 0 && audio.invalid_headers == 0 &&
            audio.unreadable_records == 0 && characters.invalid_headers == 0 &&
            characters.unreadable_records == 0 && metadata.invalid_headers == 0 &&
            metadata.unreadable_records == 0 && assets.valid_headers > 0 &&
@@ -40,9 +41,11 @@ PcCorpusAudit audit_pc_corpus(const std::filesystem::path& source) {
 
 std::string format_summary_json(const PcCorpusAudit& audit) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 3,\n"
+    output << "{\n  \"schemaVersion\": 4,\n"
            << "  \"complete\": " << (audit.complete() ? "true" : "false") << ",\n"
            << "  \"consistentHeaderCounts\": " << (audit.consistent_header_counts() ? "true" : "false") << ",\n"
+           << "  \"metadataEvidenceComplete\": "
+           << (audit.metadata.evidence_classification_complete() ? "true" : "false") << ",\n"
            << "  \"headers\": {\"assets\": " << audit.assets.valid_headers
            << ", \"audio\": " << audit.audio.valid_headers
            << ", \"characters\": " << audit.characters.valid_headers

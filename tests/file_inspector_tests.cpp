@@ -383,6 +383,8 @@ int main() {
     const auto pc_metadata_catalog_json = rb4pc::builder::format_json(pc_metadata_catalog);
     const auto pc_corpus_audit = rb4pc::builder::audit_pc_corpus(character_archive.header);
     const auto pc_corpus_audit_json = rb4pc::builder::format_summary_json(pc_corpus_audit);
+    auto pc_corpus_incomplete_evidence = pc_corpus_audit;
+    ++pc_corpus_incomplete_evidence.metadata.families.begin()->second.record_variable_fields;
     const auto pc_corpus_audit_output = directory / "pc-corpus-audit";
     const auto pc_corpus_publication = rb4pc::builder::write_pc_corpus_audit(
         character_archive.header, pc_corpus_audit_output);
@@ -1017,10 +1019,13 @@ int main() {
                          pc_metadata_catalog_json.find("\"candidateFields\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"evidenceClassificationComplete\": true") != std::string::npos &&
                          pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
+                         !pc_corpus_incomplete_evidence.metadata.evidence_classification_complete() &&
+                         !pc_corpus_incomplete_evidence.complete() &&
                          pc_corpus_audit.metadata.records == 2 &&
                          pc_corpus_audit.consistent_header_counts() &&
-                         pc_corpus_audit_json.find("\"schemaVersion\": 3") != std::string::npos &&
+                         pc_corpus_audit_json.find("\"schemaVersion\": 4") != std::string::npos &&
                          pc_corpus_audit_json.find("\"consistentHeaderCounts\": true") != std::string::npos &&
+                         pc_corpus_audit_json.find("\"metadataEvidenceComplete\": true") != std::string::npos &&
                          pc_corpus_audit_json.find("\"evidenceClassificationComplete\": true") != std::string::npos &&
                          pc_corpus_audit_json.find("\"metadata\"") != std::string::npos &&
                          std::filesystem::is_regular_file(pc_corpus_audit_output / "summary.json") &&
