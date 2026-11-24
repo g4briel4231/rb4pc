@@ -357,6 +357,9 @@ void generate_metadata_catalog(HWND window) {
                 << L"\nProfiled fields: " << catalog.profiled_fields()
                 << L"\nEvidence classification complete: "
                 << (catalog.evidence_classification_complete() ? L"yes" : L"no")
+                << L"\nBounded offset fields: " << catalog.bounded_offset_fields()
+                << L"\nBounded offset region classification complete: "
+                << (catalog.bounded_offset_region_classification_complete() ? L"yes" : L"no")
                 << L"\nUnreadable: " << catalog.unreadable_records
                 << L"\n\nOutput: " << destination.wstring();
         MessageBoxW(window, message.str().c_str(), L"Metadata catalog generated",
@@ -400,6 +403,8 @@ void generate_corpus_audit(HWND window) {
                 << L"\nConsistent header counts: " << (audit.consistent_header_counts() ? L"yes" : L"no")
                 << L"\nMetadata evidence classification complete: "
                 << (audit.metadata.evidence_classification_complete() ? L"yes" : L"no")
+                << L"\nMetadata bounded offset regions complete: "
+                << (audit.metadata.bounded_offset_region_classification_complete() ? L"yes" : L"no")
                 << L"\n\nFiles: summary.json, assets.json, audio.json, characters.json, metadata.json"
                 << L"\nOutput: " << publication.directory.wstring();
         MessageBoxW(window, message.str().c_str(), L"PC corpus audit generated",

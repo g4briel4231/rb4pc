@@ -34,6 +34,9 @@ int main(int argc, char* argv[]) {
                       << "\nProfiled fields: " << catalog.profiled_fields()
                       << "\nEvidence classification complete: "
                       << (catalog.evidence_classification_complete() ? "yes" : "no")
+                      << "\nBounded offset fields: " << catalog.bounded_offset_fields()
+                      << "\nBounded offset region classification complete: "
+                      << (catalog.bounded_offset_region_classification_complete() ? "yes" : "no")
                       << "\nUnreadable: " << catalog.unreadable_records << '\n';
             return catalog.invalid_headers == 0 && catalog.unreadable_records == 0 ? 0 : 1;
         } catch (const std::exception& error) {
@@ -53,7 +56,9 @@ int main(int argc, char* argv[]) {
                       << "\nConsistent header counts: "
                       << (publication.audit.consistent_header_counts() ? "yes" : "no")
                       << "\nMetadata evidence classification complete: "
-                      << (publication.audit.metadata.evidence_classification_complete() ? "yes" : "no") << '\n';
+                      << (publication.audit.metadata.evidence_classification_complete() ? "yes" : "no")
+                      << "\nMetadata bounded offset regions complete: "
+                      << (publication.audit.metadata.bounded_offset_region_classification_complete() ? "yes" : "no") << '\n';
             return publication.audit.complete() ? 0 : 1;
         } catch (const std::exception& error) {
             std::cerr << "rb4pc-builder: " << error.what() << '\n';

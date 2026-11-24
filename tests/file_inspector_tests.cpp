@@ -1012,7 +1012,10 @@ int main() {
                              pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.size() &&
                          pc_metadata_catalog.profiled_fields() == pc_metadata_catalog.classified_fields() &&
                          pc_metadata_catalog.evidence_classification_complete() &&
-                         pc_metadata_catalog_json.find("\"schemaVersion\": 9") != std::string::npos &&
+                         pc_metadata_catalog.bounded_offset_fields() ==
+                             pc_metadata_catalog.region_classified_bounded_offset_fields() &&
+                         pc_metadata_catalog.bounded_offset_region_classification_complete() &&
+                         pc_metadata_catalog_json.find("\"schemaVersion\": 10") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"headerCoverage\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedOffset\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedPrefixOffset\": [0]") != std::string::npos &&
@@ -1027,14 +1030,16 @@ int main() {
                          pc_metadata_catalog_json.find("\"incompleteHeaderCoverage\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"candidateFields\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"evidenceClassificationComplete\": true") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"boundedOffsetRegionClassificationComplete\": true") != std::string::npos &&
                          pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
                          !pc_corpus_incomplete_evidence.metadata.evidence_classification_complete() &&
                          !pc_corpus_incomplete_evidence.complete() &&
                          pc_corpus_audit.metadata.records == 2 &&
                          pc_corpus_audit.consistent_header_counts() &&
-                         pc_corpus_audit_json.find("\"schemaVersion\": 4") != std::string::npos &&
+                         pc_corpus_audit_json.find("\"schemaVersion\": 5") != std::string::npos &&
                          pc_corpus_audit_json.find("\"consistentHeaderCounts\": true") != std::string::npos &&
                          pc_corpus_audit_json.find("\"metadataEvidenceComplete\": true") != std::string::npos &&
+                         pc_corpus_audit_json.find("\"metadataBoundedOffsetRegionsComplete\": true") != std::string::npos &&
                          pc_corpus_audit_json.find("\"evidenceClassificationComplete\": true") != std::string::npos &&
                          pc_corpus_audit_json.find("\"metadata\"") != std::string::npos &&
                          std::filesystem::is_regular_file(pc_corpus_audit_output / "summary.json") &&

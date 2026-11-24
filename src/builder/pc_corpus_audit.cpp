@@ -41,11 +41,13 @@ PcCorpusAudit audit_pc_corpus(const std::filesystem::path& source) {
 
 std::string format_summary_json(const PcCorpusAudit& audit) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 4,\n"
+    output << "{\n  \"schemaVersion\": 5,\n"
            << "  \"complete\": " << (audit.complete() ? "true" : "false") << ",\n"
            << "  \"consistentHeaderCounts\": " << (audit.consistent_header_counts() ? "true" : "false") << ",\n"
            << "  \"metadataEvidenceComplete\": "
            << (audit.metadata.evidence_classification_complete() ? "true" : "false") << ",\n"
+           << "  \"metadataBoundedOffsetRegionsComplete\": "
+           << (audit.metadata.bounded_offset_region_classification_complete() ? "true" : "false") << ",\n"
            << "  \"headers\": {\"assets\": " << audit.assets.valid_headers
            << ", \"audio\": " << audit.audio.valid_headers
            << ", \"characters\": " << audit.characters.valid_headers
