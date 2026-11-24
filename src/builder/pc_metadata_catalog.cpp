@@ -158,6 +158,8 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
                     if (value > 0 && value < record.size) {
                         ++field.values_within_record_bounds;
                         if (value % 4 == 0) ++field.aligned_values_within_record_bounds;
+                        if (value < 64) ++field.values_within_profile_prefix;
+                        else ++field.values_within_payload_region;
                     }
                     if (value == record.size) ++field.values_equal_record_size;
                     if (value == record.size - offset - 4) ++field.values_equal_remaining_size;
@@ -220,7 +222,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 7,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 8,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -273,6 +275,8 @@ std::string format_json(const PcMetadataCatalog& catalog) {
                    << ", \"nonzeroValues\": " << field.nonzero_values
                    << ", \"valuesWithinRecordBounds\": " << field.values_within_record_bounds
                    << ", \"alignedValuesWithinRecordBounds\": " << field.aligned_values_within_record_bounds
+                   << ", \"valuesWithinProfilePrefix\": " << field.values_within_profile_prefix
+                   << ", \"valuesWithinPayloadRegion\": " << field.values_within_payload_region
                    << ", \"headerStability\": {\"observed\": " << field.headers_observed
                    << ", \"constantWithinHeader\": " << field.headers_constant
                    << ", \"distinctConstants\": " << field.distinct_header_constants.size() << "}"
