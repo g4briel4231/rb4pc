@@ -90,6 +90,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
             std::vector<std::ifstream> archives;
             for (const auto& archive : report.archives) archives.emplace_back(archive.path, std::ios::binary);
             std::map<std::string, std::size_t> header_family_records;
+            std::map<std::string, std::map<std::size_t, std::set<std::uint32_t>>> header_field_values;
             for (std::size_t index = 0; index < report.metadata.file_records.size(); ++index) {
                 const auto& record = report.metadata.file_records[index];
                 const auto family = family_of(record.path);
@@ -120,6 +121,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
                 if (size >= 4) ++stats.first_u32_le[std::to_string(read_u32(bytes.data()))];
                 for (std::size_t offset = 0; offset + 4 <= std::min<std::size_t>(size, 64); offset += 4) {
                     const auto value = read_u32(bytes.data() + offset);
+                    header_field_values[family][offset].insert(value);
                     auto& field = stats.prefix_u32_fields[offset];
                     ++field.observed;
                     if (field.observed == 1) field.minimum = field.maximum = value;
@@ -154,6 +156,17 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
                 else stats.minimum_records_per_header = std::min(stats.minimum_records_per_header, records);
                 stats.maximum_records_per_header = std::max(stats.maximum_records_per_header, records);
             }
+            for (const auto& [family, fields] : header_field_values) {
+                auto& stats = catalog.families[family];
+                for (const auto& [offset, values] : fields) {
+                    auto& field = stats.prefix_u32_fields[offset];
+                    ++field.headers_observed;
+                    if (values.size() == 1) {
+                        ++field.headers_constant;
+                        field.distinct_header_constants.insert(*values.begin());
+                    }
+                }
+            }
         } catch (const std::exception& error) {
             ++catalog.invalid_headers;
             if (catalog.errors.size() < 32) catalog.errors.push_back(header.filename().string() + ": " + error.what());
@@ -164,7 +177,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 3,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 4,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -205,12 +218,22 @@ std::string format_json(const PcMetadataCatalog& catalog) {
                    << ", \"zeroValues\": " << field.zero_values
                    << ", \"valuesEqualRecordSize\": " << field.values_equal_record_size
                    << ", \"valuesEqualRemainingSize\": " << field.values_equal_remaining_size
+                   << ", \"headerStability\": {\"observed\": " << field.headers_observed
+                   << ", \"constantWithinHeader\": " << field.headers_constant
+                   << ", \"distinctConstants\": " << field.distinct_header_constants.size() << "}"
                    << ", \"minimum\": " << field.minimum << ", \"maximum\": " << field.maximum << '}';
             first = false;
         }
         output << "}, \"candidateFields\": {\"constant\": ["; first = true;
         for (const auto& [offset, field] : stats.prefix_u32_fields) {
             if (field.observed != stats.records || field.distinct_values.size() != 1) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"crossHeaderConstant\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.headers_observed != stats.headers_observed ||
+                field.headers_constant != field.headers_observed ||
+                field.distinct_header_constants.size() != 1) continue;
             if (!first) output << ", "; output << offset; first = false;
         }
         output << "], \"recordSize\": {"; first = true;
