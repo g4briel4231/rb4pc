@@ -44,6 +44,7 @@
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
 #include "rb4pc/builder/song_assembler.hpp"
+#include "rb4pc/builder/pc_archive_builder.hpp"
 
 #include <array>
 #include <filesystem>
@@ -343,6 +344,15 @@ int main() {
     const auto assembled_with_art = rb4pc::builder::assemble_song_directory_with_artwork(
         assembly_midi_path, mogg_path, assembly_mix_path, convertible_texture_path,
         directory / "assembly-output", "synthart");
+    const auto pc_archive_output = directory / "pc-archive";
+    std::filesystem::create_directory(pc_archive_output);
+    const auto pc_archive = rb4pc::builder::build_pc_song_archive(
+        assembled_with_art.directory, pc_archive_output, "synthart");
+    const auto pc_archive_report = rb4pc::inspector::inspect_header_set(pc_archive.header);
+    const auto pc_archive_repeat_output = directory / "pc-archive-repeat";
+    std::filesystem::create_directory(pc_archive_repeat_output);
+    const auto pc_archive_repeat = rb4pc::builder::build_pc_song_archive(
+        assembled_with_art.directory, pc_archive_repeat_output, "synthart");
     const auto resolved_with_art = rb4pc::runtime::resolve_song_directory(assembled_with_art.directory);
     const auto artwork_library = rb4pc::runtime::scan_song_library(directory / "assembly-output" / "songs");
     rb4pc::runtime::SongBrowserModel artwork_browser(artwork_library);
@@ -911,6 +921,20 @@ int main() {
                      "texture container compatibility mismatch");
     passed &= expect(json.find("\"hashIndexValidated\": true") != std::string::npos,
                      "JSON path hash validation missing");
+    passed &= expect(pc_archive.record_count == 6 && pc_archive.payload_bytes != 0 &&
+                         pc_archive_report.metadata.version == 10 &&
+                         pc_archive_report.metadata.hash_index_validated &&
+                         pc_archive_report.metadata.archives.size() == 1 &&
+                         pc_archive_report.metadata.archives[0].name == "synthart_pc_0.ark" &&
+                         pc_archive_report.metadata.archives[0].declared_size == pc_archive.payload_bytes &&
+                         pc_archive_report.metadata.file_records.size() == pc_archive.record_count &&
+                         pc_archive_report.record_locations.size() == pc_archive.record_count &&
+                         pc_archive.header_sha256 == pc_archive_repeat.header_sha256 &&
+                         pc_archive.archive_sha256 == pc_archive_repeat.archive_sha256 &&
+                         std::all_of(pc_archive_report.record_locations.begin(),
+                                     pc_archive_report.record_locations.end(),
+                                     [](const auto& location) { return location.has_value(); }),
+                     "generated PC HDR/ARK validation mismatch");
 
     std::filesystem::remove_all(directory);
     return passed ? 0 : 1;

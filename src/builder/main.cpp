@@ -4,6 +4,7 @@
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
 #include "rb4pc/builder/song_assembler.hpp"
+#include "rb4pc/builder/pc_archive_builder.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 
@@ -12,6 +13,18 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 5 && std::string(argv[2]) == "--build-pc-archive") {
+        try {
+            const auto result = rb4pc::builder::build_pc_song_archive(argv[1], argv[3], argv[4]);
+            std::cout << "PC HDR: " << result.header.string()
+                      << "\nPC ARK: " << result.archive.string()
+                      << "\nRecords: " << result.record_count
+                      << "\nPayload bytes: " << result.payload_bytes
+                      << "\nHDR SHA-256: " << result.header_sha256
+                      << "\nARK SHA-256: " << result.archive_sha256 << '\n';
+            return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 8 && std::string(argv[2]) == "--assemble-song-with-art") {
         try {
             const auto result = rb4pc::builder::assemble_song_directory_with_artwork(
@@ -77,6 +90,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <notes.mid> --plan-song-session <song.mogg> <song.mogg.dta> <session.json>\n";
         std::cerr << "   or: " << argv[0] << " <notes.mid> --assemble-song <song.mogg> <song.mogg.dta> <output-root> <shortname>\n";
         std::cerr << "   or: " << argv[0] << " <notes.mid> --assemble-song-with-art <song.mogg> <song.mogg.dta> <art.png_ps4> <output-root> <shortname>\n";
+        std::cerr << "   or: " << argv[0] << " <song-directory> --build-pc-archive <output-dir> <shortname>\n";
         return 2;
     }
     try {

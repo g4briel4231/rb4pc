@@ -12,9 +12,27 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.100.0 Validated Custom-Song Runtime
+## Current milestone: v0.101.0 Deterministic PC HDR/ARK Writer
 
-Version 0.100.0 marks the first end-to-end validated release of the clean-room
+Version 0.101.0 adds the first write path toward the complete port. The Builder
+can package a validated song directory into a deterministic version-10
+`<shortname>_pc.hdr` and `<shortname>_pc_0.ark` pair:
+
+```text
+rb4pc-builder <song-directory> --build-pc-archive <output-dir> <shortname>
+```
+
+The ARK concatenates payloads under `pc/songs_download/<shortname>/`. The HDR
+records their offsets and sizes, uses the verified encrypted byte stream, and
+builds the complete Murmur hash index. The Builder reopens the HDR and verifies
+the generated structure before publishing either destination. Existing files,
+symbolic links, unsafe names, and values beyond the v10 limits are rejected.
+
+Identical input produces identical HDR and ARK hashes. This milestone proves
+the PC container-writing boundary; it does not yet claim that every payload
+inside the archive is in the native format expected by Rock Band VR.
+
+Version 0.100.0 marked the first end-to-end validated release of the clean-room
 custom-song runtime. Using only user-supplied files outside the repository, the
 release workflow has assembled a song directory, converted supported PS4
 artwork, verified every manifest hash, decoded an entire multichannel MOGG, and
