@@ -25,7 +25,29 @@ introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
 full game
 conversion is complete.
 
-## Current milestone: v0.200.0 GUI Structural Catalog
+## Current milestone: v0.300.0 Complete PC Corpus Audit
+
+Version 0.300.0 completes the first unified read-only audit workflow for
+user-supplied PC/Rock Band VR HDR/ARK sets. The CLI and Windows Builder GUI now
+produce a four-file audit bundle with an aggregate summary plus asset, audio,
+and character/animation reports:
+
+```text
+rb4pc-builder <hdr-or-directory> --audit-pc-corpus <new-output-directory>
+```
+
+Publication is transactional: files are written to a temporary sibling and the
+finished directory is moved into place only after every JSON is complete.
+Existing destinations are never overwritten.
+
+The real intermediate milestones were v0.220.0 for the GUI asset catalog,
+v0.240.0 for the GUI audio audit, and v0.270.0 for the combined core/CLI audit.
+The project now follows the documented rule that large objectives are divided
+into testable milestones rather than advancing version numbers prematurely.
+See [`docs/pc-corpus-audit.md`](docs/pc-corpus-audit.md) and
+[`docs/version-policy.md`](docs/version-policy.md).
+
+## v0.200.0 GUI Structural Catalog
 
 Version 0.200.0 connects the character/animation structural catalog directly
 to the Windows Builder GUI. `Tools > Character/Animation Inventory...` accepts

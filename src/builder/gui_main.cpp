@@ -10,6 +10,7 @@
 #include "rb4pc/builder/pc_asset_catalog.hpp"
 #include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/builder/pc_character_catalog.hpp"
+#include "rb4pc/builder/pc_corpus_audit.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 
 #include <algorithm>
@@ -33,6 +34,7 @@ constexpr int id_asset_catalog = 1101;
 constexpr int id_audio_catalog = 1102;
 constexpr int id_character_catalog = 1103;
 constexpr int id_texture_converter = 1104;
+constexpr int id_corpus_audit = 1105;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
@@ -328,6 +330,44 @@ void generate_audio_catalog(HWND window) {
     }
 }
 
+void generate_corpus_audit(HWND window) {
+    const auto choice = MessageBoxW(window,
+        L"Choose the PC source for the complete corpus audit.\n\n"
+        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
+        L"Complete PC Corpus Audit", MB_YESNOCANCEL | MB_ICONQUESTION);
+    if (choice == IDCANCEL) return;
+    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    if (source.empty()) return;
+    MessageBoxW(window,
+        L"Select an existing parent folder. RB4PC will create a new rb4pc-pc-audit folder inside it.",
+        L"Select audit destination", MB_OK | MB_ICONINFORMATION);
+    const auto parent = select_folder(window);
+    if (parent.empty()) return;
+    const auto destination = parent / L"rb4pc-pc-audit";
+    set_status(L"Generating complete PC corpus audit…");
+    try {
+        const auto publication = rb4pc::builder::write_pc_corpus_audit(source, destination);
+        const auto& audit = publication.audit;
+        std::wostringstream message;
+        message << L"Complete PC corpus audit generated.\n\nStatus: "
+                << (audit.complete() ? L"complete" : L"completed with warnings")
+                << L"\nAsset records: " << audit.assets.records
+                << L"\nAudio records: " << audit.audio.audio_records
+                << L"\nCharacter/animation records: " << audit.characters.records
+                << L"\n\nFiles: summary.json, assets.json, audio.json, characters.json"
+                << L"\nOutput: " << publication.directory.wstring();
+        MessageBoxW(window, message.str().c_str(), L"PC corpus audit generated",
+                    MB_OK | (audit.complete() ? MB_ICONINFORMATION : MB_ICONWARNING));
+        set_status(L"Generated complete PC corpus audit");
+    } catch (const std::exception& error) {
+        std::wstring message = L"The complete PC corpus audit could not be generated.\n\n";
+        const std::string detail = error.what();
+        message.append(detail.begin(), detail.end());
+        MessageBoxW(window, message.c_str(), L"PC corpus audit failed", MB_OK | MB_ICONERROR);
+        set_status(L"Complete PC corpus audit failed");
+    }
+}
+
 void generate_character_catalog(HWND window) {
     const auto choice = MessageBoxW(window,
         L"Choose the PC source for the character/animation catalog.\n\n"
@@ -395,6 +435,8 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_STRING, id_asset_catalog, L"PC Asset Catalog…");
     AppendMenuW(tools, MF_STRING, id_audio_catalog, L"PC Audio Audit…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
+    AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(tools, MF_STRING, id_corpus_audit, L"Complete PC Corpus Audit…");
     AppendMenuW(tools, MF_STRING, id_texture_converter, L"Texture Converter…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
 
@@ -509,6 +551,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_asset_catalog: generate_asset_catalog(window); return 0;
                 case id_audio_catalog: generate_audio_catalog(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
+                case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_texture_converter: show_tool(window, L"Texture Converter", L"rb4pc-texture-probe --convert-pc"); return 0;
                 case id_documentation: {
                     const auto docs = find_asset(L"docs");
