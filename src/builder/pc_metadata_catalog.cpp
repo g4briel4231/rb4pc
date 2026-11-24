@@ -116,6 +116,20 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
                 }
                 ++stats.first_sixteen_bytes[hex_prefix(bytes.data(), size)];
                 if (size >= 4) ++stats.first_u32_le[std::to_string(read_u32(bytes.data()))];
+                for (std::size_t offset = 0; offset + 4 <= std::min<std::size_t>(size, 64); offset += 4) {
+                    const auto value = read_u32(bytes.data() + offset);
+                    auto& field = stats.prefix_u32_fields[offset];
+                    ++field.observed;
+                    if (field.observed == 1) field.minimum = field.maximum = value;
+                    else {
+                        field.minimum = std::min(field.minimum, value);
+                        field.maximum = std::max(field.maximum, value);
+                    }
+                    field.distinct_values.insert(value);
+                    if (value == 0) ++field.zero_values;
+                    if (value == record.size) ++field.values_equal_record_size;
+                    if (value == record.size - offset - 4) ++field.values_equal_remaining_size;
+                }
                 bool has_ascii = false;
                 for (std::size_t start = 0; start < size;) {
                     if (bytes[start] < 0x20 || bytes[start] > 0x7e) { ++start; continue; }
@@ -141,7 +155,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 1,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 2,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -170,7 +184,33 @@ std::string format_json(const PcMetadataCatalog& catalog) {
         for (const auto& [length, count] : stats.ascii_length_distribution) {
             if (!first) output << ", "; output << '"' << length << "\": " << count; first = false;
         }
-        output << "}}"; first_family = false;
+        output << "}, \"prefixU32Fields\": {"; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (!first) output << ", ";
+            output << '"' << offset << "\": {\"observed\": " << field.observed
+                   << ", \"distinctValues\": " << field.distinct_values.size()
+                   << ", \"zeroValues\": " << field.zero_values
+                   << ", \"valuesEqualRecordSize\": " << field.values_equal_record_size
+                   << ", \"valuesEqualRemainingSize\": " << field.values_equal_remaining_size
+                   << ", \"minimum\": " << field.minimum << ", \"maximum\": " << field.maximum << '}';
+            first = false;
+        }
+        output << "}, \"candidateFields\": {\"constant\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed != stats.records || field.distinct_values.size() != 1) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"recordSize\": {"; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (!field.values_equal_record_size) continue;
+            if (!first) output << ", "; output << '"' << offset << "\": " << field.values_equal_record_size; first = false;
+        }
+        output << "}, \"remainingSize\": {"; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (!field.values_equal_remaining_size) continue;
+            if (!first) output << ", "; output << '"' << offset << "\": " << field.values_equal_remaining_size; first = false;
+        }
+        output << "}}}"; first_family = false;
     }
     if (!catalog.families.empty()) output << '\n';
     output << "  },\n  \"errors\": [";

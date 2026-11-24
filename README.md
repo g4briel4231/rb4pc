@@ -25,7 +25,13 @@ introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
 full game
 conversion is complete.
 
-## Current milestone: v0.360.0 GUI Metadata Catalog
+## Current milestone: v0.380.0 Metadata Field Candidates
+
+Version 0.380.0 upgrades the metadata catalog to schema version 2 with aligned
+32-bit profiles and explicit constant, record-size, and remaining-size candidate
+offsets. These are evidence for later decoding, not asserted field semantics.
+
+## v0.360.0 GUI Metadata Catalog
 
 Version 0.360.0 adds `Tools > PC Metadata Catalog...` to the Windows Builder.
 The workflow accepts one `*_pc.hdr` or a folder, generates the bounded metadata

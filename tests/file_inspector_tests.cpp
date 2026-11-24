@@ -995,7 +995,10 @@ int main() {
                          pc_metadata_catalog.unreadable_records == 0 &&
                          pc_metadata_catalog.families.at("songdta_pc").records == 1 &&
                          pc_metadata_catalog.families.at("rbsong").records_with_ascii == 1 &&
-                         pc_metadata_catalog_json.find("\"schemaVersion\": 1") != std::string::npos &&
+                         pc_metadata_catalog.families.at("rbsong").prefix_u32_fields.at(0).observed == 1 &&
+                         pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).distinct_values.size() == 1 &&
+                         pc_metadata_catalog_json.find("\"schemaVersion\": 2") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"candidateFields\"") != std::string::npos &&
                          pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
                          pc_corpus_audit.metadata.records == 2 &&
                          pc_corpus_audit_json.find("\"schemaVersion\": 1") != std::string::npos &&
