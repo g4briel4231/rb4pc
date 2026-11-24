@@ -29,6 +29,12 @@ struct PcCharacterFamilyStats {
     std::map<std::string, std::size_t> first_four_bytes;
     std::map<std::string, std::size_t> first_u32_le;
     std::map<std::size_t, PcCharacterWordStats> prefix_u32_fields;
+    std::size_t records_with_ascii_strings = 0;
+    std::size_t ascii_strings = 0;
+    std::size_t null_terminated_ascii_strings = 0;
+    std::size_t ascii_characters = 0;
+    std::size_t maximum_ascii_string_length = 0;
+    std::map<std::size_t, std::size_t> ascii_length_distribution;
 };
 
 struct PcCharacterCatalog {

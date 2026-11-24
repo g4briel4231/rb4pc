@@ -117,7 +117,7 @@ PcCharacterCatalog catalog_pc_characters(const std::filesystem::path& source) {
                     ++catalog.unreadable_records;
                     continue;
                 }
-                std::array<unsigned char, 64> bytes{};
+                std::array<unsigned char, 256> bytes{};
                 const auto read_size = std::min<std::size_t>(bytes.size(), record.size);
                 if (!read_exact(archives[location.archive_index], location.local_offset, bytes.data(), read_size)) {
                     ++catalog.unreadable_records;
@@ -125,7 +125,7 @@ PcCharacterCatalog catalog_pc_characters(const std::filesystem::path& source) {
                 }
                 ++stats.first_four_bytes[hex_prefix(bytes.data(), read_size)];
                 if (read_size >= 4) ++stats.first_u32_le[std::to_string(read_u32(bytes.data()))];
-                for (std::size_t offset = 0; offset + 4 <= read_size; offset += 4) {
+                for (std::size_t offset = 0; offset + 4 <= std::min<std::size_t>(read_size, 64); offset += 4) {
                     const auto value = read_u32(bytes.data() + offset);
                     auto& field = stats.prefix_u32_fields[offset];
                     ++field.observed;
@@ -140,6 +140,26 @@ PcCharacterCatalog catalog_pc_characters(const std::filesystem::path& source) {
                     if (value == record.size) ++field.values_equal_record_size;
                     if (value == record.size - offset - 4) ++field.values_equal_remaining_size;
                 }
+                bool record_has_ascii = false;
+                for (std::size_t start = 0; start < read_size;) {
+                    if (bytes[start] < 0x20 || bytes[start] > 0x7e) {
+                        ++start;
+                        continue;
+                    }
+                    std::size_t end = start;
+                    while (end < read_size && bytes[end] >= 0x20 && bytes[end] <= 0x7e) ++end;
+                    const auto length = end - start;
+                    if (length >= 4) {
+                        record_has_ascii = true;
+                        ++stats.ascii_strings;
+                        stats.ascii_characters += length;
+                        stats.maximum_ascii_string_length = std::max(stats.maximum_ascii_string_length, length);
+                        ++stats.ascii_length_distribution[length];
+                        if (end < read_size && bytes[end] == 0) ++stats.null_terminated_ascii_strings;
+                    }
+                    start = end;
+                }
+                if (record_has_ascii) ++stats.records_with_ascii_strings;
             }
         } catch (const std::exception& error) {
             ++catalog.invalid_headers;
@@ -152,7 +172,7 @@ PcCharacterCatalog catalog_pc_characters(const std::filesystem::path& source) {
 
 std::string format_json(const PcCharacterCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 3,\n"
+    output << "{\n  \"schemaVersion\": 4,\n"
            << "  \"headers\": {\"candidates\": " << catalog.candidate_headers
            << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n"
@@ -220,6 +240,18 @@ std::string format_json(const PcCharacterCatalog& catalog) {
             if (!first_candidate) output << ", ";
             output << '"' << offset << "\": " << field.values_equal_remaining_size;
             first_candidate = false;
+        }
+        output << "}}, \"asciiSignals\": {\"recordsWithStrings\": "
+               << stats.records_with_ascii_strings << ", \"strings\": " << stats.ascii_strings
+               << ", \"nullTerminated\": " << stats.null_terminated_ascii_strings
+               << ", \"characters\": " << stats.ascii_characters
+               << ", \"maximumLength\": " << stats.maximum_ascii_string_length
+               << ", \"lengthDistribution\": {";
+        bool first_length = true;
+        for (const auto& [length, count] : stats.ascii_length_distribution) {
+            if (!first_length) output << ", ";
+            output << '"' << length << "\": " << count;
+            first_length = false;
         }
         output << "}}}";
         first_family = false;
