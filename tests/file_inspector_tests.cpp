@@ -385,6 +385,10 @@ int main() {
     const auto pc_corpus_audit_json = rb4pc::builder::format_summary_json(pc_corpus_audit);
     auto pc_corpus_incomplete_evidence = pc_corpus_audit;
     ++pc_corpus_incomplete_evidence.metadata.families.begin()->second.record_variable_fields;
+    auto pc_corpus_incomplete_regions = pc_corpus_audit;
+    auto& incomplete_region_field =
+        pc_corpus_incomplete_regions.metadata.families.at("songdta_pc").prefix_u32_fields.at(0);
+    --incomplete_region_field.values_within_profile_prefix;
     const auto pc_corpus_audit_output = directory / "pc-corpus-audit";
     const auto pc_corpus_publication = rb4pc::builder::write_pc_corpus_audit(
         character_archive.header, pc_corpus_audit_output);
@@ -1034,9 +1038,11 @@ int main() {
                          pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
                          !pc_corpus_incomplete_evidence.metadata.evidence_classification_complete() &&
                          !pc_corpus_incomplete_evidence.complete() &&
+                         !pc_corpus_incomplete_regions.metadata.bounded_offset_region_classification_complete() &&
+                         !pc_corpus_incomplete_regions.complete() &&
                          pc_corpus_audit.metadata.records == 2 &&
                          pc_corpus_audit.consistent_header_counts() &&
-                         pc_corpus_audit_json.find("\"schemaVersion\": 5") != std::string::npos &&
+                         pc_corpus_audit_json.find("\"schemaVersion\": 6") != std::string::npos &&
                          pc_corpus_audit_json.find("\"consistentHeaderCounts\": true") != std::string::npos &&
                          pc_corpus_audit_json.find("\"metadataEvidenceComplete\": true") != std::string::npos &&
                          pc_corpus_audit_json.find("\"metadataBoundedOffsetRegionsComplete\": true") != std::string::npos &&

@@ -1,6 +1,6 @@
 # PC metadata structural catalog
 
-Version 0.580.0 extends a read-only catalog for native PC metadata records:
+Version 0.600.0 extends a read-only catalog for native PC metadata records:
 
 ```text
 rb4pc-builder <hdr-or-directory> --catalog-pc-metadata <catalog.json>
@@ -53,6 +53,10 @@ varying between those regions. The three lists are mutually exclusive.
 Schema version 10 publishes catalog-wide bounded-offset and region-classified
 field totals plus an explicit completeness invariant. The CLI, Windows Builder,
 and combined audit expose that status directly.
+
+Version 0.600.0 makes bounded-offset region completeness a required invariant
+for a complete combined corpus audit. It still does not dereference candidates
+or assign semantic field names.
 
 This milestone establishes the structural baseline needed before assigning
 semantics to song declarations, object references, localization tables, or mix

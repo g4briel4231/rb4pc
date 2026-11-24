@@ -39,3 +39,11 @@ For the v0.420.0 to v0.500.0 cycle, the real milestones were:
 - v0.460.0: mutually exclusive structural evidence classes;
 - v0.480.0: evidence completeness integrated into the catalog, audit, CLI, and GUI;
 - v0.500.0: evidence completeness enforced by the corpus-audit completion contract.
+
+For the v0.520.0 to v0.600.0 cycle, the real milestones were:
+
+- v0.520.0: strict in-record and aligned bounded-offset candidates;
+- v0.540.0: prefix-versus-payload target-region measurements;
+- v0.560.0: mutually exclusive bounded target-region classes;
+- v0.580.0: relation totals and integrity status in the catalog, audit, CLI, and GUI;
+- v0.600.0: relation integrity enforced by the corpus-audit completion contract.
