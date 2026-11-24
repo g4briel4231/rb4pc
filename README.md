@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/branding/rb4pc-logo2.png" alt="RB4PC" width="760">
+</p>
+
 # RB4PC
 
 RB4PC is an experimental, clean-room effort to build independent PC tooling and
@@ -7,6 +11,14 @@ legally obtained copy of Rock Band 4.
 The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
+
+## Project identity
+
+The official RB4PC visual identity is stored in
+[`assets/branding`](assets/branding). `rb4pc-logo1.png` and
+`rb4pc-logo2.png` are the two official project logo variants.
+`rb4pc-icon2.png` is the selected repository icon, while
+`rb4pc-icon1.png` is retained as its first variant.
 
 ## Current milestone: v0.61.0 Artwork-Aware Song Assembly
 
