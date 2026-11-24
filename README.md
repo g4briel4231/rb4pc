@@ -25,7 +25,14 @@ introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
 full game
 conversion is complete.
 
-## Current milestone: v0.500.0 Metadata Cohort Evidence
+## Current milestone: v0.520.0 Bounded Metadata Offset Candidates
+
+Version 0.520.0 extends metadata schema version 7 with nonzero, in-record, and
+four-byte-aligned value measurements. Strict `boundedOffset` candidate lists
+identify fields whose every observation remains inside its own record without
+claiming that those values are decoded pointers or references.
+
+## v0.500.0 Metadata Cohort Evidence
 
 Version 0.500.0 makes cross-HDR metadata evidence part of the complete PC corpus
 audit contract. Metadata schema version 6 measures family coverage per HDR,

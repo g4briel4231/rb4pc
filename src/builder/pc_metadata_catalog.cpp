@@ -154,6 +154,11 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
                     }
                     field.distinct_values.insert(value);
                     if (value == 0) ++field.zero_values;
+                    else ++field.nonzero_values;
+                    if (value > 0 && value < record.size) {
+                        ++field.values_within_record_bounds;
+                        if (value % 4 == 0) ++field.aligned_values_within_record_bounds;
+                    }
                     if (value == record.size) ++field.values_equal_record_size;
                     if (value == record.size - offset - 4) ++field.values_equal_remaining_size;
                 }
@@ -215,7 +220,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 6,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 7,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -265,6 +270,9 @@ std::string format_json(const PcMetadataCatalog& catalog) {
                    << ", \"zeroValues\": " << field.zero_values
                    << ", \"valuesEqualRecordSize\": " << field.values_equal_record_size
                    << ", \"valuesEqualRemainingSize\": " << field.values_equal_remaining_size
+                   << ", \"nonzeroValues\": " << field.nonzero_values
+                   << ", \"valuesWithinRecordBounds\": " << field.values_within_record_bounds
+                   << ", \"alignedValuesWithinRecordBounds\": " << field.aligned_values_within_record_bounds
                    << ", \"headerStability\": {\"observed\": " << field.headers_observed
                    << ", \"constantWithinHeader\": " << field.headers_constant
                    << ", \"distinctConstants\": " << field.distinct_header_constants.size() << "}"
@@ -299,6 +307,18 @@ std::string format_json(const PcMetadataCatalog& catalog) {
         output << "], \"incompleteHeaderCoverage\": ["; first = true;
         for (const auto& [offset, field] : stats.prefix_u32_fields) {
             if (field.headers_observed == stats.headers_observed) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"boundedOffset\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed == 0 || field.nonzero_values != field.observed ||
+                field.values_within_record_bounds != field.observed) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"alignedBoundedOffset\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed == 0 || field.nonzero_values != field.observed ||
+                field.aligned_values_within_record_bounds != field.observed) continue;
             if (!first) output << ", "; output << offset; first = false;
         }
         output << "], \"recordSize\": {"; first = true;

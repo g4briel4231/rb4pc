@@ -15,6 +15,9 @@ struct PcMetadataWordStats {
     std::size_t zero_values = 0;
     std::size_t values_equal_record_size = 0;
     std::size_t values_equal_remaining_size = 0;
+    std::size_t nonzero_values = 0;
+    std::size_t values_within_record_bounds = 0;
+    std::size_t aligned_values_within_record_bounds = 0;
     std::size_t headers_observed = 0;
     std::size_t headers_constant = 0;
     std::set<std::uint32_t> distinct_header_constants;
