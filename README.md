@@ -12,7 +12,20 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.90.0 Persistent Runtime Configuration
+## Current milestone: v1.0.0 Validated Custom-Song Runtime
+
+Version 1.0.0 marks the first end-to-end validated release of the clean-room
+custom-song runtime. Using only user-supplied files outside the repository, the
+release workflow has assembled a song directory, converted supported PS4
+artwork, verified every manifest hash, decoded an entire multichannel MOGG, and
+completed deterministic five-fret gameplay and audio transport. The exact
+validation procedure and current compatibility boundary are recorded in
+[`docs/release-validation.md`](docs/release-validation.md).
+
+This milestone is not a native PC port of the proprietary Rock Band 4
+executable. It is an independent runtime for compatible, user-supplied assets.
+Standard MIDI charts are supported; direct gameplay decoding of PS4 RBMID files
+remains future work.
 
 The builder can now assemble a conventional `songs/<shortname>/` directory from
 validated MIDI, MOGG, mix metadata, and a supported PS4 artwork texture. Artwork
