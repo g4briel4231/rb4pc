@@ -7,8 +7,10 @@
 #include "rb4pc/runtime/mogg_audio_output.hpp"
 #include "rb4pc/runtime/mogg_parser.hpp"
 #include "rb4pc/runtime/ui.hpp"
+#include "rb4pc/runtime/text.hpp"
 #include "rb4pc/runtime/window.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <mutex>
@@ -19,7 +21,7 @@
 
 namespace rb4pc::runtime {
 
-InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
+InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files, const AppConfig& config) {
     const auto imported = import_five_fret_midi(
         files.midi, "PART GUITAR", ChartDifficulty::expert);
     const auto mogg = parse_mogg_header(files.mogg);
@@ -43,9 +45,10 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
                 [&] { return cancel.load(); },
                 [&] { return pause_audio.load(); },
                 [&] {
-                    MoggMixConfig config;
-                    config.stem_levels["guitar"] = guitar_level.load();
-                    return config;
+                    MoggMixConfig mix_config;
+                    mix_config.stem_levels["guitar"] = guitar_level.load();
+                    mix_config.master_level = config.master_volume;
+                    return mix_config;
                 });
         } catch (const std::exception& error) {
             std::lock_guard lock(error_mutex);
@@ -55,7 +58,7 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
         playback_done.store(true);
     });
     try {
-        run_window_loop("RB4PC v0.80.0 Interactive Song", framebuffer, [&] {
+        run_window_loop("RB4PC v0.90.0 Interactive Song", framebuffer, [&] {
             const auto controllers = poll_controllers();
             const auto selected = select_connected_controller(controllers, active_controller_index);
             if (selected) active_controller_index = selected->index;
@@ -64,7 +67,9 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
             const auto keyboard = poll_keyboard();
             controller.connected = controller.connected || keyboard.available;
             controller.buttons = static_cast<std::uint16_t>(controller.buttons | keyboard.gameplay_buttons);
-            const auto seconds = static_cast<double>(completed_frames.load()) / vorbis.sample_rate;
+            const auto seconds = std::max(
+                0.0, static_cast<double>(completed_frames.load()) / vorbis.sample_rate +
+                         static_cast<double>(config.latency_ms) / 1000.0);
             const auto frame = session.step_to(seconds, controller);
             if (session.gameplay().miss_count() > observed_misses) {
                 observed_misses = session.gameplay().miss_count();
@@ -84,6 +89,11 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files) {
             for (std::size_t index = 0; index < prompts.size(); ++index)
                 render_controller_icon(framebuffer, prompts[index],
                                        {20 + static_cast<std::uint32_t>(index) * 44, 20, 32, 32});
+            render_text(framebuffer, "VOL " + std::to_string(
+                            static_cast<int>(config.master_volume * 100.0F)),
+                        framebuffer.width() - 210, 24, 0xfff4f6f8, 2);
+            render_text(framebuffer, "LAT " + std::to_string(config.latency_ms) + "MS",
+                        framebuffer.width() - 210, 44, 0xffa9b8c7, 2);
             return !playback_done.load() && !playback_failed.load();
         });
     } catch (...) {

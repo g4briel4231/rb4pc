@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.80.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.90.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -38,6 +38,7 @@ add_library(rb4pc_inspection
     src/runtime/runtime_session.cpp
     src/runtime/audio_output.cpp
     src/runtime/input.cpp
+    src/runtime/app_config.cpp
     src/runtime/window.cpp
     src/runtime/ui.cpp
     src/runtime/text.cpp
@@ -171,6 +172,7 @@ install(TARGETS
     rb4pc-song-library rb4pc-texture-probe
     RUNTIME DESTINATION .)
 install(FILES README.md THIRD_PARTY_NOTICES.md DESTINATION .)
+install(FILES config/rb4pc.ini DESTINATION .)
 install(DIRECTORY docs/ DESTINATION docs FILES_MATCHING PATTERN "*.md")
 install(DIRECTORY assets/branding/ DESTINATION assets/branding)
 install(DIRECTORY DESTINATION songs)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "rb4pc/runtime/app_config.hpp"
 #include "rb4pc/runtime/song_directory.hpp"
 
 #include <cstddef>
@@ -16,6 +17,7 @@ struct InteractiveSongResult {
     bool cancelled = false;
 };
 
-[[nodiscard]] InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files);
+[[nodiscard]] InteractiveSongResult run_interactive_song(
+    const SongDirectoryFiles& files, const AppConfig& config = {});
 
 } // namespace rb4pc::runtime

@@ -1,3 +1,4 @@
+#include "rb4pc/runtime/app_config.hpp"
 #include "rb4pc/runtime/input.hpp"
 #include "rb4pc/runtime/interactive_song.hpp"
 #include "rb4pc/runtime/song_browser.hpp"
@@ -15,13 +16,14 @@ int main(int argc, char* argv[]) {
     }
     try {
         const std::filesystem::path songs_directory = argc == 2 ? argv[1] : "songs";
+        const auto config = rb4pc::runtime::load_or_create_app_config("rb4pc.ini");
         const auto library = rb4pc::runtime::scan_song_library(songs_directory);
         rb4pc::runtime::SongBrowserModel browser(library);
         rb4pc::runtime::SoftwareFramebuffer framebuffer(1280, 720);
         std::optional<std::uint32_t> active_controller;
         std::optional<std::filesystem::path> selected_directory;
         std::uint16_t previous_buttons = 0;
-        rb4pc::runtime::run_window_loop("RB4PC v0.80.0 Song Library", framebuffer, [&] {
+        rb4pc::runtime::run_window_loop("RB4PC v0.90.0 Song Library", framebuffer, [&] {
             const auto selected_controller = rb4pc::runtime::select_connected_controller(
                 rb4pc::runtime::poll_controllers(), active_controller);
             if (selected_controller) active_controller = selected_controller->index;
@@ -44,7 +46,7 @@ int main(int argc, char* argv[]) {
         });
         if (!selected_directory) return 0;
         const auto files = rb4pc::runtime::resolve_song_directory(*selected_directory);
-        const auto result = rb4pc::runtime::run_interactive_song(files);
+        const auto result = rb4pc::runtime::run_interactive_song(files, config);
         std::cout << "Song: " << selected_directory->filename().string()
                   << "\nHits: " << result.hits << "\nMisses: " << result.misses
                   << "\nScore: " << result.score << '\n';

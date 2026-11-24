@@ -39,6 +39,7 @@
 #include "rb4pc/runtime/audio_transport.hpp"
 #include "rb4pc/runtime/pcm_playback_queue.hpp"
 #include "rb4pc/runtime/artwork_texture.hpp"
+#include "rb4pc/runtime/app_config.hpp"
 #include "rb4pc/runtime/text.hpp"
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
@@ -193,6 +194,13 @@ int main() {
     std::filesystem::remove_all(directory);
     std::filesystem::create_directory(directory);
     const auto hash_path = directory / "hash-test.bin";
+    const auto config_path = directory / "rb4pc.ini";
+    rb4pc::runtime::save_app_config(config_path, {0.5F, -25});
+    const auto app_config = rb4pc::runtime::load_app_config(config_path);
+    write_file(directory / "invalid-rb4pc.ini", "master_volume=2.0\nlatency_ms=0\n");
+    bool invalid_config_rejected = false;
+    try { static_cast<void>(rb4pc::runtime::load_app_config(directory / "invalid-rb4pc.ini")); }
+    catch (const std::runtime_error&) { invalid_config_rejected = true; }
     const auto path = directory / "main_ps4.hdr";
     const std::string contents = "abc";
 
@@ -433,6 +441,9 @@ int main() {
     bool passed = true;
     passed &= expect(file_report.size == contents.size() && file_report.preview_size == contents.size(),
                      "unexpected report size");
+    passed &= expect(app_config.master_volume == 0.5F && app_config.latency_ms == -25 &&
+                         invalid_config_rejected,
+                     "application configuration validation mismatch");
     passed &= expect(file_report.sha256 == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
                      "SHA-256 mismatch");
     const std::array<unsigned char, 256> uniform = [] {

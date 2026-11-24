@@ -12,15 +12,7 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Project identity
-
-The official RB4PC visual identity is stored in
-[`assets/branding`](assets/branding). `rb4pc-logo1.png` and
-`rb4pc-logo2.png` are the two official project logo variants.
-`rb4pc-icon2.png` is the selected repository icon, while
-`rb4pc-icon1.png` is retained as its first variant.
-
-## Current milestone: v0.80.0 Readable Runtime UI
+## Current milestone: v0.90.0 Persistent Runtime Configuration
 
 The builder can now assemble a conventional `songs/<shortname>/` directory from
 validated MIDI, MOGG, mix metadata, and a supported PS4 artwork texture. Artwork
@@ -63,6 +55,11 @@ cpack --preset release
 The software framebuffer now includes an original 5x7 bitmap text renderer.
 The launcher displays a title, song short names, invalid-entry labels, and
 keyboard/controller actions without relying on proprietary fonts or textures.
+
+`rb4pc.ini` persists the master volume and gameplay latency compensation. The
+launcher creates defaults when the file is missing, rejects unknown or unsafe
+values, applies volume to the live MOGG mixer, applies latency to chart timing,
+and displays both active values during gameplay.
 
 The probe can now scan a directory recursively and group supported containers
 by magic, platform version, base dimensions, flags, mipmap count, marker, and
