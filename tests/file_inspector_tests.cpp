@@ -1022,13 +1022,15 @@ int main() {
                          pc_metadata_catalog.bounded_offset_fields() ==
                              pc_metadata_catalog.region_classified_bounded_offset_fields() &&
                          pc_metadata_catalog.bounded_offset_region_classification_complete() &&
-                         pc_metadata_catalog_json.find("\"schemaVersion\": 11") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"schemaVersion\": 12") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"headerCoverage\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedOffset\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedPrefixOffset\": [0]") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedPayloadOffset\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedMixedRegionOffset\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"alignedBoundedOffset\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"sampledByteTarget\": [0]") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"sampledWordTarget\": [0]") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"headerStability\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"crossHeaderConstant\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"fieldEvidence\"") != std::string::npos &&

@@ -260,7 +260,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 11,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 12,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -389,6 +389,16 @@ std::string format_json(const PcMetadataCatalog& catalog) {
         for (const auto& [offset, field] : stats.prefix_u32_fields) {
             if (field.observed == 0 || field.nonzero_values != field.observed ||
                 field.aligned_values_within_record_bounds != field.observed) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"sampledByteTarget\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed == 0 || field.sampled_target_bytes != field.observed) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"sampledWordTarget\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed == 0 || field.sampled_target_words != field.observed) continue;
             if (!first) output << ", "; output << offset; first = false;
         }
         output << "], \"recordSize\": {"; first = true;
