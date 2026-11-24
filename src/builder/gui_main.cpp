@@ -11,6 +11,7 @@
 #include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/builder/pc_corpus_audit.hpp"
+#include "rb4pc/builder/pc_metadata_catalog.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 
 #include <algorithm>
@@ -35,6 +36,7 @@ constexpr int id_audio_catalog = 1102;
 constexpr int id_character_catalog = 1103;
 constexpr int id_texture_converter = 1104;
 constexpr int id_corpus_audit = 1105;
+constexpr int id_metadata_catalog = 1106;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
@@ -330,6 +332,43 @@ void generate_audio_catalog(HWND window) {
     }
 }
 
+void generate_metadata_catalog(HWND window) {
+    const auto choice = MessageBoxW(window,
+        L"Choose the PC source for the metadata catalog.\n\n"
+        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
+        L"PC Metadata Catalog", MB_YESNOCANCEL | MB_ICONQUESTION);
+    if (choice == IDCANCEL) return;
+    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    if (source.empty()) return;
+    const auto destination = select_catalog_output(window, L"pc-metadata-catalog.json");
+    if (destination.empty()) return;
+    set_status(L"Generating PC metadata catalog…");
+    try {
+        const auto catalog = rb4pc::builder::catalog_pc_metadata(source);
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create the selected JSON catalog");
+        output << rb4pc::builder::format_json(catalog);
+        if (!output) throw std::runtime_error("could not finish the selected JSON catalog");
+        std::wostringstream message;
+        message << L"PC metadata catalog generated.\n\nValid PC HDRs: "
+                << catalog.valid_headers << L" / " << catalog.candidate_headers
+                << L"\nMetadata records: " << catalog.records
+                << L"\nFamilies: " << catalog.families.size()
+                << L"\nUnreadable: " << catalog.unreadable_records
+                << L"\n\nOutput: " << destination.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Metadata catalog generated",
+                    MB_OK | (catalog.invalid_headers || catalog.unreadable_records
+                                 ? MB_ICONWARNING : MB_ICONINFORMATION));
+        set_status(L"Generated PC metadata catalog: " + destination.filename().wstring());
+    } catch (const std::exception& error) {
+        std::wstring message = L"The PC metadata catalog could not be generated.\n\n";
+        const std::string detail = error.what();
+        message.append(detail.begin(), detail.end());
+        MessageBoxW(window, message.c_str(), L"Metadata catalog failed", MB_OK | MB_ICONERROR);
+        set_status(L"PC metadata catalog generation failed");
+    }
+}
+
 void generate_corpus_audit(HWND window) {
     const auto choice = MessageBoxW(window,
         L"Choose the PC source for the complete corpus audit.\n\n"
@@ -435,6 +474,7 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_STRING, id_asset_catalog, L"PC Asset Catalog…");
     AppendMenuW(tools, MF_STRING, id_audio_catalog, L"PC Audio Audit…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
+    AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_corpus_audit, L"Complete PC Corpus Audit…");
     AppendMenuW(tools, MF_STRING, id_texture_converter, L"Texture Converter…");
@@ -552,6 +592,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_audio_catalog: generate_audio_catalog(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
+                case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_texture_converter: show_tool(window, L"Texture Converter", L"rb4pc-texture-probe --convert-pc"); return 0;
                 case id_documentation: {
                     const auto docs = find_asset(L"docs");

@@ -25,7 +25,13 @@ introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
 full game
 conversion is complete.
 
-## Current milestone: v0.340.0 Metadata-Aware Corpus Audit
+## Current milestone: v0.360.0 GUI Metadata Catalog
+
+Version 0.360.0 adds `Tools > PC Metadata Catalog...` to the Windows Builder.
+The workflow accepts one `*_pc.hdr` or a folder, generates the bounded metadata
+catalog, and writes it to a user-selected JSON destination.
+
+## v0.340.0 Metadata-Aware Corpus Audit
 
 Version 0.340.0 integrates the native PC metadata catalog into the combined
 audit. Every successful audit now publishes five reports: `summary.json`,
