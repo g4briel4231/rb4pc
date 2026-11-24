@@ -1,8 +1,8 @@
 # Release validation
 
-## v1.0.0 acceptance boundary
+## v0.100.0 acceptance boundary
 
-RB4PC 1.0.0 is accepted when the release build can complete the following
+RB4PC 0.100.0 is accepted when the release build can complete the following
 workflow with user-owned assets stored outside the repository:
 
 1. Parse a standard MIDI chart and import an expert five-fret guitar track.
@@ -15,7 +15,7 @@ workflow with user-owned assets stored outside the repository:
    gameplay without a miss, stalled decoder, non-finite sample, or unfinished
    transport.
 
-The v1.0.0 release candidate passed this workflow on Windows x64 with a real
+The v0.100.0 release candidate passed this workflow on Windows x64 with a real
 10-channel, 44.1 kHz MOGG, supported PS4 artwork, and a standard MIDI chart with
 761 expert-guitar chords. The decoded song contained 7,497,000 audio frames and
 the verifier completed all 761 notes. These measurements identify the tested
@@ -46,7 +46,7 @@ A passing verifier reports the imported track, decoded audio frames, chart
 chords, autoplay results, finite-PCM status, and completion of both transport
 and gameplay.
 
-## Supported in 1.0.0
+## Supported in 0.100.0
 
 - Windows x64 release packaging;
 - standard MIDI charts with five-fret guitar data;

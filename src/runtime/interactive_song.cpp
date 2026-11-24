@@ -58,7 +58,7 @@ InteractiveSongResult run_interactive_song(const SongDirectoryFiles& files, cons
         playback_done.store(true);
     });
     try {
-        run_window_loop("RB4PC v1.0.0 Interactive Song", framebuffer, [&] {
+        run_window_loop("RB4PC v0.100.0 Interactive Song", framebuffer, [&] {
             const auto controllers = poll_controllers();
             const auto selected = select_connected_controller(controllers, active_controller_index);
             if (selected) active_controller_index = selected->index;
