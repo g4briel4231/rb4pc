@@ -1,13 +1,13 @@
 # PC metadata structural catalog
 
-Version 0.600.0 extends a read-only catalog for native PC metadata records:
+Version 0.620.0 extends a read-only catalog for native PC metadata records:
 
 ```text
 rb4pc-builder <hdr-or-directory> --catalog-pc-metadata <catalog.json>
 ```
 
 Recognized families are `.rbsong`, `.songdta_pc`, `.moggsong_dta_pc`, `.csv_pc`,
-and `.dta`. For each family, schema version 10 records aggregate counts, bytes,
+and `.dta`. For each family, schema version 11 records aggregate counts, bytes,
 minimum and maximum sizes, empty and unreadable records, first-16-byte
 signatures, first little-endian 32-bit values, and bounded ASCII-run statistics
 from at most the first 256 bytes.
@@ -16,7 +16,7 @@ The report never stores internal record paths or the printable strings it finds.
 ASCII data is represented only as counts, null-termination counts, maximum
 length, and a length distribution. The operation does not extract, deserialize,
 convert, or rewrite metadata payloads.
-Schema version 10 profiles each complete aligned 32-bit word in the first 64
+Schema version 11 profiles each complete aligned 32-bit word in the first 64
 bytes. It reports observations, distinct values, zeros, range, and correlations
 with full or remaining record size. Candidate lists identify constant and
 size-correlated offsets without assigning unverified semantic names.
@@ -57,6 +57,10 @@ and combined audit expose that status directly.
 Version 0.600.0 makes bounded-offset region completeness a required invariant
 for a complete combined corpus audit. It still does not dereference candidates
 or assign semantic field names.
+
+Schema version 11 measures whether each bounded candidate target falls inside
+the 256-byte sample already read by the catalog and whether a complete 32-bit
+target word is available. It also counts zero and printable first target bytes.
 
 This milestone establishes the structural baseline needed before assigning
 semantics to song declarations, object references, localization tables, or mix

@@ -1011,6 +1011,9 @@ int main() {
                          pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).values_within_record_bounds == 1 &&
                          pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).values_within_profile_prefix == 1 &&
                          pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).values_within_payload_region == 0 &&
+                         pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).sampled_target_bytes == 1 &&
+                         pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).sampled_target_words == 1 &&
+                         pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).sampled_target_zero_bytes == 1 &&
                          pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.at(0).distinct_header_constants.size() == 1 &&
                          pc_metadata_catalog.families.at("songdta_pc").cross_header_constant_fields ==
                              pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.size() &&
@@ -1019,7 +1022,7 @@ int main() {
                          pc_metadata_catalog.bounded_offset_fields() ==
                              pc_metadata_catalog.region_classified_bounded_offset_fields() &&
                          pc_metadata_catalog.bounded_offset_region_classification_complete() &&
-                         pc_metadata_catalog_json.find("\"schemaVersion\": 10") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"schemaVersion\": 11") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"headerCoverage\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedOffset\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedPrefixOffset\": [0]") != std::string::npos &&
