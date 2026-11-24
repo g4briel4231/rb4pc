@@ -13,15 +13,28 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
-    if (argc == 5 && std::string(argv[2]) == "--build-pc-archive") {
+    if ((argc == 5 || argc == 6) && std::string(argv[2]) == "--build-pc-archive") {
         try {
-            const auto result = rb4pc::builder::build_pc_song_archive(argv[1], argv[3], argv[4]);
+            rb4pc::builder::PcArchiveBuildOptions options;
+            if (argc == 6) {
+                const std::string value = argv[5];
+                std::size_t processed = 0;
+                const auto parsed = std::stoull(value, &processed);
+                if (processed != value.size())
+                    throw std::runtime_error("maximum ARK bytes must be a decimal integer");
+                if (parsed == 0 || parsed > 0xffffffffULL)
+                    throw std::runtime_error("maximum ARK bytes must be between 1 and 4294967295");
+                options.maximum_archive_bytes = static_cast<std::uint32_t>(parsed);
+            }
+            const auto result = rb4pc::builder::build_pc_song_archive(argv[1], argv[3], argv[4], options);
             std::cout << "PC HDR: " << result.header.string()
-                      << "\nPC ARK: " << result.archive.string()
+                      << "\nPC ARK volumes: " << result.archives.size()
                       << "\nRecords: " << result.record_count
                       << "\nPayload bytes: " << result.payload_bytes
-                      << "\nHDR SHA-256: " << result.header_sha256
-                      << "\nARK SHA-256: " << result.archive_sha256 << '\n';
+                      << "\nHDR SHA-256: " << result.header_sha256 << '\n';
+            for (std::size_t index = 0; index < result.archives.size(); ++index)
+                std::cout << "ARK[" << index << "]: " << result.archives[index].string()
+                          << "\nARK[" << index << "] SHA-256: " << result.archive_sha256[index] << '\n';
             return 0;
         } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
     }
@@ -90,7 +103,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <notes.mid> --plan-song-session <song.mogg> <song.mogg.dta> <session.json>\n";
         std::cerr << "   or: " << argv[0] << " <notes.mid> --assemble-song <song.mogg> <song.mogg.dta> <output-root> <shortname>\n";
         std::cerr << "   or: " << argv[0] << " <notes.mid> --assemble-song-with-art <song.mogg> <song.mogg.dta> <art.png_ps4> <output-root> <shortname>\n";
-        std::cerr << "   or: " << argv[0] << " <song-directory> --build-pc-archive <output-dir> <shortname>\n";
+        std::cerr << "   or: " << argv[0] << " <song-directory> --build-pc-archive <output-dir> <shortname> [max-ark-bytes]\n";
         return 2;
     }
     try {

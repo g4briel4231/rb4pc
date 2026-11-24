@@ -353,6 +353,11 @@ int main() {
     std::filesystem::create_directory(pc_archive_repeat_output);
     const auto pc_archive_repeat = rb4pc::builder::build_pc_song_archive(
         assembled_with_art.directory, pc_archive_repeat_output, "synthart");
+    const auto pc_archive_split_output = directory / "pc-archive-split";
+    std::filesystem::create_directory(pc_archive_split_output);
+    const auto pc_archive_split = rb4pc::builder::build_pc_song_archive(
+        assembled_with_art.directory, pc_archive_split_output, "synthart", {45'000});
+    const auto pc_archive_split_report = rb4pc::inspector::inspect_header_set(pc_archive_split.header);
     const auto resolved_with_art = rb4pc::runtime::resolve_song_directory(assembled_with_art.directory);
     const auto artwork_library = rb4pc::runtime::scan_song_library(directory / "assembly-output" / "songs");
     rb4pc::runtime::SongBrowserModel artwork_browser(artwork_library);
@@ -931,6 +936,11 @@ int main() {
                          pc_archive_report.record_locations.size() == pc_archive.record_count &&
                          pc_archive.header_sha256 == pc_archive_repeat.header_sha256 &&
                          pc_archive.archive_sha256 == pc_archive_repeat.archive_sha256 &&
+                         pc_archive_split.archives.size() > 1 &&
+                         pc_archive_split_report.archives.size() == pc_archive_split.archives.size() &&
+                         std::all_of(pc_archive_split_report.record_locations.begin(),
+                                     pc_archive_split_report.record_locations.end(),
+                                     [](const auto& location) { return location.has_value(); }) &&
                          std::all_of(pc_archive_report.record_locations.begin(),
                                      pc_archive_report.record_locations.end(),
                                      [](const auto& location) { return location.has_value(); }),

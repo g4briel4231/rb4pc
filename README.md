@@ -12,9 +12,27 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.101.0 Deterministic PC HDR/ARK Writer
+## Current milestone: v0.110.0 Multi-volume PC Archives
 
-Version 0.101.0 adds the first write path toward the complete port. The Builder
+Version 0.110.0 extends the deterministic writer to any number of bounded ARK
+volumes. The optional final argument sets the maximum bytes per volume:
+
+```text
+rb4pc-builder <song-directory> --build-pc-archive <output-dir> <shortname> [max-ark-bytes]
+```
+
+Records remain whole: a payload that does not fit in the current volume starts
+the next `_pc_N.ark`, and a payload larger than the configured limit is rejected.
+The HDR records every ordered name and exact size while retaining global
+concatenated offsets. After publication the complete set is mounted again and
+every record must resolve inside exactly one verified volume.
+
+The real external validation corpus produced three ARKs of 114,096, 15,165,041,
+and 45,080 bytes. All six records resolved at their expected volume boundaries.
+
+Version 0.101.0 introduced the first deterministic single-volume writer.
+
+It added the first write path toward the complete port. The Builder
 can package a validated song directory into a deterministic version-10
 `<shortname>_pc.hdr` and `<shortname>_pc_0.ark` pair:
 

@@ -26,6 +26,7 @@ struct SourceRecord {
     std::uint64_t offset = 0;
     std::uint32_t size = 0;
     std::uint32_t previous_hash_index = sentinel;
+    std::size_t archive_index = 0;
 };
 
 void append_u32(std::vector<unsigned char>& bytes, std::uint32_t value) {
@@ -76,19 +77,19 @@ void copy_file(std::ofstream& output, const std::filesystem::path& source) {
 
 PcArchiveBuildResult build_pc_song_archive(const std::filesystem::path& song_directory,
                                            const std::filesystem::path& output_directory,
-                                           std::string_view short_name) {
+                                           std::string_view short_name,
+                                           PcArchiveBuildOptions options) {
     const auto package = custom_song_package_paths(short_name);
+    if (options.maximum_archive_bytes == 0)
+        throw std::runtime_error("maximum PC ARK size must be greater than zero");
     if (!std::filesystem::is_directory(song_directory))
         throw std::runtime_error("song source is not a directory");
     if (!std::filesystem::is_directory(output_directory))
         throw std::runtime_error("PC archive output directory does not exist");
 
     const auto header = output_directory / package.header;
-    const auto archive = output_directory / package.archive;
     const auto header_temp = header.string() + ".tmp";
-    const auto archive_temp = archive.string() + ".tmp";
-    if (std::filesystem::exists(header) || std::filesystem::exists(archive) ||
-        std::filesystem::exists(header_temp) || std::filesystem::exists(archive_temp))
+    if (std::filesystem::exists(header) || std::filesystem::exists(header_temp))
         throw std::runtime_error("PC archive destination already exists");
 
     std::vector<SourceRecord> records;
@@ -113,11 +114,31 @@ PcArchiveBuildResult build_pc_song_archive(const std::filesystem::path& song_dir
         throw std::runtime_error("song source contains too many files");
 
     std::uint64_t payload_size = 0;
+    std::vector<std::uint32_t> archive_sizes(1, 0);
     for (auto& record : records) {
+        if (record.size > options.maximum_archive_bytes)
+            throw std::runtime_error("song payload exceeds the configured PC ARK volume limit");
+        if (archive_sizes.back() != 0 &&
+            record.size > options.maximum_archive_bytes - archive_sizes.back())
+            archive_sizes.push_back(0);
+        record.archive_index = archive_sizes.size() - 1;
         record.offset = payload_size;
         payload_size += record.size;
-        if (payload_size > std::numeric_limits<std::uint32_t>::max())
-            throw std::runtime_error("single-volume PC ARK exceeds the 32-bit size limit");
+        archive_sizes.back() += record.size;
+    }
+
+    std::vector<std::filesystem::path> archives;
+    std::vector<std::filesystem::path> archive_temps;
+    archives.reserve(archive_sizes.size());
+    archive_temps.reserve(archive_sizes.size());
+    for (std::size_t index = 0; index < archive_sizes.size(); ++index) {
+        const auto name = std::string(short_name) + "_pc_" + std::to_string(index) + ".ark";
+        const auto path = output_directory / name;
+        const auto temporary = path.string() + ".tmp";
+        if (std::filesystem::exists(path) || std::filesystem::exists(temporary))
+            throw std::runtime_error("PC archive destination already exists");
+        archives.push_back(path);
+        archive_temps.emplace_back(temporary);
     }
 
     std::vector<std::uint32_t> buckets(records.size(), sentinel);
@@ -129,26 +150,29 @@ PcArchiveBuildResult build_pc_song_archive(const std::filesystem::path& song_dir
     }
 
     try {
-        std::ofstream ark_output(archive_temp, std::ios::binary);
-        if (!ark_output) throw std::runtime_error("could not create temporary PC ARK");
-        for (const auto& record : records) copy_file(ark_output, record.source);
-        ark_output.close();
-        if (!ark_output || std::filesystem::file_size(archive_temp) != payload_size)
-            throw std::runtime_error("PC ARK size verification failed");
+        for (std::size_t archive_index = 0; archive_index < archive_temps.size(); ++archive_index) {
+            std::ofstream ark_output(archive_temps[archive_index], std::ios::binary);
+            if (!ark_output) throw std::runtime_error("could not create temporary PC ARK");
+            for (const auto& record : records)
+                if (record.archive_index == archive_index) copy_file(ark_output, record.source);
+            ark_output.close();
+            if (!ark_output || std::filesystem::file_size(archive_temps[archive_index]) != archive_sizes[archive_index])
+                throw std::runtime_error("PC ARK size verification failed");
+        }
 
         std::vector<unsigned char> plain;
         append_u32(plain, hdr_version);
         append_u32(plain, 1);
         const std::array<unsigned char, 16> deterministic_guid = {
-            'R','B','4','P','C','-','0','.','1','0','1','.','0',0,0,1};
+            'R','B','4','P','C','-','0','.','1','1','0','.','0',0,0,1};
         plain.insert(plain.end(), deterministic_guid.begin(), deterministic_guid.end());
-        append_u32(plain, 1); // archive count
-        append_u32(plain, 1); // size count
-        append_u32(plain, static_cast<std::uint32_t>(payload_size));
-        append_u32(plain, 1); // name count
-        append_string(plain, package.archive.generic_string());
-        append_u32(plain, 1); // archive tag-set count
-        append_u32(plain, 0); // no tags
+        append_u32(plain, static_cast<std::uint32_t>(archives.size()));
+        append_u32(plain, static_cast<std::uint32_t>(archive_sizes.size()));
+        for (const auto size : archive_sizes) append_u32(plain, size);
+        append_u32(plain, static_cast<std::uint32_t>(archives.size()));
+        for (const auto& path : archives) append_string(plain, path.filename().generic_string());
+        append_u32(plain, static_cast<std::uint32_t>(archives.size()));
+        for (std::size_t index = 0; index < archives.size(); ++index) append_u32(plain, 0);
         append_u32(plain, static_cast<std::uint32_t>(records.size()));
         for (const auto& record : records) {
             append_u64(plain, record.offset);
@@ -168,24 +192,37 @@ PcArchiveBuildResult build_pc_song_archive(const std::filesystem::path& song_dir
         if (!hdr_output) throw std::runtime_error("could not finalize temporary PC HDR");
 
         const auto metadata = inspector::decode_hdr_prefix(header_temp);
-        if (!metadata.hash_index_validated || metadata.archives.size() != 1 ||
-            metadata.archives[0].declared_size != payload_size ||
+        if (!metadata.hash_index_validated || metadata.archives.size() != archives.size() ||
             metadata.file_records.size() != records.size())
             throw std::runtime_error("generated PC HDR did not pass structural verification");
+        for (std::size_t index = 0; index < archives.size(); ++index)
+            if (metadata.archives[index].name != archives[index].filename().generic_string() ||
+                metadata.archives[index].declared_size != archive_sizes[index])
+                throw std::runtime_error("generated PC HDR archive table verification failed");
 
-        std::filesystem::rename(archive_temp, archive);
+        for (std::size_t index = 0; index < archives.size(); ++index)
+            std::filesystem::rename(archive_temps[index], archives[index]);
         std::filesystem::rename(header_temp, header);
+        const auto report = inspector::inspect_header_set(header);
+        if (report.archives.size() != archives.size() ||
+            report.record_locations.size() != records.size() ||
+            !std::all_of(report.record_locations.begin(), report.record_locations.end(),
+                         [](const auto& location) { return location.has_value(); }))
+            throw std::runtime_error("generated PC HDR/ARK set did not pass mount verification");
     } catch (...) {
         std::error_code ignored;
         std::filesystem::remove(header_temp, ignored);
-        std::filesystem::remove(archive_temp, ignored);
         std::filesystem::remove(header, ignored);
-        std::filesystem::remove(archive, ignored);
+        for (const auto& path : archive_temps) std::filesystem::remove(path, ignored);
+        for (const auto& path : archives) std::filesystem::remove(path, ignored);
         throw;
     }
 
-    return {header, archive, records.size(), payload_size,
-            inspector::sha256_file(header), inspector::sha256_file(archive)};
+    std::vector<std::string> archive_hashes;
+    archive_hashes.reserve(archives.size());
+    for (const auto& archive : archives) archive_hashes.push_back(inspector::sha256_file(archive));
+    return {header, archives, records.size(), payload_size,
+            inspector::sha256_file(header), std::move(archive_hashes)};
 }
 
 } // namespace rb4pc::builder
