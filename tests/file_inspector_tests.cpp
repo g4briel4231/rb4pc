@@ -1012,9 +1012,12 @@ int main() {
                              pc_metadata_catalog.families.at("songdta_pc").prefix_u32_fields.size() &&
                          pc_metadata_catalog.profiled_fields() == pc_metadata_catalog.classified_fields() &&
                          pc_metadata_catalog.evidence_classification_complete() &&
-                         pc_metadata_catalog_json.find("\"schemaVersion\": 8") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"schemaVersion\": 9") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"headerCoverage\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"boundedOffset\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"boundedPrefixOffset\": [0]") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"boundedPayloadOffset\"") != std::string::npos &&
+                         pc_metadata_catalog_json.find("\"boundedMixedRegionOffset\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"alignedBoundedOffset\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"headerStability\"") != std::string::npos &&
                          pc_metadata_catalog_json.find("\"crossHeaderConstant\"") != std::string::npos &&
