@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.160.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.170.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -100,6 +100,13 @@ target_link_libraries(rb4pc-texture-probe PRIVATE rb4pc_inspection)
 add_executable(rb4pc-builder src/builder/main.cpp)
 target_link_libraries(rb4pc-builder PRIVATE rb4pc_inspection)
 
+if(WIN32)
+    add_executable(rb4pc-builder-gui WIN32 src/builder/gui_main.cpp)
+    target_compile_definitions(rb4pc-builder-gui PRIVATE
+        RB4PC_VERSION_W=L"${PROJECT_VERSION}")
+    target_link_libraries(rb4pc-builder-gui PRIVATE rb4pc_inspection gdiplus ole32 shell32 comdlg32)
+endif()
+
 add_executable(rb4pc-runtime-probe src/runtime/main.cpp)
 target_link_libraries(rb4pc-runtime-probe PRIVATE rb4pc_inspection)
 
@@ -162,6 +169,7 @@ if(WIN32)
         rb4pc-song-library rb4pc-launcher rb4pc-runtime)
         target_sources(${target} PRIVATE assets/windows/rb4pc.rc)
     endforeach()
+    target_sources(rb4pc-builder-gui PRIVATE assets/windows/rb4pc.rc)
 endif()
 
 if(RB4PC_BUILD_TESTS)
@@ -175,6 +183,9 @@ install(TARGETS
     rb4pc-launcher rb4pc-builder rb4pc-song-verify rb4pc-song-play
     rb4pc-song-library rb4pc-texture-probe
     RUNTIME DESTINATION .)
+if(WIN32)
+    install(TARGETS rb4pc-builder-gui RUNTIME DESTINATION .)
+endif()
 install(FILES README.md THIRD_PARTY_NOTICES.md DESTINATION .)
 install(FILES config/rb4pc.ini DESTINATION .)
 install(DIRECTORY docs/ DESTINATION docs FILES_MATCHING PATTERN "*.md")

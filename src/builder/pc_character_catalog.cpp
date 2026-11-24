@@ -117,14 +117,29 @@ PcCharacterCatalog catalog_pc_characters(const std::filesystem::path& source) {
                     ++catalog.unreadable_records;
                     continue;
                 }
-                std::array<unsigned char, 4> bytes{};
+                std::array<unsigned char, 64> bytes{};
                 const auto read_size = std::min<std::size_t>(bytes.size(), record.size);
                 if (!read_exact(archives[location.archive_index], location.local_offset, bytes.data(), read_size)) {
                     ++catalog.unreadable_records;
                     continue;
                 }
                 ++stats.first_four_bytes[hex_prefix(bytes.data(), read_size)];
-                if (read_size == 4) ++stats.first_u32_le[std::to_string(read_u32(bytes.data()))];
+                if (read_size >= 4) ++stats.first_u32_le[std::to_string(read_u32(bytes.data()))];
+                for (std::size_t offset = 0; offset + 4 <= read_size; offset += 4) {
+                    const auto value = read_u32(bytes.data() + offset);
+                    auto& field = stats.prefix_u32_fields[offset];
+                    ++field.observed;
+                    if (field.observed == 1) field.minimum = field.maximum = value;
+                    else {
+                        field.minimum = std::min(field.minimum, value);
+                        field.maximum = std::max(field.maximum, value);
+                    }
+                    field.distinct_values.insert(value);
+                    if (value == 0) ++field.zero_values;
+                    if (value <= record.size) ++field.values_within_record;
+                    if (value == record.size) ++field.values_equal_record_size;
+                    if (value == record.size - offset - 4) ++field.values_equal_remaining_size;
+                }
             }
         } catch (const std::exception& error) {
             ++catalog.invalid_headers;
@@ -137,7 +152,7 @@ PcCharacterCatalog catalog_pc_characters(const std::filesystem::path& source) {
 
 std::string format_json(const PcCharacterCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 1,\n"
+    output << "{\n  \"schemaVersion\": 2,\n"
            << "  \"headers\": {\"candidates\": " << catalog.candidate_headers
            << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n"
@@ -167,6 +182,21 @@ std::string format_json(const PcCharacterCatalog& catalog) {
             first_value = false;
         }
         if (!stats.first_u32_le.empty()) output << "\n    ";
+        output << "}, \"prefixU32Fields\": {";
+        bool first_field = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (!first_field) output << ',';
+            output << "\n      \"" << offset << "\": {\"observed\": " << field.observed
+                   << ", \"distinctValues\": " << field.distinct_values.size()
+                   << ", \"zeroValues\": " << field.zero_values
+                   << ", \"valuesWithinRecord\": " << field.values_within_record
+                   << ", \"valuesEqualRecordSize\": " << field.values_equal_record_size
+                   << ", \"valuesEqualRemainingSize\": " << field.values_equal_remaining_size
+                   << ", \"minimum\": " << field.minimum
+                   << ", \"maximum\": " << field.maximum << '}';
+            first_field = false;
+        }
+        if (!stats.prefix_u32_fields.empty()) output << "\n    ";
         output << "}}";
         first_family = false;
     }

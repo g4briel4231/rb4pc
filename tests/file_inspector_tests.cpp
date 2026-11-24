@@ -970,7 +970,11 @@ int main() {
                          pc_character_catalog.families.at("charanim").first_four_bytes.at("43484152") == 1 &&
                          pc_character_catalog.families.at("skel").first_four_bytes.at("534b454c") == 1 &&
                          pc_character_catalog.families.at("charanim").first_u32_le.size() == 1 &&
-                         pc_character_catalog_json.find("\"schemaVersion\": 1") != std::string::npos &&
+                         pc_character_catalog.families.at("charanim").prefix_u32_fields.at(0).observed == 1 &&
+                         pc_character_catalog.families.at("charanim").prefix_u32_fields.at(0).distinct_values.size() == 1 &&
+                         pc_character_catalog.families.at("charanim").prefix_u32_fields.at(8).values_within_record == 0 &&
+                         pc_character_catalog_json.find("\"schemaVersion\": 2") != std::string::npos &&
+                         pc_character_catalog_json.find("\"prefixU32Fields\"") != std::string::npos &&
                          std::all_of(pc_archive_split_report.record_locations.begin(),
                                      pc_archive_split_report.record_locations.end(),
                                      [](const auto& location) { return location.has_value(); }) &&

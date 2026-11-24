@@ -12,7 +12,35 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.160.0 Character and Animation Inventory
+## Builder GUI preview
+
+The Windows build includes `rb4pc-builder-gui.exe`, an early native interface
+for the Builder. Its file and folder actions load only PC-named ForgeTool output
+(`_pc` files, PC HDR sets, and their PC ARK volumes); `_ps4` inputs are blocked.
+PC HDR files also undergo version-10 and hash-index validation before they are
+accepted. The GUI links to the existing inspection tools and retains placeholders
+for future conversion and repair workflows. Maximizing the window keeps the same
+button dimensions as windowed mode and centers the controls. This preview was
+introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
+full game
+conversion is complete.
+
+## Current milestone: v0.170.0 Character Structure Profile
+
+Version 0.170.0 extends the character and animation catalog from a four-byte
+inventory to a bounded 64-byte structural profile. For each aligned 32-bit word
+it records observations, distinct and zero values, minimum and maximum values,
+and correlations with the full or remaining record size:
+
+```text
+rb4pc-builder <hdr-or-directory> --catalog-pc-characters <catalog.json>
+```
+
+The schema is now version 2. The measurements identify reproducible candidates
+for versions, sizes, flags, and references without claiming unverified field
+semantics or copying proprietary payloads into the repository.
+
+Version 0.160.0 introduced the native character and animation inventory.
 
 Version 0.160.0 inventories native character and animation records directly
 inside PC HDR/ARK sets:

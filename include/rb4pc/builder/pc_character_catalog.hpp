@@ -4,10 +4,22 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
 namespace rb4pc::builder {
+
+struct PcCharacterWordStats {
+    std::size_t observed = 0;
+    std::size_t zero_values = 0;
+    std::size_t values_within_record = 0;
+    std::size_t values_equal_record_size = 0;
+    std::size_t values_equal_remaining_size = 0;
+    std::uint32_t minimum = 0;
+    std::uint32_t maximum = 0;
+    std::set<std::uint32_t> distinct_values;
+};
 
 struct PcCharacterFamilyStats {
     std::size_t records = 0;
@@ -16,6 +28,7 @@ struct PcCharacterFamilyStats {
     std::uint32_t maximum_size = 0;
     std::map<std::string, std::size_t> first_four_bytes;
     std::map<std::string, std::size_t> first_u32_le;
+    std::map<std::size_t, PcCharacterWordStats> prefix_u32_fields;
 };
 
 struct PcCharacterCatalog {

@@ -1,18 +1,18 @@
-# PC character and animation inventory
+# PC character and animation structural profile
 
-Version 0.160.0 measures native character/animation families in place:
+Version 0.170.0 extends the native character/animation inventory with a bounded structural profile:
 
 ```text
 rb4pc-builder <hdr-or-directory> --catalog-pc-characters <catalog.json>
 ```
 
-The command is read-only and performs bounded four-byte reads from matching
+The command is read-only and performs bounded 64-byte reads from matching
 records. It does not extract, deserialize, convert, or render character assets.
 
 ## Families and measurements
 
 For `charanim`, `charclip`, `char`, `skel`, `bonemask`, and `stance`, schema
-version 1 reports:
+version 2 reports:
 
 - record and byte totals;
 - minimum and maximum record sizes;
@@ -20,6 +20,15 @@ version 1 reports:
 - the same prefix interpreted as an unsigned little-endian 32-bit value;
 - empty and unreadable totals;
 - bounded diagnostics for invalid HDR sets.
+
+## Schema version 2 structural fields
+
+For every complete little-endian 32-bit word in the first 64 bytes, the catalog
+reports its byte offset, observation count, distinct-value count, zero count,
+minimum, maximum, and how often it is within the record size, equals the full
+record size, or equals the bytes remaining after that word. These are candidate
+signals for lengths, versions, flags, and references; they are deliberately not
+assigned semantics without independent corroboration.
 
 ## Verified corpus result
 
@@ -42,7 +51,7 @@ implementation corroborate it.
 
 ## Next boundary
 
-The next step is bounded structural decoding per family: length fields, object
-references, skeleton/bone tables, clip timing, and animation channels. Writers
-or converters should only be added after those fields are independently
+The next step is to correlate stable candidate fields with object references,
+skeleton/bone tables, clip timing, and animation channels. Writers or
+converters should only be added after those fields are independently
 validated on multiple records.
