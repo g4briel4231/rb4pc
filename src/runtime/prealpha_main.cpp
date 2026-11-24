@@ -10,6 +10,6 @@ int main(int argc, char* argv[]) {
         rb4pc::runtime::SoftwareFramebuffer framebuffer(1280, 720);
         rb4pc::runtime::render_shell(framebuffer, shell,
             {session.plan().ready, session.vfs().file_count(), session.plan().wave_records});
-        rb4pc::runtime::run_window("RB4PC v0.64.0 Pre-alpha Shell", framebuffer);
+        rb4pc::runtime::run_window("RB4PC v0.70.0 Pre-alpha Shell", framebuffer);
     } catch (const std::exception& error) { std::cerr << "rb4pc-prealpha: " << error.what() << '\n'; return 1; }
 }

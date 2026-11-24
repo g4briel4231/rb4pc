@@ -20,7 +20,7 @@ The official RB4PC visual identity is stored in
 `rb4pc-icon2.png` is the selected repository icon, while
 `rb4pc-icon1.png` is retained as its first variant.
 
-## Current milestone: v0.64.0 Keyboard and Default Library
+## Current milestone: v0.70.0 Reproducible Release Package
 
 The builder can now assemble a conventional `songs/<shortname>/` directory from
 validated MIDI, MOGG, mix metadata, and a supported PS4 artwork texture. Artwork
@@ -48,6 +48,17 @@ The launcher now opens `./songs` when no directory argument is supplied. Keyboar
 input works alongside XInput: Up/Down navigate and strum, Enter confirms, Escape
 cancels, P pauses, and 1–5 map to the five fret lanes. A controller can connect
 or disconnect without disabling the keyboard fallback.
+
+The release preset builds and tests an optimized configuration, then packages
+the launcher, builder, essential song tools, documentation, branding, and an
+empty `songs/` directory into a platform-and-architecture-labelled ZIP:
+
+```powershell
+cmake --preset release
+cmake --build --preset release
+ctest --preset release
+cpack --preset release
+```
 
 The probe can now scan a directory recursively and group supported containers
 by magic, platform version, base dimensions, flags, mipmap count, marker, and

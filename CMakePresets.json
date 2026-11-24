@@ -12,12 +12,28 @@
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
         "CMAKE_CXX_EXTENSIONS": "OFF"
       }
+    },
+    {
+      "name": "release",
+      "displayName": "RB4PC release build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "default",
       "configurePreset": "default"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
     }
   ],
   "testPresets": [
@@ -25,6 +41,19 @@
       "name": "default",
       "configurePreset": "default",
       "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "output": { "outputOnFailure": true }
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "release",
+      "displayName": "RB4PC release ZIP",
+      "configurePreset": "release",
+      "generators": ["ZIP"]
     }
   ]
 }
