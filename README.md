@@ -8,14 +8,21 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.60.0 Verified Linear Texture Conversion
+## Current milestone: v0.61.0 Artwork-Aware Song Assembly
 
-The read-only `rb4pc-texture-probe` parses Forge texture containers and compares
-each mipmap by dimensions, flags, byte length, and SHA-256. A matched PS4/PC
-sample proved byte-identical mipmap payloads despite different platform headers;
-see [`docs/formats/texture-containers.md`](docs/formats/texture-containers.md).
-No texture conversion is emitted until the opaque PC header fields are verified
-across multiple paired samples.
+The builder can now assemble a conventional `songs/<shortname>/` directory from
+validated MIDI, MOGG, mix metadata, and a supported PS4 artwork texture. Artwork
+is converted to `<shortname>.png_pc`, accompanied by its conversion manifest,
+and both files are recorded with SHA-256 hashes in schema version 2 of
+`session.json`:
+
+```text
+rb4pc-builder --assemble-song-with-art <notes.mid> <song.mogg> <song.mogg.dta> <art.png_ps4> <output-root> <shortname>
+```
+
+The runtime accepts legacy manifests and schema version 1 core-song manifests.
+For schema version 2 it requires a complete artwork block, the canonical
+filenames, both files, and matching hashes before exposing the song directory.
 
 The probe can now scan a directory recursively and group supported containers
 by magic, platform version, base dimensions, flags, mipmap count, marker, and

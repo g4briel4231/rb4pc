@@ -40,6 +40,7 @@
 #include "rb4pc/runtime/pcm_playback_queue.hpp"
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
+#include "rb4pc/builder/song_assembler.hpp"
 
 #include <array>
 #include <filesystem>
@@ -246,6 +247,16 @@ int main() {
         0x83, 0x60, 0x80, 0x3c, 0,
         0, 0xff, 0x2f, 0};
     write_file(track_midi_path, std::string(track_midi.begin(), track_midi.end()));
+    const auto assembly_midi_path = directory / "assembly.mid";
+    const std::array<unsigned char, 57> assembly_midi = {
+        'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 1, 0xe0,
+        'M', 'T', 'r', 'k', 0, 0, 0, 35,
+        0, 0xff, 3, 11, 'P', 'A', 'R', 'T', ' ', 'G', 'U', 'I', 'T', 'A', 'R',
+        0, 0xff, 0x51, 3, 7, 0xa1, 0x20,
+        0, 0x90, 96, 100,
+        0x83, 0x60, 0x80, 96, 0,
+        0, 0xff, 0x2f, 0};
+    write_file(assembly_midi_path, std::string(assembly_midi.begin(), assembly_midi.end()));
     write_file(rbmid_path, std::string("\x10\0\0\0synthetic-rbmid", 19));
     std::vector<unsigned char> synthetic_mogg;
     append_u32(synthetic_mogg, 10);
@@ -270,6 +281,10 @@ int main() {
     write_file(mogg_path, std::string(synthetic_mogg.begin(), synthetic_mogg.end()));
     write_file(mogg_mix_path,
                "; synthetic mix\n(tracks ((drum (0 1))))\n"
+               "(pans (-1.0 1.0))\n(vols (0.0 0.0))\n");
+    const auto assembly_mix_path = directory / "assembly.mogg.dta";
+    write_file(assembly_mix_path,
+               "(tracks ((guitar (0 1))))\n"
                "(pans (-1.0 1.0))\n(vols (0.0 0.0))\n");
     const auto conventional_song = directory / "songs" / "example";
     std::filesystem::create_directories(conventional_song);
@@ -299,6 +314,31 @@ int main() {
     rb4pc::runtime::SoftwareFramebuffer song_browser_framebuffer(640, 360);
     rb4pc::runtime::render_song_browser(
         song_browser_framebuffer, song_library, song_browser, true);
+    const auto assembled_with_art = rb4pc::builder::assemble_song_directory_with_artwork(
+        assembly_midi_path, mogg_path, assembly_mix_path, convertible_texture_path,
+        directory / "assembly-output", "synthart");
+    const auto resolved_with_art = rb4pc::runtime::resolve_song_directory(assembled_with_art.directory);
+    const auto valid_artwork_manifest = read_file(assembled_with_art.manifest);
+    write_file(assembled_with_art.manifest,
+               "{\"schemaVersion\":2,\"hashes\":{\"midi\":\"" +
+                   rb4pc::inspector::sha256_file(assembled_with_art.directory / "notes.mid") +
+                   "\",\"mogg\":\"" +
+                   rb4pc::inspector::sha256_file(assembled_with_art.directory / "synthart.mogg") +
+                   "\",\"mixMetadata\":\"" +
+                   rb4pc::inspector::sha256_file(assembled_with_art.directory / "synthart.mogg.dta") +
+                   "\"},\"artwork\":{}}");
+    bool malformed_artwork_rejected = false;
+    try { static_cast<void>(rb4pc::runtime::resolve_song_directory(assembled_with_art.directory)); }
+    catch (const std::runtime_error&) { malformed_artwork_rejected = true; }
+    write_file(assembled_with_art.manifest, valid_artwork_manifest);
+    {
+        std::fstream tamper(*resolved_with_art.artwork, std::ios::binary | std::ios::in | std::ios::out);
+        tamper.seekp(0);
+        tamper.put(static_cast<char>(0xff));
+    }
+    bool tampered_artwork_rejected = false;
+    try { static_cast<void>(rb4pc::runtime::resolve_song_directory(assembled_with_art.directory)); }
+    catch (const std::runtime_error&) { tampered_artwork_rejected = true; }
     std::filesystem::copy_file(path, directory / "example_pc.hdr");
 
     const auto file_report = rb4pc::inspector::inspect_file(hash_path);
@@ -404,6 +444,14 @@ int main() {
                          !custom_song_catalog.songs[0].ready &&
                          !custom_song_catalog.songs[0].core_content_complete,
                      "custom-song installation scan mismatch");
+    passed &= expect(assembled_with_art.artwork_conversion.has_value() &&
+                         assembled_with_art.artwork_conversion->bits_per_pixel == 4 &&
+                         resolved_with_art.integrity_verified && resolved_with_art.artwork_integrity_verified &&
+                         resolved_with_art.artwork.has_value() &&
+                         resolved_with_art.artwork_conversion_manifest.has_value() &&
+                         malformed_artwork_rejected &&
+                         tampered_artwork_rejected,
+                     "artwork song assembly or integrity validation mismatch");
     passed &= expect(midi_header.format == 1 && midi_header.track_count == 2 && midi_header.division == 480,
                      "standard MIDI header parse mismatch");
     passed &= expect(track_midi_summary.tracks.size() == 1 && track_midi_summary.tracks[0].name == "Test" &&

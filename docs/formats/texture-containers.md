@@ -117,3 +117,23 @@ parser and the independent LibForge `TextureReader`. This proves container
 readability and payload preservation; it does not yet prove rendering by the
 Rock Band VR engine. Magic-3, magic-4, version-8, 512x512, and other families
 remain read-only.
+
+## v0.61 artwork-aware song assembly
+
+The builder can use the verified linear conversion while assembling a song
+directory. `--assemble-song-with-art` accepts the three validated core song
+files plus a supported `.png_ps4` source and writes the conventional layout:
+
+```text
+songs/<shortname>/notes.mid
+songs/<shortname>/<shortname>.mogg
+songs/<shortname>/<shortname>.mogg.dta
+songs/<shortname>/<shortname>.png_pc
+songs/<shortname>/<shortname>.png_pc.rb4pc-conversion.json
+songs/<shortname>/session.json
+```
+
+Artwork assemblies use session schema version 2. The runtime requires the
+canonical artwork filenames and verifies the SHA-256 of both the converted
+texture and its conversion manifest. A missing, malformed, renamed, or modified
+artwork artifact rejects the directory before it can be used by the runtime.
