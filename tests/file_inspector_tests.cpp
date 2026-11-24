@@ -47,6 +47,7 @@
 #include "rb4pc/builder/pc_archive_builder.hpp"
 #include "rb4pc/builder/pc_asset_catalog.hpp"
 #include "rb4pc/builder/pc_audio_catalog.hpp"
+#include "rb4pc/builder/pc_character_catalog.hpp"
 
 #include <array>
 #include <filesystem>
@@ -364,6 +365,16 @@ int main() {
     const auto pc_asset_catalog_json = rb4pc::builder::format_json(pc_asset_catalog);
     const auto pc_audio_catalog = rb4pc::builder::catalog_pc_audio(pc_archive_output);
     const auto pc_audio_catalog_json = rb4pc::builder::format_json(pc_audio_catalog);
+    const auto character_source = directory / "character-source";
+    std::filesystem::create_directory(character_source);
+    write_file(character_source / "synthetic.charanim_pc", std::string("CHARsynthetic", 13));
+    write_file(character_source / "synthetic.skel_pc", std::string("SKELsynthetic", 13));
+    const auto character_archive_output = directory / "character-archive";
+    std::filesystem::create_directory(character_archive_output);
+    const auto character_archive = rb4pc::builder::build_pc_song_archive(
+        character_source, character_archive_output, "character_test");
+    const auto pc_character_catalog = rb4pc::builder::catalog_pc_characters(character_archive.header);
+    const auto pc_character_catalog_json = rb4pc::builder::format_json(pc_character_catalog);
     const auto resolved_with_art = rb4pc::runtime::resolve_song_directory(assembled_with_art.directory);
     const auto artwork_library = rb4pc::runtime::scan_song_library(directory / "assembly-output" / "songs");
     rb4pc::runtime::SongBrowserModel artwork_browser(artwork_library);
@@ -954,6 +965,12 @@ int main() {
                          pc_audio_catalog.mogg_records == 1 && pc_audio_catalog.mogg_version_10 == 1 &&
                          pc_audio_catalog.mogg_embedded_ogg == 1 && pc_audio_catalog.unreadable_records == 0 &&
                          pc_audio_catalog_json.find("\"embeddedOgg\": 1") != std::string::npos &&
+                         pc_character_catalog.valid_headers == 1 && pc_character_catalog.records == 2 &&
+                         pc_character_catalog.unreadable_records == 0 &&
+                         pc_character_catalog.families.at("charanim").first_four_bytes.at("43484152") == 1 &&
+                         pc_character_catalog.families.at("skel").first_four_bytes.at("534b454c") == 1 &&
+                         pc_character_catalog.families.at("charanim").first_u32_le.size() == 1 &&
+                         pc_character_catalog_json.find("\"schemaVersion\": 1") != std::string::npos &&
                          std::all_of(pc_archive_split_report.record_locations.begin(),
                                      pc_archive_split_report.record_locations.end(),
                                      [](const auto& location) { return location.has_value(); }) &&

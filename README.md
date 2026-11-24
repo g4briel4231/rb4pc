@@ -12,7 +12,26 @@ The repository does **not** contain game executables, songs, ARK/HDR archives,
 console libraries, or other proprietary game content. Do not add those files to
 the repository.
 
-## Current milestone: v0.150.0 Native PC Audio Audit
+## Current milestone: v0.160.0 Character and Animation Inventory
+
+Version 0.160.0 inventories native character and animation records directly
+inside PC HDR/ARK sets:
+
+```text
+rb4pc-builder <hdr-or-directory> --catalog-pc-characters <catalog.json>
+```
+
+The catalog groups character definitions, animations, clips, skeletons, bone
+masks, and stances. For each family it reports counts, total/minimum/maximum
+sizes, raw first-four-byte distributions, and their little-endian 32-bit value.
+
+Across the user-owned RBVR corpus it found 3,484 records representing
+671,475,650 bytes with zero empty or unreadable records. Every family had one
+consistent observed prefix: charanim and bonemask `0x11`, charclip and skeleton
+`0x01`, character `0x0d`, and stance `0x00`. These values are candidates for
+version fields, not yet claimed semantics.
+
+Version 0.150.0 introduced the native PC audio audit.
 
 Version 0.150.0 inspects audio records directly inside one HDR/ARK set or an
 entire PC corpus without extracting them:

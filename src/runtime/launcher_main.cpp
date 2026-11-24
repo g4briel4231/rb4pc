@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
         std::optional<std::uint32_t> active_controller;
         std::optional<std::filesystem::path> selected_directory;
         std::uint16_t previous_buttons = 0;
-        rb4pc::runtime::run_window_loop("RB4PC v0.150.0 Song Library", framebuffer, [&] {
+        rb4pc::runtime::run_window_loop("RB4PC v0.160.0 Song Library", framebuffer, [&] {
             const auto selected_controller = rb4pc::runtime::select_connected_controller(
                 rb4pc::runtime::poll_controllers(), active_controller);
             if (selected_controller) active_controller = selected_controller->index;
