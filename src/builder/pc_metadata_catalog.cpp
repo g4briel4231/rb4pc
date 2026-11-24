@@ -306,7 +306,7 @@ PcMetadataCatalog catalog_pc_metadata(const std::filesystem::path& source) {
 
 std::string format_json(const PcMetadataCatalog& catalog) {
     std::ostringstream output;
-    output << "{\n  \"schemaVersion\": 16,\n  \"headers\": {\"candidates\": "
+    output << "{\n  \"schemaVersion\": 17,\n  \"headers\": {\"candidates\": "
            << catalog.candidate_headers << ", \"valid\": " << catalog.valid_headers
            << ", \"invalid\": " << catalog.invalid_headers << "},\n  \"summary\": {\"records\": "
            << catalog.records << ", \"bytes\": " << catalog.bytes
@@ -489,6 +489,28 @@ std::string format_json(const PcMetadataCatalog& catalog) {
         for (const auto& [offset, field] : stats.prefix_u32_fields) {
             if (field.observed == 0 || field.sampled_target_words != field.observed ||
                 field.sampled_target_aligned_words_within_record_bounds != field.observed) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"sampledTargetWordPrefixOffset\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed == 0 || field.sampled_target_words != field.observed ||
+                field.sampled_target_words_within_record_bounds != field.observed ||
+                field.sampled_target_words_within_profile_prefix != field.observed) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"sampledTargetWordPayloadOffset\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed == 0 || field.sampled_target_words != field.observed ||
+                field.sampled_target_words_within_record_bounds != field.observed ||
+                field.sampled_target_words_within_payload_region != field.observed) continue;
+            if (!first) output << ", "; output << offset; first = false;
+        }
+        output << "], \"sampledTargetWordMixedRegionOffset\": ["; first = true;
+        for (const auto& [offset, field] : stats.prefix_u32_fields) {
+            if (field.observed == 0 || field.sampled_target_words != field.observed ||
+                field.sampled_target_words_within_record_bounds != field.observed ||
+                field.sampled_target_words_within_profile_prefix == field.observed ||
+                field.sampled_target_words_within_payload_region == field.observed) continue;
             if (!first) output << ", "; output << offset; first = false;
         }
         output << "], \"recordSize\": {"; first = true;
