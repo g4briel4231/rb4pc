@@ -25,7 +25,22 @@ introduced in v0.160.0; it does not represent a 1.0.0 release or claim that the
 full game
 conversion is complete.
 
-## Current milestone: v0.300.0 Complete PC Corpus Audit
+## Current milestone: v0.320.0 PC Metadata Structure Catalog
+
+Version 0.320.0 begins the next porting boundary with a dedicated read-only
+catalog for `.rbsong`, `.songdta_pc`, `.moggsong_dta_pc`, `.csv_pc`, and `.dta`
+records inside user-supplied PC HDR/ARK sets:
+
+```text
+rb4pc-builder <hdr-or-directory> --catalog-pc-metadata <catalog.json>
+```
+
+The schema reports aggregate sizes, bounded binary prefixes, first 32-bit values,
+and privacy-preserving ASCII-run statistics without recording discovered strings
+or internal paths. See
+[`docs/pc-metadata-catalog.md`](docs/pc-metadata-catalog.md).
+
+## v0.300.0 Complete PC Corpus Audit
 
 Version 0.300.0 completes the first unified read-only audit workflow for
 user-supplied PC/Rock Band VR HDR/ARK sets. The CLI and Windows Builder GUI now

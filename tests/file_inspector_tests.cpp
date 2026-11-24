@@ -49,6 +49,7 @@
 #include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/builder/pc_corpus_audit.hpp"
+#include "rb4pc/builder/pc_metadata_catalog.hpp"
 
 #include <array>
 #include <filesystem>
@@ -370,12 +371,16 @@ int main() {
     std::filesystem::create_directory(character_source);
     write_file(character_source / "synthetic.charanim_pc", std::string("CHARsynthetic", 13));
     write_file(character_source / "synthetic.skel_pc", std::string("SKELsynthetic", 13));
+    write_file(character_source / "synthetic.songdta_pc", std::string("\x01\0\0\0metadata", 12));
+    write_file(character_source / "synthetic.rbsong", std::string("RBSONG\0reference", 16));
     const auto character_archive_output = directory / "character-archive";
     std::filesystem::create_directory(character_archive_output);
     const auto character_archive = rb4pc::builder::build_pc_song_archive(
         character_source, character_archive_output, "character_test");
     const auto pc_character_catalog = rb4pc::builder::catalog_pc_characters(character_archive.header);
     const auto pc_character_catalog_json = rb4pc::builder::format_json(pc_character_catalog);
+    const auto pc_metadata_catalog = rb4pc::builder::catalog_pc_metadata(character_archive.header);
+    const auto pc_metadata_catalog_json = rb4pc::builder::format_json(pc_metadata_catalog);
     const auto pc_corpus_audit = rb4pc::builder::audit_pc_corpus(character_archive.header);
     const auto pc_corpus_audit_json = rb4pc::builder::format_summary_json(pc_corpus_audit);
     const auto pc_corpus_audit_output = directory / "pc-corpus-audit";
@@ -986,6 +991,11 @@ int main() {
                          pc_character_catalog_json.find("\"prefixU32Fields\"") != std::string::npos &&
                          pc_character_catalog_json.find("\"candidateFields\"") != std::string::npos &&
                          pc_character_catalog_json.find("\"asciiSignals\"") != std::string::npos &&
+                         pc_metadata_catalog.valid_headers == 1 && pc_metadata_catalog.records == 2 &&
+                         pc_metadata_catalog.unreadable_records == 0 &&
+                         pc_metadata_catalog.families.at("songdta_pc").records == 1 &&
+                         pc_metadata_catalog.families.at("rbsong").records_with_ascii == 1 &&
+                         pc_metadata_catalog_json.find("\"schemaVersion\": 1") != std::string::npos &&
                          pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
                          pc_corpus_audit_json.find("\"schemaVersion\": 1") != std::string::npos &&
                          std::filesystem::is_regular_file(pc_corpus_audit_output / "summary.json") &&

@@ -9,6 +9,7 @@
 #include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/builder/pc_corpus_audit.hpp"
+#include "rb4pc/builder/pc_metadata_catalog.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 
@@ -17,6 +18,26 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--catalog-pc-metadata") {
+        try {
+            const std::filesystem::path output_path = argv[3];
+            if (std::filesystem::exists(output_path)) throw std::runtime_error("catalog destination already exists");
+            const auto catalog = rb4pc::builder::catalog_pc_metadata(argv[1]);
+            std::ofstream output(output_path, std::ios::binary);
+            if (!output) throw std::runtime_error("could not create PC metadata catalog");
+            output << rb4pc::builder::format_json(catalog);
+            if (!output) throw std::runtime_error("could not finalize PC metadata catalog");
+            std::cout << "PC metadata catalog: " << output_path.string()
+                      << "\nValid HDRs: " << catalog.valid_headers << '/' << catalog.candidate_headers
+                      << "\nMetadata records: " << catalog.records
+                      << "\nFamilies: " << catalog.families.size()
+                      << "\nUnreadable: " << catalog.unreadable_records << '\n';
+            return catalog.invalid_headers == 0 && catalog.unreadable_records == 0 ? 0 : 1;
+        } catch (const std::exception& error) {
+            std::cerr << "rb4pc-builder: " << error.what() << '\n';
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[2]) == "--audit-pc-corpus") {
         try {
             const auto publication = rb4pc::builder::write_pc_corpus_audit(argv[1], argv[3]);
@@ -176,6 +197,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --catalog-pc-assets <catalog.json>\n";
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --catalog-pc-audio <catalog.json>\n";
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --catalog-pc-characters <catalog.json>\n";
+        std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --catalog-pc-metadata <catalog.json>\n";
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --audit-pc-corpus <output-directory>\n";
         return 2;
     }
