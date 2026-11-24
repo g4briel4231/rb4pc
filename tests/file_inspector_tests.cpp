@@ -48,6 +48,7 @@
 #include "rb4pc/builder/pc_asset_catalog.hpp"
 #include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/builder/pc_character_catalog.hpp"
+#include "rb4pc/builder/pc_corpus_audit.hpp"
 
 #include <array>
 #include <filesystem>
@@ -375,6 +376,11 @@ int main() {
         character_source, character_archive_output, "character_test");
     const auto pc_character_catalog = rb4pc::builder::catalog_pc_characters(character_archive.header);
     const auto pc_character_catalog_json = rb4pc::builder::format_json(pc_character_catalog);
+    const auto pc_corpus_audit = rb4pc::builder::audit_pc_corpus(character_archive.header);
+    const auto pc_corpus_audit_json = rb4pc::builder::format_summary_json(pc_corpus_audit);
+    const auto pc_corpus_audit_output = directory / "pc-corpus-audit";
+    const auto pc_corpus_publication = rb4pc::builder::write_pc_corpus_audit(
+        character_archive.header, pc_corpus_audit_output);
     const auto resolved_with_art = rb4pc::runtime::resolve_song_directory(assembled_with_art.directory);
     const auto artwork_library = rb4pc::runtime::scan_song_library(directory / "assembly-output" / "songs");
     rb4pc::runtime::SongBrowserModel artwork_browser(artwork_library);
@@ -980,6 +986,12 @@ int main() {
                          pc_character_catalog_json.find("\"prefixU32Fields\"") != std::string::npos &&
                          pc_character_catalog_json.find("\"candidateFields\"") != std::string::npos &&
                          pc_character_catalog_json.find("\"asciiSignals\"") != std::string::npos &&
+                         pc_corpus_audit.complete() && pc_corpus_publication.audit.complete() &&
+                         pc_corpus_audit_json.find("\"schemaVersion\": 1") != std::string::npos &&
+                         std::filesystem::is_regular_file(pc_corpus_audit_output / "summary.json") &&
+                         std::filesystem::is_regular_file(pc_corpus_audit_output / "assets.json") &&
+                         std::filesystem::is_regular_file(pc_corpus_audit_output / "audio.json") &&
+                         std::filesystem::is_regular_file(pc_corpus_audit_output / "characters.json") &&
                          std::all_of(pc_archive_split_report.record_locations.begin(),
                                      pc_archive_split_report.record_locations.end(),
                                      [](const auto& location) { return location.has_value(); }) &&
