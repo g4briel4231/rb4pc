@@ -2,6 +2,7 @@
 
 #include "rb4pc/runtime/artwork_texture.hpp"
 #include "rb4pc/runtime/controller_icons.hpp"
+#include "rb4pc/runtime/text.hpp"
 #include "rb4pc/runtime/ui.hpp"
 
 #include <algorithm>
@@ -35,6 +36,7 @@ void render_song_browser(SoftwareFramebuffer& framebuffer, const SongLibrary& li
     framebuffer.clear(0xff0e1219);
     fill_rect(framebuffer, {0, 0, framebuffer.width(), 10},
               controller_connected ? 0xff2a9d50 : 0xffb43b3b);
+    render_text(framebuffer, "RB4PC SONG LIBRARY", 24, 28, 0xfff4f6f8, 3);
     const auto selected = browser.empty() ? library.entries.size() : browser.selected_library_index();
     auto list_x = 80U;
     if (!browser.empty() && browser.selected().files.artwork && framebuffer.width() >= 360) {
@@ -46,8 +48,8 @@ void render_song_browser(SoftwareFramebuffer& framebuffer, const SongLibrary& li
         } catch (const std::exception&) {
         }
     }
-    const auto width = framebuffer.width() > list_x + 80 ? framebuffer.width() - list_x - 80
-                                                         : framebuffer.width() - list_x;
+    const auto available_width = framebuffer.width() > list_x ? framebuffer.width() - list_x : 0U;
+    const auto width = available_width > 80 ? available_width - 80 : available_width;
     for (std::size_t index = 0; index < library.entries.size(); ++index) {
         const auto y = static_cast<std::uint32_t>(80 + index * 52);
         if (y + 36 >= framebuffer.height()) break;
@@ -55,12 +57,26 @@ void render_song_browser(SoftwareFramebuffer& framebuffer, const SongLibrary& li
                          : index == selected ? 0xffd08a28 : 0xff263d52;
         fill_rect(framebuffer, {list_x, y, width, 36}, color);
         stroke_rect(framebuffer, {list_x, y, width, 36}, 0xff88a3bd, 1);
+        const auto& entry = library.entries[index];
+        render_text(framebuffer, entry.short_name, list_x + 12, y + 11, 0xfff4f6f8, 2);
+        if (!entry.valid && width > 240)
+            render_text(framebuffer, "INVALID", list_x + width - 100, y + 11, 0xffffc1c6, 2);
+    }
+    if (browser.empty()) {
+        render_text(framebuffer, "NO VALID SONGS", 80, 120, 0xffffc1c6, 3);
+        render_text(framebuffer, "ADD SONGS TO THE SONGS FOLDER", 80, 160, 0xffa9b8c7, 2);
     }
     if (framebuffer.width() >= 120 && framebuffer.height() >= 60) {
         render_controller_icon(framebuffer, ControllerPrompt::a,
                                {framebuffer.width() - 100, framebuffer.height() - 48, 32, 32});
         render_controller_icon(framebuffer, ControllerPrompt::b,
                                {framebuffer.width() - 52, framebuffer.height() - 48, 32, 32});
+        if (framebuffer.width() >= 520) {
+            render_text(framebuffer, "ENTER/A PLAY", framebuffer.width() - 420,
+                        framebuffer.height() - 38, 0xfff4f6f8, 2);
+            render_text(framebuffer, "ESC/B BACK", framebuffer.width() - 230,
+                        framebuffer.height() - 38, 0xfff4f6f8, 2);
+        }
     }
 }
 

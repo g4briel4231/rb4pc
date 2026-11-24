@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.70.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.80.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -40,6 +40,7 @@ add_library(rb4pc_inspection
     src/runtime/input.cpp
     src/runtime/window.cpp
     src/runtime/ui.cpp
+    src/runtime/text.cpp
     src/runtime/controller_icons.cpp
     src/runtime/gameplay_timing.cpp
     src/runtime/shell.cpp

@@ -20,7 +20,7 @@ The official RB4PC visual identity is stored in
 `rb4pc-icon2.png` is the selected repository icon, while
 `rb4pc-icon1.png` is retained as its first variant.
 
-## Current milestone: v0.70.0 Reproducible Release Package
+## Current milestone: v0.80.0 Readable Runtime UI
 
 The builder can now assemble a conventional `songs/<shortname>/` directory from
 validated MIDI, MOGG, mix metadata, and a supported PS4 artwork texture. Artwork
@@ -59,6 +59,10 @@ cmake --build --preset release
 ctest --preset release
 cpack --preset release
 ```
+
+The software framebuffer now includes an original 5x7 bitmap text renderer.
+The launcher displays a title, song short names, invalid-entry labels, and
+keyboard/controller actions without relying on proprietary fonts or textures.
 
 The probe can now scan a directory recursively and group supported containers
 by magic, platform version, base dimensions, flags, mipmap count, marker, and

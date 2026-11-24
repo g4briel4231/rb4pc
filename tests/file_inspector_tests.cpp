@@ -39,6 +39,7 @@
 #include "rb4pc/runtime/audio_transport.hpp"
 #include "rb4pc/runtime/pcm_playback_queue.hpp"
 #include "rb4pc/runtime/artwork_texture.hpp"
+#include "rb4pc/runtime/text.hpp"
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
 #include "rb4pc/builder/song_assembler.hpp"
@@ -321,6 +322,16 @@ int main() {
     rb4pc::runtime::SoftwareFramebuffer song_browser_framebuffer(640, 360);
     rb4pc::runtime::render_song_browser(
         song_browser_framebuffer, song_library, song_browser, true);
+    rb4pc::runtime::SongLibrary empty_song_library;
+    rb4pc::runtime::SongBrowserModel empty_song_browser(empty_song_library);
+    rb4pc::runtime::SoftwareFramebuffer empty_song_framebuffer(640, 360);
+    rb4pc::runtime::render_song_browser(
+        empty_song_framebuffer, empty_song_library, empty_song_browser, true);
+    rb4pc::runtime::SoftwareFramebuffer text_framebuffer(160, 32);
+    text_framebuffer.clear(0xff000000);
+    rb4pc::runtime::render_text(text_framebuffer, "RB4PC", 2, 2, 0xffffffff, 2);
+    const auto rendered_text_pixels = std::count(
+        text_framebuffer.pixels().begin(), text_framebuffer.pixels().end(), 0xffffffffU);
     const auto assembled_with_art = rb4pc::builder::assemble_song_directory_with_artwork(
         assembly_midi_path, mogg_path, assembly_mix_path, convertible_texture_path,
         directory / "assembly-output", "synthart");
@@ -530,7 +541,11 @@ int main() {
                          !song_library.entries[1].valid && !song_library.entries[1].error.empty() &&
                          song_browser.valid_count() == 1 &&
                          song_browser.selected().short_name == "example" &&
-                         song_browser_framebuffer.pixels().size() == 640U * 360U,
+                         song_browser_framebuffer.pixels().size() == 640U * 360U &&
+                         rb4pc::runtime::measure_text("RB4PC", 2).width == 58 &&
+                         rendered_text_pixels > 0 &&
+                         std::count(empty_song_framebuffer.pixels().begin(),
+                                    empty_song_framebuffer.pixels().end(), 0xffffc1c6U) > 0,
                      "song-library integrity scan mismatch");
     passed &= expect(easy_five_fret.chords.size() == 1 && easy_five_fret.chords[0].start_tick == 0 &&
                          easy_five_fret.chords[0].end_tick == 480 && easy_five_fret.chords[0].lane_mask == 1,

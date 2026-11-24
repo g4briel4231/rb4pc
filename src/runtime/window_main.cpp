@@ -8,6 +8,6 @@ int main() {
             for (std::uint32_t x = 0; x < framebuffer.width(); ++x)
                 framebuffer.set_pixel(x, y, 0xff000000U | ((x * 255 / framebuffer.width()) << 16) |
                     ((y * 255 / framebuffer.height()) << 8) | 0x30U);
-        rb4pc::runtime::run_window("RB4PC v0.70.0 Runtime Window", framebuffer);
+        rb4pc::runtime::run_window("RB4PC v0.80.0 Runtime Window", framebuffer);
     } catch (const std::exception& error) { std::cerr << "rb4pc-window: " << error.what() << '\n'; return 1; }
 }

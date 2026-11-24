@@ -17,12 +17,11 @@ int main(int argc, char* argv[]) {
         const std::filesystem::path songs_directory = argc == 2 ? argv[1] : "songs";
         const auto library = rb4pc::runtime::scan_song_library(songs_directory);
         rb4pc::runtime::SongBrowserModel browser(library);
-        if (browser.empty()) throw std::runtime_error("song library has no valid songs");
         rb4pc::runtime::SoftwareFramebuffer framebuffer(1280, 720);
         std::optional<std::uint32_t> active_controller;
         std::optional<std::filesystem::path> selected_directory;
         std::uint16_t previous_buttons = 0;
-        rb4pc::runtime::run_window_loop("RB4PC v0.70.0 Song Library", framebuffer, [&] {
+        rb4pc::runtime::run_window_loop("RB4PC v0.80.0 Song Library", framebuffer, [&] {
             const auto selected_controller = rb4pc::runtime::select_connected_controller(
                 rb4pc::runtime::poll_controllers(), active_controller);
             if (selected_controller) active_controller = selected_controller->index;
@@ -34,7 +33,7 @@ int main(int argc, char* argv[]) {
             previous_buttons = buttons;
             if ((pressed & 0x0001U) != 0) browser.move(-1);
             if ((pressed & 0x0002U) != 0) browser.move(1);
-            if ((pressed & 0x1000U) != 0) {
+            if ((pressed & 0x1000U) != 0 && !browser.empty()) {
                 selected_directory = browser.selected().directory;
                 return false;
             }
