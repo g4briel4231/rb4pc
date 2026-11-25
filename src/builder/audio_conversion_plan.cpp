@@ -1,4 +1,6 @@
 #include "rb4pc/builder/audio_conversion_plan.hpp"
+#include "rb4pc/runtime/mogg_parser.hpp"
+#include "rb4pc/inspector/sha256.hpp"
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -14,6 +16,41 @@ std::string escape(std::string_view v){std::ostringstream o;for(unsigned char c:
 const char* state_name(AudioPlanState s){switch(s){case AudioPlanState::runtime_ready:return "runtimeReady";case AudioPlanState::extraction_ready:return "extractionReady";case AudioPlanState::research_only:return "researchOnly";case AudioPlanState::invalid:return "invalid";}return "invalid";}
 void count(AudioConversionPlan& p,AudioPlanState s){if(s==AudioPlanState::runtime_ready)++p.runtime_ready;else if(s==AudioPlanState::extraction_ready)++p.extraction_ready;else if(s==AudioPlanState::research_only)++p.research_only;else ++p.invalid;}
 } // namespace
+AudioExtractionResult extract_embedded_ogg(const std::filesystem::path& source,
+                                           const std::filesystem::path& destination) {
+    if (destination.empty() || std::filesystem::exists(destination))
+        throw std::runtime_error("Ogg extraction destination is empty or already exists");
+    const auto parent = destination.has_parent_path() ? destination.parent_path() : std::filesystem::path{"."};
+    if (!std::filesystem::is_directory(parent)) throw std::runtime_error("Ogg extraction parent does not exist");
+    const auto header = runtime::parse_mogg_header(source);
+    if (!header.embedded_ogg) throw std::runtime_error("MOGG does not contain a verified embedded Ogg signature");
+    auto temporary = destination; temporary += ".rb4pc-part";
+    auto manifest = destination; manifest += ".rb4pc-extraction.json";
+    auto manifest_temporary = manifest; manifest_temporary += ".rb4pc-part";
+    if (std::filesystem::exists(temporary) || std::filesystem::exists(manifest) || std::filesystem::exists(manifest_temporary))
+        throw std::runtime_error("Ogg extraction temporary or manifest path already exists");
+    AudioExtractionResult result; result.destination=destination;result.manifest=manifest;
+    result.mogg_version=header.version;result.ogg_offset=header.ogg_offset;
+    result.extracted_bytes=header.file_size-header.ogg_offset;result.source_sha256=inspector::sha256_file(source);
+    try {
+        runtime::extract_mogg_ogg(source, header, temporary);
+        if (std::filesystem::file_size(temporary) != result.extracted_bytes)
+            throw std::runtime_error("extracted Ogg size does not match the MOGG boundary");
+        std::ifstream check(temporary, std::ios::binary); std::array<char,4> signature{}; check.read(signature.data(),4);
+        if (!check || signature != std::array<char,4>{'O','g','g','S'}) throw std::runtime_error("extracted payload is not Ogg");
+        check.close();
+        result.destination_sha256=inspector::sha256_file(temporary);
+        std::ofstream out(manifest_temporary,std::ios::binary|std::ios::trunc);
+        out << "{\n  \"schemaVersion\": 1,\n  \"operation\": \"embedded-ogg-extraction\",\n"
+            << "  \"moggVersion\": " << result.mogg_version << ",\n  \"oggOffset\": " << result.ogg_offset
+            << ",\n  \"extractedBytes\": " << result.extracted_bytes
+            << ",\n  \"sourceSha256\": \"" << result.source_sha256
+            << "\",\n  \"destinationSha256\": \"" << result.destination_sha256 << "\"\n}\n";
+        out.close(); if(!out) throw std::runtime_error("could not write Ogg extraction manifest");
+        std::filesystem::rename(temporary,destination);std::filesystem::rename(manifest_temporary,manifest);
+    } catch (...) { std::error_code ignored;std::filesystem::remove(temporary,ignored);std::filesystem::remove(manifest_temporary,ignored);std::filesystem::remove(manifest,ignored);std::filesystem::remove(destination,ignored);throw; }
+    return result;
+}
 AudioConversionPlan plan_audio_conversions(const std::filesystem::path& root){
  if(!std::filesystem::is_directory(root))throw std::runtime_error("audio plan root is not a directory"); AudioConversionPlan plan;plan.root=root;
  for(const auto& item:std::filesystem::recursive_directory_iterator(root)){if(!item.is_regular_file()||!candidate(item.path()))continue;AudioPlanEntry e;e.relative_path=std::filesystem::relative(item.path(),root);e.size=item.file_size();

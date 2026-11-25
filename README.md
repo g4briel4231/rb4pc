@@ -120,6 +120,10 @@ Choose **Tools > Analyze Audio Conversion Folder…** or run
 read-only report separates runtime-ready Ogg/WAVE, extraction-ready embedded-Ogg
 MOGG, research-only signatures, and invalid files. It performs no conversion.
 
+Extract one verified embedded stream with `rb4pc-builder <source.mogg>
+--extract-mogg-ogg <new-output.ogg>. The source remains unchanged and a SHA-256
+manifest accompanies the new Ogg file.
+
 ### 9. Generate an audio catalog
 
 Open **Tools > PC Audio Catalog**, select a PC HDR or folder, and choose a JSON

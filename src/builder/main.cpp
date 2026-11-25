@@ -21,6 +21,16 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--extract-mogg-ogg") {
+        try {
+            const auto result = rb4pc::builder::extract_embedded_ogg(argv[1], argv[3]);
+            std::cout << "Extracted Ogg: " << result.destination.string()
+                      << "\nBytes: " << result.extracted_bytes
+                      << "\nSource SHA-256: " << result.source_sha256
+                      << "\nDestination SHA-256: " << result.destination_sha256
+                      << "\nManifest: " << result.manifest.string() << '\n'; return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 4 && std::string(argv[2]) == "--plan-audio-conversion") {
         try {
             const std::filesystem::path report_path = argv[3];
@@ -359,6 +369,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <texture-root> --profile-magic4-v8 <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <texture-root> --texture-coverage <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <audio-root> --plan-audio-conversion <report.json>\n";
+        std::cerr << "   or: " << argv[0] << " <source.mogg> --extract-mogg-ogg <new-output.ogg>\n";
         return 2;
     }
     try {

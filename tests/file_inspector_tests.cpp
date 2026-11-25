@@ -214,6 +214,8 @@ int main() {
     write_file(audio_plan_directory / "truncated.wav", "x");
     const auto audio_conversion_plan = rb4pc::builder::plan_audio_conversions(audio_plan_directory);
     const auto audio_conversion_plan_json = rb4pc::builder::format_json(audio_conversion_plan);
+    const auto audio_extraction = rb4pc::builder::extract_embedded_ogg(
+        audio_plan_directory / "embedded.mogg", directory / "extracted.ogg");
     const auto hash_path = directory / "hash-test.bin";
     const auto config_path = directory / "rb4pc.ini";
     rb4pc::runtime::save_app_config(config_path, {0.5F, -25});
@@ -989,7 +991,10 @@ int main() {
         passed &= expect(audio_conversion_plan.entries.size() == 5 && audio_conversion_plan.runtime_ready == 2 &&
                          audio_conversion_plan.extraction_ready == 1 && audio_conversion_plan.research_only == 1 &&
                          audio_conversion_plan.invalid == 1 &&
-                         audio_conversion_plan_json.find("\"state\": \"extractionReady\"") != std::string::npos,
+                         audio_conversion_plan_json.find("\"state\": \"extractionReady\"") != std::string::npos &&
+                         audio_extraction.extracted_bytes == 4 &&
+                         std::filesystem::is_regular_file(audio_extraction.destination) &&
+                         std::filesystem::is_regular_file(audio_extraction.manifest),
                      "audio conversion plan mismatch");
     passed &= expect(ps4_texture.platform_version == 12 && ps4_texture.marker == 7 &&
                          ps4_texture.header_data_size == 124 && ps4_texture.mipmap_entry_size == 20 &&
