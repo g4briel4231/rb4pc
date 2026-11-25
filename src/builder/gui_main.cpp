@@ -50,6 +50,7 @@ struct AppState {
     HWND hovered_button = nullptr;
     WNDPROC button_window_proc = nullptr;
     HFONT ui_font = nullptr;
+    HFONT button_font = nullptr;
     ULONG_PTR gdiplus_token = 0;
     std::unique_ptr<Gdiplus::Image> logo;
     std::filesystem::path executable_directory;
@@ -551,12 +552,14 @@ void draw_button(const DRAWITEMSTRUCT& item) {
                             : pressed ? RGB(232, 232, 232)
                             : hovered ? RGB(246, 246, 246)
                                       : RGB(252, 252, 252);
-    const COLORREF border = focused ? RGB(112, 112, 112) : RGB(204, 204, 204);
+    const COLORREF border = hovered ? RGB(0, 120, 215)
+                                   : focused ? RGB(112, 112, 112)
+                                             : RGB(204, 204, 204);
     const COLORREF text = disabled ? RGB(150, 150, 150) : RGB(30, 30, 30);
 
     InflateRect(&bounds, -1, -1);
     const auto brush = CreateSolidBrush(fill);
-    const auto pen = CreatePen(PS_SOLID, focused ? 2 : 1, border);
+    const auto pen = CreatePen(PS_SOLID, (hovered || focused) ? 2 : 1, border);
     const auto old_brush = SelectObject(item.hDC, brush);
     const auto old_pen = SelectObject(item.hDC, pen);
     RoundRect(item.hDC, bounds.left, bounds.top, bounds.right, bounds.bottom, 6, 6);
@@ -569,7 +572,7 @@ void draw_button(const DRAWITEMSTRUCT& item) {
     GetWindowTextW(item.hwndItem, label, static_cast<int>(std::size(label)));
     SetBkMode(item.hDC, TRANSPARENT);
     SetTextColor(item.hDC, text);
-    const auto old_font = SelectObject(item.hDC, app.ui_font);
+    const auto old_font = SelectObject(item.hDC, app.button_font);
     RECT text_bounds = bounds;
     if (pressed) OffsetRect(&text_bounds, 0, 1);
     DrawTextW(item.hDC, label, -1, &text_bounds,
@@ -582,7 +585,7 @@ HWND create_button(HWND parent, int id, const wchar_t* text) {
         WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
         0, 0, 100, 40, parent, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
         GetModuleHandleW(nullptr), nullptr);
-    SendMessageW(button, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
+    SendMessageW(button, WM_SETFONT, reinterpret_cast<WPARAM>(app.button_font), TRUE);
     const auto original_proc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(
         button, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(button_subclass_proc)));
     if (!app.button_window_proc) app.button_window_proc = original_proc;
@@ -648,6 +651,9 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
             app.ui_font = CreateFontW(-16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                                      DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                                      CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+            app.button_font = CreateFontW(-18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                                         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                                         CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
             app.convert = create_button(window, id_convert, L"Convert Rock Band 4 PS4 to PC");
             app.repair = create_button(window, id_repair, L"Repair Rock Band 4 PC");
             app.open_archive = create_button(window, id_open_archive, L"Open a ForgeTool PC File…");
@@ -707,6 +713,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
             }
             break;
         case WM_DESTROY:
+            if (app.button_font) DeleteObject(app.button_font);
             if (app.ui_font) DeleteObject(app.ui_font);
             PostQuitMessage(0);
             return 0;
