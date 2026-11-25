@@ -1,5 +1,6 @@
 #include "rb4pc/builder/texture_conversion_plan.hpp"
 #include "rb4pc/inspector/texture_container.hpp"
+#include "rb4pc/inspector/sha256.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -192,5 +193,87 @@ TextureBatchResult convert_texture_batch(const std::filesystem::path& source_roo
         throw;
     }
     return result;
+}
+TextureBatchVerification verify_texture_batch(const std::filesystem::path& source_root,
+                                              const std::filesystem::path& batch_root) {
+    if (!std::filesystem::is_directory(batch_root))
+        throw std::runtime_error("texture batch root is not a directory");
+    const auto plan = plan_texture_conversions(source_root);
+    TextureBatchVerification verification;
+    verification.source_root = source_root;
+    verification.batch_root = batch_root;
+    std::vector<std::string> expected;
+    for (const auto& planned : plan.entries) {
+        if (planned.state != TextureConversionState::convertible) continue;
+        TextureBatchVerificationEntry entry;
+        entry.source_relative_path = planned.relative_path;
+        entry.destination_relative_path = pc_texture_relative_path(planned.relative_path);
+        expected.push_back(lowercase(entry.destination_relative_path.generic_string()));
+        const auto source = source_root / entry.source_relative_path;
+        const auto destination = batch_root / entry.destination_relative_path;
+        auto manifest = destination;
+        manifest += ".rb4pc-conversion.json";
+        if (!std::filesystem::is_regular_file(destination) || !std::filesystem::is_regular_file(manifest)) {
+            entry.reason = "converted texture or manifest is missing";
+            ++verification.missing;
+            verification.entries.push_back(std::move(entry));
+            continue;
+        }
+        try {
+            const auto source_texture = inspector::inspect_texture_container(source);
+            const auto destination_texture = inspector::inspect_texture_container(destination);
+            const auto comparison = inspector::compare_texture_payloads(source_texture, destination_texture);
+            entry.source_sha256 = inspector::sha256_file(source);
+            entry.destination_sha256 = inspector::sha256_file(destination);
+            entry.payload_sha256 = destination_texture.payload_sha256;
+            if (destination_texture.magic != 6 || destination_texture.platform_version != 9 ||
+                destination_texture.marker != 6 || !comparison.compatible) {
+                entry.reason = comparison.compatible
+                    ? "destination is not the canonical supported PC container" : comparison.reason;
+                ++verification.invalid;
+            } else {
+                entry.verified = true;
+                entry.reason = "structure and mipmap payloads verified";
+                ++verification.verified;
+            }
+        } catch (const std::exception& error) {
+            entry.reason = error.what();
+            ++verification.invalid;
+        }
+        verification.entries.push_back(std::move(entry));
+    }
+    for (const auto& item : std::filesystem::recursive_directory_iterator(batch_root)) {
+        if (!item.is_regular_file()) continue;
+        const auto relative = std::filesystem::relative(item.path(), batch_root).generic_string();
+        const auto lower_relative = lowercase(relative);
+        if (lower_relative == "batch-summary.json" || lower_relative.ends_with(".rb4pc-conversion.json")) continue;
+        if (std::find(expected.begin(), expected.end(), lower_relative) == expected.end())
+            ++verification.unexpected;
+    }
+    return verification;
+}
+
+std::string format_json(const TextureBatchVerification& verification) {
+    std::ostringstream output;
+    output << "{\n  \"schemaVersion\": 1,\n  \"complete\": "
+           << (verification.complete() ? "true" : "false")
+           << ",\n  \"expected\": " << verification.entries.size()
+           << ",\n  \"verified\": " << verification.verified
+           << ",\n  \"missing\": " << verification.missing
+           << ",\n  \"invalid\": " << verification.invalid
+           << ",\n  \"unexpected\": " << verification.unexpected << ",\n  \"entries\": [";
+    for (std::size_t index = 0; index < verification.entries.size(); ++index) {
+        const auto& entry = verification.entries[index];
+        if (index) output << ',';
+        output << "\n    {\"source\": \"" << escape_json(entry.source_relative_path.generic_string())
+               << "\", \"destination\": \"" << escape_json(entry.destination_relative_path.generic_string())
+               << "\", \"verified\": " << (entry.verified ? "true" : "false")
+               << ", \"reason\": \"" << escape_json(entry.reason)
+               << "\", \"sourceSha256\": \"" << entry.source_sha256
+               << "\", \"destinationSha256\": \"" << entry.destination_sha256
+               << "\", \"payloadSha256\": \"" << entry.payload_sha256 << "\"}";
+    }
+    output << "\n  ]\n}\n";
+    return output.str();
 }
 } // namespace rb4pc::builder

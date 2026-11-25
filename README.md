@@ -77,7 +77,15 @@ rb4pc-builder <texture-directory> --convert-texture-batch <new-output-directory>
 
 The output is first built under a temporary sibling directory. Any failure
 removes that temporary tree; success publishes it atomically with per-texture
-manifests and `batch-summary.json`.
+manifests and `batch-summary.json`. Verify a published batch independently with:
+
+```text
+rb4pc-builder <texture-directory> --verify-texture-batch <batch-directory> <new-report.json>
+```
+
+Verification reopens source and destination containers, recomputes hashes,
+compares every mipmap payload, requires each manifest, and reports missing,
+invalid, or unexpected files.
 ### 6. Generate an asset catalog
 
 Open **Tools > PC Asset Catalog**, then choose one `*_pc.hdr` file or a folder

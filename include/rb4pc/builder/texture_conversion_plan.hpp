@@ -44,6 +44,28 @@ struct TextureBatchResult {
     std::uint64_t skipped_read_only = 0;
     std::uint64_t skipped_invalid = 0;
 };
+struct TextureBatchVerificationEntry {
+    std::filesystem::path source_relative_path;
+    std::filesystem::path destination_relative_path;
+    bool verified = false;
+    std::string reason;
+    std::string source_sha256;
+    std::string destination_sha256;
+    std::string payload_sha256;
+};
+
+struct TextureBatchVerification {
+    std::filesystem::path source_root;
+    std::filesystem::path batch_root;
+    std::vector<TextureBatchVerificationEntry> entries;
+    std::uint64_t verified = 0;
+    std::uint64_t missing = 0;
+    std::uint64_t invalid = 0;
+    std::uint64_t unexpected = 0;
+    [[nodiscard]] bool complete() const {
+        return missing == 0 && invalid == 0 && unexpected == 0 && verified == entries.size();
+    }
+};
 
 [[nodiscard]] TextureConversionPlan plan_texture_conversions(const std::filesystem::path& root);
 [[nodiscard]] std::filesystem::path pc_texture_relative_path(const std::filesystem::path& source_relative_path);
@@ -51,4 +73,7 @@ struct TextureBatchResult {
     const std::filesystem::path& source_root, const std::filesystem::path& destination_root);
 [[nodiscard]] std::string format_json(const TextureConversionPlan& plan);
 [[nodiscard]] std::string format_json(const TextureBatchResult& result);
+[[nodiscard]] TextureBatchVerification verify_texture_batch(
+    const std::filesystem::path& source_root, const std::filesystem::path& batch_root);
+[[nodiscard]] std::string format_json(const TextureBatchVerification& verification);
 } // namespace rb4pc::builder

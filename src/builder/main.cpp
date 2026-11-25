@@ -19,6 +19,27 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 5 && std::string(argv[2]) == "--verify-texture-batch") {
+        try {
+            const std::filesystem::path report_path = argv[4];
+            if (std::filesystem::exists(report_path)) throw std::runtime_error("verification report already exists");
+            const auto verification = rb4pc::builder::verify_texture_batch(argv[1], argv[3]);
+            std::ofstream output(report_path, std::ios::binary);
+            if (!output) throw std::runtime_error("could not create texture verification report");
+            output << rb4pc::builder::format_json(verification);
+            if (!output) throw std::runtime_error("could not finalize texture verification report");
+            std::cout << "Texture batch verification: " << report_path.string()
+                      << "\nComplete: " << (verification.complete() ? "yes" : "no")
+                      << "\nVerified: " << verification.verified << '/' << verification.entries.size()
+                      << "\nMissing: " << verification.missing
+                      << "\nInvalid: " << verification.invalid
+                      << "\nUnexpected: " << verification.unexpected << '\n';
+            return verification.complete() ? 0 : 1;
+        } catch (const std::exception& error) {
+            std::cerr << "rb4pc-builder: " << error.what() << '\n';
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[2]) == "--convert-texture-batch") {
         try {
             const auto result = rb4pc::builder::convert_texture_batch(argv[1], argv[3]);
@@ -259,6 +280,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --audit-pc-corpus <output-directory>\n";
         std::cerr << "   or: " << argv[0] << " <texture-directory> --plan-texture-conversion <plan.json>\n";
         std::cerr << "   or: " << argv[0] << " <texture-directory> --convert-texture-batch <new-output-directory>\n";
+        std::cerr << "   or: " << argv[0] << " <texture-directory> --verify-texture-batch <batch-directory> <report.json>\n";
         return 2;
     }
     try {

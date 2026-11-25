@@ -162,3 +162,12 @@ to `_pc`, writes every per-texture hash manifest, and emits
 `batch-summary.json`. A new destination is mandatory. Work occurs in a temporary
 sibling directory that is recursively removed on failure and renamed to the
 final destination only after every supported conversion succeeds.
+## v0.166 independent batch verification
+
+The batch verifier derives expected outputs from the source tree instead of
+trusting `batch-summary.json`. It requires each converted texture and manifest,
+parses source and destination containers, checks the canonical PC signature,
+compares all mipmap payloads, recomputes source/destination/payload hashes, and
+counts missing, invalid, and unexpected output files. Its JSON report is
+complete only when every expected entry verifies and all three error counts are
+zero.
