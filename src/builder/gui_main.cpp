@@ -644,13 +644,20 @@ void paint_logo(HWND window) {
     EndPaint(window, &paint);
 }
 
+int font_height_for_tenths_of_point(HWND window, int tenths_of_point) {
+    const auto dc = GetDC(window);
+    const int dpi = dc ? GetDeviceCaps(dc, LOGPIXELSY) : 96;
+    if (dc) ReleaseDC(window, dc);
+    return -MulDiv(tenths_of_point, dpi, 720);
+}
+
 LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
     switch (message) {
         case WM_CREATE: {
-            app.ui_font = CreateFontW(-16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            app.ui_font = CreateFontW(font_height_for_tenths_of_point(window, 120), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                                      DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                                      CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-            app.button_font = CreateFontW(-18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            app.button_font = CreateFontW(font_height_for_tenths_of_point(window, 135), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                                          DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                                          CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
             app.convert = create_button(window, id_convert, L"Convert Rock Band 4 PS4 to PC");
