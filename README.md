@@ -68,6 +68,10 @@ rb4pc-builder <source-texture> --compare-texture-pair <reference-texture> <new-r
 The report records container versions, mipmap counts, payload hashes, and the
 exact compatibility result.
 
+Compare complete extracted source/reference trees with `rb4pc-builder <source-root>
+--compare-texture-directories <reference-root> <new-report.json>`. Matching,
+incompatible, and unmatched files are recorded separately.
+
 ### 6. Analyze a texture folder
 
 Choose **Tools > Analyze Texture Conversion Folder…** to create a read-only JSON

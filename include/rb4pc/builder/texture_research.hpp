@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace rb4pc::builder {
 struct TexturePairReport {
@@ -20,7 +21,20 @@ struct TexturePairReport {
     std::string reason;
 };
 
+struct TextureDirectoryPairReport {
+    std::filesystem::path source_root;
+    std::filesystem::path reference_root;
+    std::vector<TexturePairReport> pairs;
+    std::vector<std::filesystem::path> unmatched_sources;
+    std::vector<std::filesystem::path> unmatched_references;
+    std::uint64_t compatible = 0;
+    std::uint64_t incompatible = 0;
+};
+
 [[nodiscard]] TexturePairReport compare_texture_pair(
     const std::filesystem::path& source, const std::filesystem::path& reference);
 [[nodiscard]] std::string format_json(const TexturePairReport& report);
+[[nodiscard]] TextureDirectoryPairReport compare_texture_directories(
+    const std::filesystem::path& source_root, const std::filesystem::path& reference_root);
+[[nodiscard]] std::string format_json(const TextureDirectoryPairReport& report);
 } // namespace rb4pc::builder

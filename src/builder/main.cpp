@@ -20,6 +20,20 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 5 && std::string(argv[2]) == "--compare-texture-directories") {
+        try {
+            const std::filesystem::path report_path = argv[4];
+            if (std::filesystem::exists(report_path)) throw std::runtime_error("texture directory report already exists");
+            const auto report = rb4pc::builder::compare_texture_directories(argv[1], argv[3]);
+            std::ofstream output(report_path, std::ios::binary); output << rb4pc::builder::format_json(report);
+            if (!output) throw std::runtime_error("could not write texture directory report");
+            std::cout << "Texture directory pairs: " << report.pairs.size()
+                      << "\nCompatible: " << report.compatible << "\nIncompatible: " << report.incompatible
+                      << "\nUnmatched source/reference: " << report.unmatched_sources.size() << '/'
+                      << report.unmatched_references.size() << '\n';
+            return report.incompatible == 0 ? 0 : 1;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 5 && std::string(argv[2]) == "--compare-texture-pair") {
         try {
             const std::filesystem::path report_path = argv[4];
@@ -301,6 +315,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <texture-directory> --convert-texture-batch <new-output-directory>\n";
         std::cerr << "   or: " << argv[0] << " <texture-directory> --verify-texture-batch <batch-directory> <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <source-texture> --compare-texture-pair <reference-texture> <report.json>\n";
+        std::cerr << "   or: " << argv[0] << " <source-root> --compare-texture-directories <reference-root> <report.json>\n";
         return 2;
     }
     try {

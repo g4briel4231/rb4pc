@@ -229,6 +229,16 @@ int main() {
     const auto changed_texture = rb4pc::inspector::inspect_texture_container(changed_texture_path);
     const auto legacy_texture = rb4pc::inspector::inspect_texture_container(legacy_texture_path);
     const auto opaque_texture = rb4pc::inspector::inspect_texture_container(opaque_texture_path);
+    const auto texture_pair_source_root = directory / "texture-pair-source";
+    const auto texture_pair_reference_root = directory / "texture-pair-reference";
+    std::filesystem::create_directory(texture_pair_source_root);
+    std::filesystem::create_directory(texture_pair_reference_root);
+    write_test_texture(texture_pair_source_root / "cover.png_ps4", 12, 7);
+    write_test_texture(texture_pair_reference_root / "cover.png_pc", 9, 6);
+    write_test_texture(texture_pair_source_root / "unmatched.png_ps4", 12, 7);
+    const auto texture_directory_pairs = rb4pc::builder::compare_texture_directories(
+        texture_pair_source_root, texture_pair_reference_root);
+    const auto texture_directory_pairs_json = rb4pc::builder::format_json(texture_directory_pairs);
     const auto texture_match = rb4pc::inspector::compare_texture_payloads(ps4_texture, pc_texture);
     const auto texture_pair_report = rb4pc::builder::compare_texture_pair(ps4_texture_path, pc_texture_path);
     const auto texture_pair_json = rb4pc::builder::format_json(texture_pair_report);
@@ -971,6 +981,10 @@ int main() {
                          texture_pair_report.payload_compatible && texture_pair_report.source_version == 12 &&
                          texture_pair_report.reference_version == 9 &&
                          texture_pair_json.find("\"payloadCompatible\": true") != std::string::npos &&
+                         texture_directory_pairs.pairs.size() == 1 && texture_directory_pairs.compatible == 1 &&
+                         texture_directory_pairs.unmatched_sources.size() == 1 &&
+                         texture_directory_pairs.unmatched_references.empty() &&
+                         texture_directory_pairs_json.find("\"pairCount\": 1") != std::string::npos &&
                          texture_corpus.candidate_count == 5 && texture_corpus.parsed_count == 5 &&
                          texture_corpus.families.size() == 4 && texture_corpus.rejected_signatures.empty() &&
                          texture_conversion_plan.entries.size() == 7 &&
