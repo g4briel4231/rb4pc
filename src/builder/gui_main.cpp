@@ -2,6 +2,7 @@
 
 #define NOMINMAX
 #include <windows.h>
+#include <windowsx.h>
 #include <commdlg.h>
 #include <gdiplus.h>
 #include <shobjidl.h>
@@ -44,6 +45,9 @@ constexpr int id_about = 1203;
 constexpr int id_viewer_archives = 1301;
 constexpr int id_viewer_records = 1302;
 constexpr int id_viewer_search = 1303;
+constexpr int id_viewer_details = 1304;
+constexpr int id_viewer_open = 1401;
+constexpr int id_viewer_extract = 1402;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
@@ -58,6 +62,7 @@ struct AppState {
     HWND viewer_archives = nullptr;
     HWND viewer_records = nullptr;
     HWND viewer_search = nullptr;
+    HWND viewer_details = nullptr;
     HWND hovered_button = nullptr;
     WNDPROC button_window_proc = nullptr;
     HFONT ui_font = nullptr;
@@ -513,6 +518,43 @@ std::wstring utf8_to_wide(const std::string& value) {
     return result;
 }
 
+std::optional<std::size_t> selected_viewer_record_index() {
+    if (!app.viewer_records) return std::nullopt;
+    const auto selection = SendMessageW(app.viewer_records, LB_GETCURSEL, 0, 0);
+    if (selection == LB_ERR || static_cast<std::size_t>(selection) >= app.viewer_record_indices.size()) return std::nullopt;
+    return app.viewer_record_indices[static_cast<std::size_t>(selection)];
+}
+
+std::wstring viewer_record_details(std::size_t index) {
+    if (!app.viewer_report || index >= app.viewer_report->metadata.file_records.size()) return L"No file selected";
+    const auto& report = *app.viewer_report;
+    const auto& record = report.metadata.file_records[index];
+    std::wostringstream detail;
+    detail << L"Path: " << utf8_to_wide(record.path)
+           << L"\r\nSize: " << record.size << L" bytes"
+           << L"    Global offset: " << record.global_offset;
+    if (index < report.record_locations.size() && report.record_locations[index]) {
+        detail << L"    ARK: " << report.record_locations[index]->archive_index
+               << L"    Local offset: " << report.record_locations[index]->local_offset;
+    } else {
+        detail << L"    ARK location: unresolved";
+    }
+    return detail.str();
+}
+
+void update_viewer_record_details() {
+    const auto index = selected_viewer_record_index();
+    const auto text = index ? viewer_record_details(*index) : L"No file selected";
+    SetWindowTextW(app.viewer_details, text.c_str());
+}
+
+void open_selected_viewer_record(HWND window) {
+    const auto index = selected_viewer_record_index();
+    if (!index) return;
+    const auto detail = viewer_record_details(*index);
+    MessageBoxW(window, detail.c_str(), L"Open — File Viewer", MB_OK | MB_ICONINFORMATION);
+}
+
 void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
     if (!app.viewer_records || !app.viewer_report) return;
     app.viewer_archive_filter = archive_filter;
@@ -590,7 +632,8 @@ void layout_file_viewer(HWND window) {
     const int summary_height = 28;
     const int search_height = 26;
     const int content_y = margin + summary_height + gap + search_height + gap;
-    const int content_height = std::max(80, static_cast<int>(client.bottom) - content_y - margin);
+    const int details_height = 72;
+    const int content_height = std::max(80, static_cast<int>(client.bottom) - content_y - margin - gap - details_height);
     const int archive_width = std::max(220, (static_cast<int>(client.right) - margin * 2 - gap) / 3);
     MoveWindow(app.viewer_summary, margin, margin, client.right - margin * 2,
                summary_height, TRUE);
@@ -598,6 +641,8 @@ void layout_file_viewer(HWND window) {
     MoveWindow(app.viewer_archives, margin, content_y, archive_width, content_height, TRUE);
     MoveWindow(app.viewer_records, margin + archive_width + gap, content_y,
                client.right - margin * 2 - archive_width - gap, content_height, TRUE);
+    MoveWindow(app.viewer_details, margin, content_y + content_height + gap,
+               client.right - margin * 2, details_height, TRUE);
 }
 
 LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
@@ -621,14 +666,45 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 0, 0, 100, 100, window,
                 reinterpret_cast<HMENU>(static_cast<INT_PTR>(id_viewer_records)),
                 GetModuleHandleW(nullptr), nullptr);
+            app.viewer_details = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"No file selected",
+                WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL,
+                0, 0, 100, 72, window,
+                reinterpret_cast<HMENU>(static_cast<INT_PTR>(id_viewer_details)),
+                GetModuleHandleW(nullptr), nullptr);
             SendMessageW(app.viewer_summary, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
             SendMessageW(app.viewer_search, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
             SendMessageW(app.viewer_archives, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
             SendMessageW(app.viewer_records, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
+            SendMessageW(app.viewer_details, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
             layout_file_viewer(window);
             return 0;
         case WM_SIZE: layout_file_viewer(window); return 0;
+        case WM_CONTEXTMENU:
+            if (reinterpret_cast<HWND>(wparam) == app.viewer_records) {
+                const auto index = selected_viewer_record_index();
+                const auto menu = CreatePopupMenu();
+                AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_open, L"Open");
+                AppendMenuW(menu, MF_STRING | MF_GRAYED, id_viewer_extract, L"Extract…");
+                const int x = GET_X_LPARAM(lparam);
+                const int y = GET_Y_LPARAM(lparam);
+                TrackPopupMenu(menu, TPM_RIGHTBUTTON, x, y, 0, window, nullptr);
+                DestroyMenu(menu);
+                return 0;
+            }
+            break;
         case WM_COMMAND:
+            if (LOWORD(wparam) == id_viewer_open) {
+                open_selected_viewer_record(window);
+                return 0;
+            }
+            if (LOWORD(wparam) == id_viewer_records && HIWORD(wparam) == LBN_DBLCLK) {
+                open_selected_viewer_record(window);
+                return 0;
+            }
+            if (LOWORD(wparam) == id_viewer_records && HIWORD(wparam) == LBN_SELCHANGE) {
+                update_viewer_record_details();
+                return 0;
+            }
             if (LOWORD(wparam) == id_viewer_search && HIWORD(wparam) == EN_CHANGE) {
                 populate_file_viewer_records(app.viewer_archive_filter);
                 return 0;
@@ -652,6 +728,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
             app.viewer_archives = nullptr;
             app.viewer_records = nullptr;
             app.viewer_search = nullptr;
+            app.viewer_details = nullptr;
             app.viewer_record_indices.clear();
             app.viewer_archive_filter.reset();
             return 0;
