@@ -47,6 +47,8 @@ struct AppState {
     HWND open_archive = nullptr;
     HWND open_folder = nullptr;
     HWND status = nullptr;
+    HWND hovered_button = nullptr;
+    WNDPROC button_window_proc = nullptr;
     HFONT ui_font = nullptr;
     ULONG_PTR gdiplus_token = 0;
     std::unique_ptr<Gdiplus::Image> logo;
@@ -511,12 +513,79 @@ HMENU create_menu() {
     return menu;
 }
 
+LRESULT CALLBACK button_subclass_proc(HWND button, UINT message, WPARAM wparam,
+                                      LPARAM lparam) {
+    switch (message) {
+        case WM_MOUSEMOVE:
+            if (app.hovered_button != button) {
+                const auto previous = app.hovered_button;
+                app.hovered_button = button;
+                if (previous) InvalidateRect(previous, nullptr, TRUE);
+                InvalidateRect(button, nullptr, TRUE);
+                TRACKMOUSEEVENT tracking{sizeof(tracking), TME_LEAVE, button, 0};
+                TrackMouseEvent(&tracking);
+            }
+            break;
+        case WM_MOUSELEAVE:
+            if (app.hovered_button == button) app.hovered_button = nullptr;
+            InvalidateRect(button, nullptr, TRUE);
+            break;
+        case WM_SETFOCUS:
+        case WM_KILLFOCUS:
+        case WM_ENABLE:
+            InvalidateRect(button, nullptr, TRUE);
+            break;
+    }
+    return CallWindowProcW(app.button_window_proc, button, message, wparam, lparam);
+}
+
+void draw_button(const DRAWITEMSTRUCT& item) {
+    RECT bounds = item.rcItem;
+    FillRect(item.hDC, &bounds, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
+
+    const bool disabled = (item.itemState & ODS_DISABLED) != 0;
+    const bool pressed = (item.itemState & ODS_SELECTED) != 0;
+    const bool focused = (item.itemState & ODS_FOCUS) != 0;
+    const bool hovered = app.hovered_button == item.hwndItem;
+    const COLORREF fill = disabled ? RGB(247, 247, 247)
+                            : pressed ? RGB(232, 232, 232)
+                            : hovered ? RGB(246, 246, 246)
+                                      : RGB(252, 252, 252);
+    const COLORREF border = focused ? RGB(112, 112, 112) : RGB(204, 204, 204);
+    const COLORREF text = disabled ? RGB(150, 150, 150) : RGB(30, 30, 30);
+
+    InflateRect(&bounds, -1, -1);
+    const auto brush = CreateSolidBrush(fill);
+    const auto pen = CreatePen(PS_SOLID, focused ? 2 : 1, border);
+    const auto old_brush = SelectObject(item.hDC, brush);
+    const auto old_pen = SelectObject(item.hDC, pen);
+    RoundRect(item.hDC, bounds.left, bounds.top, bounds.right, bounds.bottom, 6, 6);
+    SelectObject(item.hDC, old_pen);
+    SelectObject(item.hDC, old_brush);
+    DeleteObject(pen);
+    DeleteObject(brush);
+
+    wchar_t label[256]{};
+    GetWindowTextW(item.hwndItem, label, static_cast<int>(std::size(label)));
+    SetBkMode(item.hDC, TRANSPARENT);
+    SetTextColor(item.hDC, text);
+    const auto old_font = SelectObject(item.hDC, app.ui_font);
+    RECT text_bounds = bounds;
+    if (pressed) OffsetRect(&text_bounds, 0, 1);
+    DrawTextW(item.hDC, label, -1, &text_bounds,
+              DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+    SelectObject(item.hDC, old_font);
+}
+
 HWND create_button(HWND parent, int id, const wchar_t* text) {
     const auto button = CreateWindowExW(0, L"BUTTON", text,
-        WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+        WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
         0, 0, 100, 40, parent, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
         GetModuleHandleW(nullptr), nullptr);
     SendMessageW(button, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
+    const auto original_proc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(
+        button, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(button_subclass_proc)));
+    if (!app.button_window_proc) app.button_window_proc = original_proc;
     return button;
 }
 
@@ -598,6 +667,13 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
             return 0;
         }
         case WM_PAINT: paint_logo(window); return 0;
+        case WM_DRAWITEM:
+            if (wparam == id_convert || wparam == id_repair ||
+                wparam == id_open_archive || wparam == id_open_folder) {
+                draw_button(*reinterpret_cast<DRAWITEMSTRUCT*>(lparam));
+                return TRUE;
+            }
+            break;
         case WM_COMMAND:
             switch (LOWORD(wparam)) {
                 case id_convert:
@@ -618,10 +694,10 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_texture_converter: show_tool(window, L"Texture Converter", L"rb4pc-texture-probe --convert-pc"); return 0;
                 case id_documentation: {
                     const auto docs = find_asset(L"docs");
-                    open_path_or_url(docs.empty() ? L"https://github.com/g4briel4231/rb4pc/tree/main/docs" : docs.wstring());
+                    open_path_or_url(docs.empty() ? L"https://github.com/rb4pc/rb4pc-builder/wiki" : docs.wstring());
                     return 0;
                 }
-                case id_repository: open_path_or_url(L"https://github.com/g4briel4231/rb4pc"); return 0;
+                case id_repository: open_path_or_url(L"https://github.com/rb4pc/rb4pc-builder"); return 0;
                 case id_about:
                     MessageBoxW(window,
                         L"RB4PC Builder v" RB4PC_VERSION_W L"\n\nIndependent clean-room tooling for user-supplied Rock Band 4 assets.\nNo proprietary game content is included.",
