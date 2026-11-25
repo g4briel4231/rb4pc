@@ -40,6 +40,11 @@ declared ARK volumes, and record table. The original file is not modified.
 Select **Open Folder** and choose a directory containing PC-format files or
 HDR/ARK sets. Catalog tools can scan the selected directory recursively.
 
+Keyboard access is available for the current GUI workflows: `Ctrl+O` opens a PC
+HDR, `Ctrl+L` clears the selected source, and the File Viewer supports `Ctrl+F`,
+`Enter`, `Ctrl+E`, and `Ctrl+C` for search, preview, extraction, and copying the
+selected internal path. See the Wiki for the complete guide.
+
 Keep original game data in a separate, backed-up folder. Save reports and other
 output to a different location whenever possible.
 

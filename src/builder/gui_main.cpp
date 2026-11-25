@@ -519,18 +519,6 @@ void generate_character_catalog(HWND window) {
     }
 }
 
-void show_planned(HWND window, const wchar_t* title, const wchar_t* detail) {
-    MessageBoxW(window, detail, title, MB_OK | MB_ICONINFORMATION);
-    set_status(std::wstring(title) + L" — wizard planned for a future milestone");
-}
-
-void show_tool(HWND window, const wchar_t* name, const wchar_t* command) {
-    std::wstring message = L"This tool is already available through RB4PC Builder's command-line core:\n\n";
-    message += command;
-    message += L"\n\nA dedicated GUI workflow will be connected in the next Builder GUI milestones.";
-    MessageBoxW(window, message.c_str(), name, MB_OK | MB_ICONINFORMATION);
-    set_status(std::wstring(name) + L" — available in the command-line core");
-}
 
 void open_path_or_url(const std::wstring& value) {
     ShellExecuteW(nullptr, L"open", value.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -1079,10 +1067,10 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
             if (reinterpret_cast<HWND>(wparam) == app.viewer_records) {
                 const auto index = selected_viewer_record_index();
                 const auto menu = CreatePopupMenu();
-                AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_open, L"Open");
-                AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_extract, L"Extract…");
+                AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_open, L"Open\tEnter");
+                AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_extract, L"Extract…\tCtrl+E");
                 AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-                AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_copy_path, L"Copy Internal Path");
+                AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_copy_path, L"Copy Internal Path\tCtrl+C");
                 const int x = GET_X_LPARAM(lparam);
                 const int y = GET_Y_LPARAM(lparam);
                 TrackPopupMenu(menu, TPM_RIGHTBUTTON, x, y, 0, window, nullptr);
@@ -1210,8 +1198,8 @@ HMENU create_menu() {
     const auto file = CreatePopupMenu();
     AppendMenuW(file, MF_STRING, id_open_archive, L"Open Package or Archive…");
     AppendMenuW(file, MF_STRING, id_open_folder, L"Open Folder…");
-    AppendMenuW(file, MF_STRING, id_open_file_viewer, L"Open PC HDR in File Viewer…");
-    AppendMenuW(file, MF_STRING | MF_GRAYED, id_clear_source, L"Clear Selected Source");
+    AppendMenuW(file, MF_STRING, id_open_file_viewer, L"Open PC HDR in File Viewer…\tCtrl+O");
+    AppendMenuW(file, MF_STRING | MF_GRAYED, id_clear_source, L"Clear Selected Source\tCtrl+L");
     AppendMenuW(file, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(file, MF_STRING, id_exit, L"Exit");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(file), L"File");
@@ -1378,6 +1366,34 @@ void paint_logo(HWND window) {
     EndPaint(window, &paint);
 }
 
+bool handle_file_viewer_shortcut(const MSG& message) {
+    if (!app.file_viewer || message.message != WM_KEYDOWN ||
+        GetAncestor(message.hwnd, GA_ROOT) != app.file_viewer) {
+        return false;
+    }
+
+    const bool control = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+    const auto focus = GetFocus();
+    if (control && message.wParam == 'F') {
+        SetFocus(app.viewer_search);
+        SendMessageW(app.viewer_search, EM_SETSEL, 0, -1);
+        return true;
+    }
+    if (control && message.wParam == 'E') {
+        if (selected_viewer_record_index()) extract_selected_viewer_record(app.file_viewer);
+        return true;
+    }
+    if (control && message.wParam == 'C' && focus == app.viewer_records) {
+        if (selected_viewer_record_index()) copy_selected_viewer_path(app.file_viewer);
+        return true;
+    }
+    if (!control && message.wParam == VK_RETURN && focus == app.viewer_records) {
+        if (selected_viewer_record_index()) open_selected_viewer_record(app.file_viewer);
+        return true;
+    }
+    return false;
+}
+
 int font_height_for_tenths_of_point(HWND window, int tenths_of_point) {
     const auto dc = GetDC(window);
     const int dpi = dc ? GetDeviceCaps(dc, LOGPIXELSY) : 96;
@@ -1463,7 +1479,9 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
 
                 case id_open_archive: open_selected_archive(window); return 0;
                 case id_open_folder: open_selected_folder(window); return 0;
-                case id_clear_source: clear_selected_pc_source(); return 0;
+                case id_clear_source:
+                    if (!app.selected_pc_source.empty()) clear_selected_pc_source();
+                    return 0;
                 case id_open_file_viewer: {
                     const auto header = select_pc_header(window);
                     if (!header.empty()) open_file_viewer(window, header);
@@ -1534,11 +1552,21 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show_command) {
     ShowWindow(window, show_command);
     UpdateWindow(window);
 
+    ACCEL accelerator_entries[] = {
+        {FVIRTKEY | FCONTROL, static_cast<WORD>('O'), id_open_file_viewer},
+        {FVIRTKEY | FCONTROL, static_cast<WORD>('L'), id_clear_source},
+    };
+    const HACCEL accelerators = CreateAcceleratorTableW(accelerator_entries, 2);
+
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0) {
-        TranslateMessage(&message);
-        DispatchMessageW(&message);
+        if (handle_file_viewer_shortcut(message)) continue;
+        if (!accelerators || !TranslateAcceleratorW(window, accelerators, &message)) {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
     }
+    if (accelerators) DestroyAcceleratorTable(accelerators);
     app.logo.reset();
     if (app.gdiplus_token) Gdiplus::GdiplusShutdown(app.gdiplus_token);
     CoUninitialize();
