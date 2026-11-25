@@ -171,3 +171,11 @@ compares all mipmap payloads, recomputes source/destination/payload hashes, and
 counts missing, invalid, and unexpected output files. Its JSON report is
 complete only when every expected entry verifies and all three error counts are
 zero.
+## v0.170 Builder GUI batch workflow
+
+The Builder GUI now exposes planning, transactional conversion, and independent
+verification as separate Tools menu actions. Before conversion it displays the
+convertible, read-only, and invalid counts plus the exact new destination. The
+verification action requires the original source and converted batch folders and
+writes its report to an explicit new JSON path. These GUI operations call the
+same tested core used by the CLI.

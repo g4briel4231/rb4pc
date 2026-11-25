@@ -48,6 +48,8 @@ constexpr int id_texture_converter = 1104;
 constexpr int id_corpus_audit = 1105;
 constexpr int id_metadata_catalog = 1106;
 constexpr int id_texture_plan = 1107;
+constexpr int id_texture_batch = 1108;
+constexpr int id_texture_verify = 1109;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
@@ -656,6 +658,90 @@ void generate_texture_conversion_plan(HWND window) {
         MessageBoxW(window, message.c_str(), L"Texture Conversion Plan",
                     MB_OK | MB_ICONERROR);
         set_status(L"Texture conversion planning failed");
+    }
+}
+
+void convert_texture_batch_gui(HWND window) {
+    MessageBoxW(window,
+        L"Select the extracted texture source folder. RB4PC will first analyze it and will convert only verified supported entries.",
+        L"Convert Texture Batch", MB_OK | MB_ICONINFORMATION);
+    const auto source = select_folder(window);
+    if (source.empty()) return;
+    try {
+        const auto plan = rb4pc::builder::plan_texture_conversions(source);
+        if (plan.convertible == 0) {
+            MessageBoxW(window, L"No supported convertible textures were found. No output was created.",
+                        L"Convert Texture Batch", MB_OK | MB_ICONWARNING);
+            return;
+        }
+        MessageBoxW(window,
+            L"Select an existing parent folder. RB4PC will create a new rb4pc-texture-batch folder inside it.",
+            L"Convert Texture Batch", MB_OK | MB_ICONINFORMATION);
+        const auto parent = select_folder(window);
+        if (parent.empty()) return;
+        const auto destination = parent / L"rb4pc-texture-batch";
+        std::wostringstream confirmation;
+        confirmation << L"Publish this transactional texture batch?\n\nConvertible: "
+                     << plan.convertible << L"\nRead-only (skipped): " << plan.read_only
+                     << L"\nInvalid (skipped): " << plan.invalid
+                     << L"\n\nNew destination: " << destination.wstring()
+                     << L"\n\nThe source is never modified. If any supported conversion fails, all temporary output is removed.";
+        if (MessageBoxW(window, confirmation.str().c_str(), L"Convert Texture Batch",
+                        MB_OKCANCEL | MB_ICONQUESTION) != IDOK) return;
+        set_status(L"Converting texture batch transactionally…");
+        const auto result = rb4pc::builder::convert_texture_batch(source, destination);
+        std::wostringstream message;
+        message << L"Texture batch published successfully.\n\nConverted: " << result.items.size()
+                << L"\nSkipped read-only: " << result.skipped_read_only
+                << L"\nSkipped invalid: " << result.skipped_invalid
+                << L"\n\nDirectory: " << result.directory.wstring()
+                << L"\nSummary: " << result.summary.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Convert Texture Batch",
+                    MB_OK | (result.skipped_invalid ? MB_ICONWARNING : MB_ICONINFORMATION));
+        set_status(L"Published texture batch: " + result.directory.filename().wstring());
+    } catch (const std::exception& error) {
+        std::wstring message = L"The texture batch was not published.\n\n";
+        message += utf8_to_wide(error.what());
+        MessageBoxW(window, message.c_str(), L"Convert Texture Batch", MB_OK | MB_ICONERROR);
+        set_status(L"Texture batch conversion failed");
+    }
+}
+
+void verify_texture_batch_gui(HWND window) {
+    MessageBoxW(window, L"Select the original extracted texture source folder.",
+                L"Verify Texture Batch", MB_OK | MB_ICONINFORMATION);
+    const auto source = select_folder(window);
+    if (source.empty()) return;
+    MessageBoxW(window, L"Select the converted texture batch folder to verify.",
+                L"Verify Texture Batch", MB_OK | MB_ICONINFORMATION);
+    const auto batch = select_folder(window);
+    if (batch.empty()) return;
+    const auto destination = select_catalog_output(window, L"texture-batch-verification.json");
+    if (destination.empty()) return;
+    set_status(L"Verifying converted texture batch…");
+    try {
+        const auto verification = rb4pc::builder::verify_texture_batch(source, batch);
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create texture verification report");
+        output << rb4pc::builder::format_json(verification);
+        if (!output) throw std::runtime_error("could not finalize texture verification report");
+        std::wostringstream message;
+        message << L"Texture batch verification finished.\n\nComplete: "
+                << (verification.complete() ? L"yes" : L"no")
+                << L"\nVerified: " << verification.verified << L" / " << verification.entries.size()
+                << L"\nMissing: " << verification.missing
+                << L"\nInvalid: " << verification.invalid
+                << L"\nUnexpected: " << verification.unexpected
+                << L"\n\nReport: " << destination.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Verify Texture Batch",
+                    MB_OK | (verification.complete() ? MB_ICONINFORMATION : MB_ICONWARNING));
+        set_status(verification.complete() ? L"Texture batch verified successfully"
+                                           : L"Texture batch verification found problems");
+    } catch (const std::exception& error) {
+        std::wstring message = L"The texture batch could not be verified.\n\n";
+        message += utf8_to_wide(error.what());
+        MessageBoxW(window, message.c_str(), L"Verify Texture Batch", MB_OK | MB_ICONERROR);
+        set_status(L"Texture batch verification failed");
     }
 }
 
@@ -1337,6 +1423,8 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_STRING, id_corpus_audit, L"Complete PC Corpus Audit…");
     AppendMenuW(tools, MF_STRING, id_texture_converter, L"Convert Supported PS4 Texture…");
     AppendMenuW(tools, MF_STRING, id_texture_plan, L"Analyze Texture Conversion Folder…");
+    AppendMenuW(tools, MF_STRING, id_texture_batch, L"Convert Supported Texture Batch…");
+    AppendMenuW(tools, MF_STRING, id_texture_verify, L"Verify Converted Texture Batch…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
 
     const auto help = CreatePopupMenu();
@@ -1619,6 +1707,8 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_texture_converter: convert_supported_texture(window); return 0;
                 case id_texture_plan: generate_texture_conversion_plan(window); return 0;
+                case id_texture_batch: convert_texture_batch_gui(window); return 0;
+                case id_texture_verify: verify_texture_batch_gui(window); return 0;
                 case id_documentation: {
                     const auto docs = find_asset(L"docs");
                     open_path_or_url(docs.empty() ? L"https://github.com/rb4pc/rb4pc-builder/wiki" : docs.wstring());

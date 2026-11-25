@@ -86,6 +86,10 @@ rb4pc-builder <texture-directory> --verify-texture-batch <batch-directory> <new-
 Verification reopens source and destination containers, recomputes hashes,
 compares every mipmap payload, requires each manifest, and reports missing,
 invalid, or unexpected files.
+
+The same operations are available from **Tools > Convert Supported Texture Batch…**
+and **Tools > Verify Converted Texture Batch…**. The GUI shows the plan counts and
+final destination before conversion begins.
 ### 6. Generate an asset catalog
 
 Open **Tools > PC Asset Catalog**, then choose one `*_pc.hdr` file or a folder
