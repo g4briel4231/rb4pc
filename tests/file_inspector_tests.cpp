@@ -239,6 +239,11 @@ int main() {
     write_convertible_ps4_texture(convertible_texture_8bpp_path, 8);
     const auto texture_conversion_plan = rb4pc::builder::plan_texture_conversions(texture_directory);
     const auto texture_conversion_plan_json = rb4pc::builder::format_json(texture_conversion_plan);
+    const auto texture_batch_path = directory / "texture-batch";
+    const auto texture_batch = rb4pc::builder::convert_texture_batch(texture_directory, texture_batch_path);
+    bool existing_texture_batch_rejected = false;
+    try { static_cast<void>(rb4pc::builder::convert_texture_batch(texture_directory, texture_batch_path)); }
+    catch (const std::runtime_error&) { existing_texture_batch_rejected = true; }
     const auto texture_conversion = rb4pc::inspector::convert_linear_ps4_texture_to_pc(
         convertible_texture_path, converted_texture_path);
     const auto converted_texture = rb4pc::inspector::inspect_texture_container(converted_texture_path);
@@ -961,6 +966,11 @@ int main() {
                          texture_conversion_plan.convertible == 2 && texture_conversion_plan.read_only == 5 &&
                          texture_conversion_plan.invalid == 0 &&
                          texture_conversion_plan_json.find("\"state\": \"convertible\"") != std::string::npos &&
+                         texture_batch.items.size() == 2 && texture_batch.skipped_read_only == 5 &&
+                         texture_batch.skipped_invalid == 0 && existing_texture_batch_rejected &&
+                         std::filesystem::is_regular_file(texture_batch.summary) &&
+                         std::filesystem::is_regular_file(texture_batch_path / "convertible.texture_pc") &&
+                         std::filesystem::is_regular_file(texture_batch_path / "convertible.texture_pc.rb4pc-conversion.json") &&
                          texture_conversion.bits_per_pixel == 4 && converted_texture.platform_version == 9 &&
                          texture_conversion_8bpp.bits_per_pixel == 8 && converted_texture_8bpp.platform_version == 9 &&
                          decoded_texture.width == 256 && decoded_texture.height == 256 &&

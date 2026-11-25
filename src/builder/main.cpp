@@ -19,6 +19,20 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--convert-texture-batch") {
+        try {
+            const auto result = rb4pc::builder::convert_texture_batch(argv[1], argv[3]);
+            std::cout << "Texture batch: " << result.directory.string()
+                      << "\nConverted: " << result.items.size()
+                      << "\nSkipped read-only: " << result.skipped_read_only
+                      << "\nSkipped invalid: " << result.skipped_invalid
+                      << "\nSummary: " << result.summary.string() << '\n';
+            return result.skipped_invalid == 0 ? 0 : 1;
+        } catch (const std::exception& error) {
+            std::cerr << "rb4pc-builder: " << error.what() << '\n';
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[2]) == "--plan-texture-conversion") {
         try {
             const std::filesystem::path output_path = argv[3];
@@ -244,6 +258,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --catalog-pc-metadata <catalog.json>\n";
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --audit-pc-corpus <output-directory>\n";
         std::cerr << "   or: " << argv[0] << " <texture-directory> --plan-texture-conversion <plan.json>\n";
+        std::cerr << "   or: " << argv[0] << " <texture-directory> --convert-texture-batch <new-output-directory>\n";
         return 2;
     }
     try {

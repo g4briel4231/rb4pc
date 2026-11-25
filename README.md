@@ -68,6 +68,16 @@ family and a reason. No asset is modified. The same operation is available as:
 rb4pc-builder <texture-directory> --plan-texture-conversion <new-plan.json>
 ```
 
+After reviewing the plan, the CLI can transactionally convert only supported
+entries into a new output directory:
+
+```text
+rb4pc-builder <texture-directory> --convert-texture-batch <new-output-directory>
+```
+
+The output is first built under a temporary sibling directory. Any failure
+removes that temporary tree; success publishes it atomically with per-texture
+manifests and `batch-summary.json`.
 ### 6. Generate an asset catalog
 
 Open **Tools > PC Asset Catalog**, then choose one `*_pc.hdr` file or a folder

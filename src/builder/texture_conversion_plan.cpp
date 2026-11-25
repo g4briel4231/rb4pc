@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
@@ -116,5 +117,80 @@ std::string format_json(const TextureConversionPlan& plan) {
     }
     output << "\n  ]\n}\n";
     return output.str();
+}
+std::filesystem::path pc_texture_relative_path(const std::filesystem::path& source_relative_path) {
+    auto destination = source_relative_path;
+    auto name = destination.filename().string();
+    const auto lower_name = lowercase(name);
+    if (lower_name.ends_with("_ps4")) name.replace(name.size() - 4, 4, "_pc");
+    else name += "_pc";
+    destination.replace_filename(name);
+    return destination;
+}
+
+std::string format_json(const TextureBatchResult& result) {
+    std::ostringstream output;
+    output << "{\n  \"schemaVersion\": 1,\n  \"converted\": " << result.items.size()
+           << ",\n  \"skippedReadOnly\": " << result.skipped_read_only
+           << ",\n  \"skippedInvalid\": " << result.skipped_invalid << ",\n  \"items\": [";
+    for (std::size_t index = 0; index < result.items.size(); ++index) {
+        const auto& item = result.items[index];
+        if (index) output << ',';
+        output << "\n    {\"source\": \"" << escape_json(item.source_relative_path.generic_string())
+               << "\", \"destination\": \"" << escape_json(item.destination_relative_path.generic_string())
+               << "\", \"bitsPerPixel\": " << item.bits_per_pixel
+               << ", \"sourceSha256\": \"" << item.source_sha256
+               << "\", \"destinationSha256\": \"" << item.destination_sha256
+               << "\", \"payloadSha256\": \"" << item.payload_sha256 << "\"}";
+    }
+    output << "\n  ]\n}\n";
+    return output.str();
+}
+
+TextureBatchResult convert_texture_batch(const std::filesystem::path& source_root,
+                                         const std::filesystem::path& destination_root) {
+    if (destination_root.empty() || std::filesystem::exists(destination_root))
+        throw std::runtime_error("texture batch destination is empty or already exists");
+    const auto parent = destination_root.has_parent_path()
+        ? destination_root.parent_path() : std::filesystem::path{"."};
+    if (!std::filesystem::is_directory(parent))
+        throw std::runtime_error("texture batch destination parent does not exist");
+    auto temporary = destination_root;
+    temporary += ".rb4pc-part";
+    if (std::filesystem::exists(temporary))
+        throw std::runtime_error("texture batch temporary destination already exists");
+
+    const auto plan = plan_texture_conversions(source_root);
+    TextureBatchResult result;
+    result.directory = destination_root;
+    result.summary = destination_root / "batch-summary.json";
+    result.skipped_read_only = plan.read_only;
+    result.skipped_invalid = plan.invalid;
+    try {
+        std::filesystem::create_directory(temporary);
+        for (const auto& entry : plan.entries) {
+            if (entry.state != TextureConversionState::convertible) continue;
+            const auto destination_relative = pc_texture_relative_path(entry.relative_path);
+            const auto temporary_destination = temporary / destination_relative;
+            std::filesystem::create_directories(temporary_destination.parent_path());
+            const auto conversion = inspector::convert_linear_ps4_texture_to_pc(
+                source_root / entry.relative_path, temporary_destination);
+            result.items.push_back({entry.relative_path, destination_relative,
+                                    conversion.bits_per_pixel, conversion.source_sha256,
+                                    conversion.destination_sha256, conversion.payload_sha256});
+        }
+        const auto temporary_summary = temporary / "batch-summary.json";
+        std::ofstream output(temporary_summary, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create texture batch summary");
+        output << format_json(result);
+        output.close();
+        if (!output) throw std::runtime_error("could not finalize texture batch summary");
+        std::filesystem::rename(temporary, destination_root);
+    } catch (...) {
+        std::error_code ignored;
+        std::filesystem::remove_all(temporary, ignored);
+        throw;
+    }
+    return result;
 }
 } // namespace rb4pc::builder

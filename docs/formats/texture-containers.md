@@ -154,3 +154,11 @@ platform version, dimensions, mipmap count, and measured storage rate. Both the
 single-file converter and batch planner use the same compatibility assessment.
 This plan is the safety boundary for a later batch writer; it is not itself a
 conversion operation.
+## v0.162 transactional batch conversion
+
+The CLI batch executor uses the shared conversion plan and processes only
+`convertible` entries. It preserves relative directories, maps `_ps4` suffixes
+to `_pc`, writes every per-texture hash manifest, and emits
+`batch-summary.json`. A new destination is mandatory. Work occurs in a temporary
+sibling directory that is recursively removed on failure and renamed to the
+final destination only after every supported conversion succeeds.
