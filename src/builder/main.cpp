@@ -5,6 +5,7 @@
 #include "rb4pc/builder/install_plan.hpp"
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
+#include "rb4pc/builder/song_metadata_writer.hpp"
 #include "rb4pc/builder/song_assembler.hpp"
 #include "rb4pc/builder/pc_archive_builder.hpp"
 #include "rb4pc/builder/pc_asset_catalog.hpp"
@@ -22,6 +23,19 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--convert-song-metadata") {
+        try {
+            const auto result = rb4pc::builder::convert_song_ini_metadata(argv[1], argv[3]);
+            std::cout << "Canonical song metadata: " << result.destination.string()
+                      << "\nTitle: " << result.metadata.title
+                      << "\nArtist: " << result.metadata.artist
+                      << "\nManifest: " << result.manifest.string() << '\n';
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "rb4pc-builder: " << error.what() << '\n';
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[2]) == "--convert-asset-pipeline") {
         try { const auto r=rb4pc::builder::convert_asset_pipeline(argv[1],argv[3]);
             std::cout<<"Asset pipeline: "<<r.directory.string()<<"\nConverted textures: "<<r.converted_textures
@@ -386,6 +400,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <source.mogg> --extract-mogg-ogg <new-output.ogg>\n";
         std::cerr << "   or: " << argv[0] << " <audio-root> --extract-audio-batch <new-output-directory>\n";
         std::cerr << "   or: " << argv[0] << " <asset-root> --convert-asset-pipeline <new-output-directory>\n";
+        std::cerr << "   or: " << argv[0] << " <song.ini> --convert-song-metadata <new-metadata.json>\n";
         return 2;
     }
     try {

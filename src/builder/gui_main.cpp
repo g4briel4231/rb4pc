@@ -15,6 +15,7 @@
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/builder/pc_corpus_audit.hpp"
 #include "rb4pc/builder/pc_metadata_catalog.hpp"
+#include "rb4pc/builder/song_metadata_writer.hpp"
 #include "rb4pc/builder/texture_conversion_plan.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
@@ -54,6 +55,7 @@ constexpr int id_texture_batch = 1108;
 constexpr int id_texture_verify = 1109;
 constexpr int id_audio_plan = 1110;
 constexpr int id_asset_pipeline = 1111;
+constexpr int id_song_metadata = 1112;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
@@ -220,6 +222,17 @@ std::filesystem::path select_pc_header(HWND owner) {
     return path;
 }
 
+std::filesystem::path select_song_ini(HWND owner) {
+    std::wstring path(32768, L'\0');
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = owner;
+    dialog.lpstrTitle = L"Open song.ini metadata";
+    dialog.lpstrFilter = L"song.ini files (song.ini;*.ini)\0song.ini;*.ini\0All files\0*.*\0";
+    dialog.lpstrFile = path.data(); dialog.nMaxFile = static_cast<DWORD>(path.size());
+    dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+    if (!GetOpenFileNameW(&dialog)) return {};
+    path.resize(std::wcslen(path.c_str())); return path;
+}
 std::filesystem::path select_catalog_output(HWND owner, const wchar_t* suggested_name) {
     std::wstring path(32768, L'\0');
     const std::wstring suggested = suggested_name;
@@ -774,6 +787,32 @@ void generate_audio_conversion_plan(HWND window) {
     }
 }
 
+void convert_song_metadata_gui(HWND window) {
+    const auto source = select_song_ini(window); if (source.empty()) return;
+    const auto destination = select_catalog_output(window, L"rb4pc-song-metadata.json"); if (destination.empty()) return;
+    if (std::filesystem::exists(destination)) {
+        MessageBoxW(window, L"Choose a new filename. Verified metadata conversion never overwrites an existing file.", L"Song Metadata", MB_OK | MB_ICONWARNING);
+        return;
+    }
+    try {
+        const auto parsed = rb4pc::builder::parse_song_ini(source);
+        std::wostringstream confirmation;
+        confirmation << L"Write and verify canonical RB4PC metadata?\n\nTitle: " << utf8_to_wide(parsed.title)
+                     << L"\nArtist: " << utf8_to_wide(parsed.artist) << L"\n\nThis does not create native Harmonix song metadata.";
+        if (MessageBoxW(window, confirmation.str().c_str(), L"Song Metadata", MB_OKCANCEL | MB_ICONQUESTION) != IDOK) return;
+        set_status(L"Writing and verifying song metadata…");
+        const auto result = rb4pc::builder::convert_song_ini_metadata(source, destination);
+        std::wostringstream message;
+        message << L"Canonical metadata was written and reread successfully.\n\nFile: " << result.destination.wstring()
+                << L"\nManifest: " << result.manifest.wstring() << L"\nDestination SHA-256: " << utf8_to_wide(result.destination_sha256);
+        MessageBoxW(window, message.str().c_str(), L"Song Metadata", MB_OK | MB_ICONINFORMATION);
+        set_status(L"Verified song metadata: " + destination.filename().wstring());
+    } catch (const std::exception& error) {
+        std::wstring message = L"Song metadata was not written.\n\n"; message += utf8_to_wide(error.what());
+        MessageBoxW(window, message.c_str(), L"Song Metadata", MB_OK | MB_ICONERROR);
+        set_status(L"Song metadata conversion failed");
+    }
+}
 void run_asset_conversion_pipeline(HWND window) {
     MessageBoxW(window,L"Select an extracted asset folder. RB4PC will plan texture and audio work before asking for confirmation.",L"Asset Conversion Pipeline",MB_OK|MB_ICONINFORMATION);
     const auto source=select_folder(window);if(source.empty())return;
@@ -1261,6 +1300,7 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_STRING, id_audio_plan, L"Analyze Audio Conversion Folder…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_asset_pipeline, L"Build Verified Asset Pipeline…");
+    AppendMenuW(tools, MF_STRING, id_song_metadata, L"Convert song.ini Metadata…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1338,6 +1378,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_audio_catalog: generate_audio_catalog(window); return 0;
                 case id_audio_plan: generate_audio_conversion_plan(window); return 0;
                 case id_asset_pipeline: run_asset_conversion_pipeline(window); return 0;
+                case id_song_metadata: convert_song_metadata_gui(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
@@ -1466,6 +1507,7 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_STRING, id_audio_plan, L"Analyze Audio Conversion Folder…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_asset_pipeline, L"Build Verified Asset Pipeline…");
+    AppendMenuW(tools, MF_STRING, id_song_metadata, L"Convert song.ini Metadata…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1753,6 +1795,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_audio_catalog: generate_audio_catalog(window); return 0;
                 case id_audio_plan: generate_audio_conversion_plan(window); return 0;
                 case id_asset_pipeline: run_asset_conversion_pipeline(window); return 0;
+                case id_song_metadata: convert_song_metadata_gui(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;

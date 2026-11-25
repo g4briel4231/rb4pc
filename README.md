@@ -154,6 +154,15 @@ The catalog reports aggregate structural measurements for character definitions,
 animations, clips, skeletons, bone masks, and stances. Candidate fields are
 measurements, not confirmed semantic definitions.
 
+### 11a. Convert and verify `song.ini` metadata
+
+Choose **Tools > Convert song.ini Metadata…** or run:
+
+```text
+rb4pc-builder <song.ini> --convert-song-metadata <new-metadata.json>
+```
+
+RB4PC writes canonical JSON to a temporary file, rereads and compares every supported field, hashes both files, and publishes a conversion manifest. Existing destinations are never overwritten. This is an RB4PC interchange format, not native `songdta_pc`, `moggsong_dta_pc`, `csv_pc`, or `rbsong` output. See [the format note](docs/formats/song-metadata-writing.md).
 ### 12. Generate a metadata catalog
 
 Open **Tools > PC Metadata Catalog**, select a PC HDR or folder, and choose a

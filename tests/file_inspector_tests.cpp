@@ -45,6 +45,7 @@
 #include "rb4pc/runtime/text.hpp"
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
+#include "rb4pc/builder/song_metadata_writer.hpp"
 #include "rb4pc/builder/song_assembler.hpp"
 #include "rb4pc/builder/pc_archive_builder.hpp"
 #include "rb4pc/builder/pc_asset_catalog.hpp"
@@ -203,7 +204,15 @@ int main() {
     const auto directory = std::filesystem::temp_directory_path() / "rb4pc-inspector-tests";
     std::filesystem::remove_all(directory);
     std::filesystem::create_directory(directory);
-    const auto audio_plan_directory = directory / "audio-plan";
+    const auto metadata_song_directory = directory / "Metadata Song";
+    std::filesystem::create_directory(metadata_song_directory);
+    const auto song_ini_path = metadata_song_directory / "song.ini";
+    write_file(song_ini_path, "[song]\nname = Test Song\nartist = Test Artist\nalbum = Test Album\ngenre = Rock\nyear = 2026\npreview_start_time = 12345\n");
+    const auto metadata_conversion = rb4pc::builder::convert_song_ini_metadata(song_ini_path, directory / "canonical-metadata.json");
+    const auto canonical_metadata = rb4pc::builder::read_canonical_song_metadata(metadata_conversion.destination);
+    bool metadata_overwrite_rejected = false;
+    try { static_cast<void>(rb4pc::builder::convert_song_ini_metadata(song_ini_path, metadata_conversion.destination)); }
+    catch (const std::runtime_error&) { metadata_overwrite_rejected = true; }    const auto audio_plan_directory = directory / "audio-plan";
     std::filesystem::create_directory(audio_plan_directory);
     write_file(audio_plan_directory / "native.ogg", "OggSdemo");
     write_file(audio_plan_directory / "native.wav", std::string("RIFF\x04\0\0\0WAVE", 12));
@@ -1201,6 +1210,13 @@ int main() {
                                      [](const auto& location) { return location.has_value(); }),
                      "generated PC HDR/ARK validation mismatch");
 
+    passed &= expect(canonical_metadata.short_name == "metadata_song" && canonical_metadata.title == "Test Song" &&
+                         canonical_metadata.artist == "Test Artist" && canonical_metadata.album == "Test Album" &&
+                         canonical_metadata.genre == "Rock" && canonical_metadata.year == 2026 &&
+                         canonical_metadata.preview_start_ms == 12345 && std::filesystem::exists(metadata_conversion.manifest) &&
+                         !metadata_conversion.source_sha256.empty() && !metadata_conversion.destination_sha256.empty() &&
+                         metadata_overwrite_rejected,
+                     "song metadata conversion writes, rereads, hashes, and refuses overwrite");
     std::filesystem::remove_all(directory);
     return passed ? 0 : 1;
 }
