@@ -40,6 +40,9 @@ constexpr int id_metadata_catalog = 1106;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
+constexpr int id_viewer_archives = 1301;
+constexpr int id_viewer_records = 1302;
+constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
     HWND convert = nullptr;
@@ -48,6 +51,10 @@ struct AppState {
     HWND open_folder = nullptr;
     HWND status = nullptr;
     HWND source_label = nullptr;
+    HWND file_viewer = nullptr;
+    HWND viewer_summary = nullptr;
+    HWND viewer_archives = nullptr;
+    HWND viewer_records = nullptr;
     HWND hovered_button = nullptr;
     WNDPROC button_window_proc = nullptr;
     HFONT ui_font = nullptr;
@@ -56,6 +63,7 @@ struct AppState {
     std::unique_ptr<Gdiplus::Image> logo;
     std::filesystem::path executable_directory;
     std::filesystem::path selected_pc_source;
+    std::unique_ptr<rb4pc::inspector::HeaderSetReport> viewer_report;
 };
 
 AppState app;
@@ -489,6 +497,134 @@ void open_path_or_url(const std::wstring& value) {
     ShellExecuteW(nullptr, L"open", value.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
+std::wstring utf8_to_wide(const std::string& value) {
+    if (value.empty()) return {};
+    const int size = MultiByteToWideChar(CP_UTF8, 0, value.data(),
+                                         static_cast<int>(value.size()), nullptr, 0);
+    if (size <= 0) return std::wstring(value.begin(), value.end());
+    std::wstring result(static_cast<std::size_t>(size), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, value.data(), static_cast<int>(value.size()),
+                        result.data(), size);
+    return result;
+}
+
+void populate_file_viewer() {
+    if (!app.file_viewer || !app.viewer_report) return;
+    const auto& report = *app.viewer_report;
+    std::wostringstream summary;
+    summary << L"HDR: " << report.header.path.filename().wstring()
+            << L"    Version: " << report.metadata.version
+            << L"    ARK volumes: " << report.archives.size()
+            << L"    Files: " << report.metadata.file_records.size();
+    SetWindowTextW(app.viewer_summary, summary.str().c_str());
+    SendMessageW(app.viewer_archives, LB_RESETCONTENT, 0, 0);
+    SendMessageW(app.viewer_records, LB_RESETCONTENT, 0, 0);
+    for (std::size_t index = 0; index < report.archives.size(); ++index) {
+        const auto& archive = report.archives[index];
+        std::wostringstream line;
+        line << L"ARK " << index << L": " << archive.path.filename().wstring()
+             << L"  [" << (archive.exists ? L"present" : L"missing") << L"]  "
+             << archive.actual_size << L" / " << archive.declared_size << L" bytes";
+        const auto value = line.str();
+        SendMessageW(app.viewer_archives, LB_ADDSTRING, 0,
+                     reinterpret_cast<LPARAM>(value.c_str()));
+    }
+    for (std::size_t index = 0; index < report.metadata.file_records.size(); ++index) {
+        const auto& record = report.metadata.file_records[index];
+        std::wostringstream line;
+        if (index < report.record_locations.size() && report.record_locations[index]) {
+            line << L"[ARK " << report.record_locations[index]->archive_index
+                 << L" @ " << report.record_locations[index]->local_offset << L"] ";
+        } else {
+            line << L"[unresolved] ";
+        }
+        line << utf8_to_wide(record.path) << L"  (" << record.size << L" bytes)";
+        const auto value = line.str();
+        SendMessageW(app.viewer_records, LB_ADDSTRING, 0,
+                     reinterpret_cast<LPARAM>(value.c_str()));
+    }
+}
+
+void layout_file_viewer(HWND window) {
+    RECT client{};
+    GetClientRect(window, &client);
+    const int margin = 12;
+    const int gap = 10;
+    const int summary_height = 28;
+    const int content_y = margin + summary_height + gap;
+    const int content_height = std::max(80, static_cast<int>(client.bottom) - content_y - margin);
+    const int archive_width = std::max(220, (static_cast<int>(client.right) - margin * 2 - gap) / 3);
+    MoveWindow(app.viewer_summary, margin, margin, client.right - margin * 2,
+               summary_height, TRUE);
+    MoveWindow(app.viewer_archives, margin, content_y, archive_width, content_height, TRUE);
+    MoveWindow(app.viewer_records, margin + archive_width + gap, content_y,
+               client.right - margin * 2 - archive_width - gap, content_height, TRUE);
+}
+
+LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
+    switch (message) {
+        case WM_CREATE:
+            app.viewer_summary = CreateWindowExW(0, L"STATIC", L"No HDR loaded",
+                WS_CHILD | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE | SS_PATHELLIPSIS,
+                0, 0, 100, 28, window, nullptr, GetModuleHandleW(nullptr), nullptr);
+            app.viewer_archives = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", nullptr,
+                WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT,
+                0, 0, 100, 100, window,
+                reinterpret_cast<HMENU>(static_cast<INT_PTR>(id_viewer_archives)),
+                GetModuleHandleW(nullptr), nullptr);
+            app.viewer_records = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", nullptr,
+                WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT,
+                0, 0, 100, 100, window,
+                reinterpret_cast<HMENU>(static_cast<INT_PTR>(id_viewer_records)),
+                GetModuleHandleW(nullptr), nullptr);
+            SendMessageW(app.viewer_summary, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
+            SendMessageW(app.viewer_archives, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
+            SendMessageW(app.viewer_records, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
+            layout_file_viewer(window);
+            return 0;
+        case WM_SIZE: layout_file_viewer(window); return 0;
+        case WM_GETMINMAXINFO: {
+            auto* limits = reinterpret_cast<MINMAXINFO*>(lparam);
+            limits->ptMinTrackSize.x = 760;
+            limits->ptMinTrackSize.y = 420;
+            return 0;
+        }
+        case WM_DESTROY:
+            app.file_viewer = nullptr;
+            app.viewer_summary = nullptr;
+            app.viewer_archives = nullptr;
+            app.viewer_records = nullptr;
+            return 0;
+    }
+    return DefWindowProcW(window, message, wparam, lparam);
+}
+
+void open_file_viewer(HWND owner, const std::filesystem::path& header) {
+    try {
+        auto report = rb4pc::inspector::inspect_header_set(header);
+        if (report.platform_hint != "pc" || report.metadata.version != 10 ||
+            !report.metadata.hash_index_validated) {
+            show_pc_error(owner, header, L"The dropped HDR did not pass PC HDR structural validation.");
+            return;
+        }
+        app.viewer_report = std::make_unique<rb4pc::inspector::HeaderSetReport>(std::move(report));
+        if (!app.file_viewer) {
+            app.file_viewer = CreateWindowExW(0, file_viewer_class, L"File Viewer",
+                WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 1080, 640,
+                owner, nullptr, GetModuleHandleW(nullptr), nullptr);
+            if (!app.file_viewer) throw std::runtime_error("could not create File Viewer window");
+        } else {
+            ShowWindow(app.file_viewer, SW_RESTORE);
+            SetForegroundWindow(app.file_viewer);
+        }
+        set_selected_pc_source(header);
+        populate_file_viewer();
+        set_status(L"Opened PC HDR in File Viewer: " + header.filename().wstring());
+    } catch (const std::exception&) {
+        show_pc_error(owner, header, L"The HDR and its ARK set could not be opened in File Viewer.");
+    }
+}
+
 HMENU create_menu() {
     const auto menu = CreateMenu();
     const auto file = CreatePopupMenu();
@@ -684,6 +820,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
             app.repair = create_button(window, id_repair, L"Repair Rock Band 4 PC");
             app.open_archive = create_button(window, id_open_archive, L"Open a ForgeTool PC File…");
             app.open_folder = create_button(window, id_open_folder, L"Open a Folder…");
+            DragAcceptFiles(window, TRUE);
             app.status = CreateWindowExW(0, L"STATIC", L"  Ready — RB4PC Builder v" RB4PC_VERSION_W,
                 WS_CHILD | WS_VISIBLE | SS_CENTERIMAGE | SS_SUNKEN, 0, 0, 100, 28, window,
                 nullptr, GetModuleHandleW(nullptr), nullptr);
@@ -714,6 +851,28 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 return TRUE;
             }
             break;
+        case WM_DROPFILES: {
+            const auto drop = reinterpret_cast<HDROP>(wparam);
+            const UINT count = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
+            if (count != 1) {
+                DragFinish(drop);
+                MessageBoxW(window, L"Drop one validated *_pc.hdr file at a time.",
+                            L"File Viewer", MB_OK | MB_ICONWARNING);
+                return 0;
+            }
+            const UINT length = DragQueryFileW(drop, 0, nullptr, 0);
+            std::wstring value(static_cast<std::size_t>(length) + 1, L'\0');
+            DragQueryFileW(drop, 0, value.data(), length + 1);
+            DragFinish(drop);
+            value.resize(length);
+            const std::filesystem::path path(value);
+            if (!is_pc_header(path) || !std::filesystem::is_regular_file(path)) {
+                show_pc_error(window, path, L"File Viewer accepts one validated *_pc.hdr file.");
+                return 0;
+            }
+            open_file_viewer(window, path);
+            return 0;
+        }
         case WM_COMMAND:
             switch (LOWORD(wparam)) {
                 case id_convert:
@@ -778,6 +937,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show_command) {
     klass.hIconSm = klass.hIcon;
     klass.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     if (!RegisterClassExW(&klass)) return 1;
+    WNDCLASSEXW viewer_class = klass;
+    viewer_class.lpfnWndProc = file_viewer_proc;
+    viewer_class.lpszClassName = file_viewer_class;
+    if (!RegisterClassExW(&viewer_class)) return 1;
 
     const auto window = CreateWindowExW(0, klass.lpszClassName,
         L"RB4PC Builder | v" RB4PC_VERSION_W,
