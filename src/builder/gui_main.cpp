@@ -55,6 +55,7 @@ constexpr int id_viewer_open = 1401;
 constexpr int id_viewer_extract = 1402;
 constexpr int id_viewer_copy_path = 1403;
 constexpr int id_viewer_export_listing = 1404;
+constexpr int id_viewer_metadata_candidates = 1405;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
@@ -83,6 +84,7 @@ struct AppState {
     std::vector<std::size_t> viewer_record_indices;
     std::optional<std::size_t> viewer_archive_filter;
     std::wstring viewer_extension_filter;
+    bool viewer_metadata_candidates_only = false;
 };
 
 AppState app;
@@ -702,6 +704,13 @@ void export_filtered_viewer_listing(HWND window) {
     }
 }
 
+bool is_metadata_candidate_path(const std::wstring& path) {
+    const auto value = lowercase(path);
+    for (const auto* suffix : {L".moggsong_dta_pc", L".songdta_pc", L".csv_pc", L".rbsong", L".dta"})
+        if (value.ends_with(suffix)) return true;
+    return false;
+}
+
 void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
     if (!app.viewer_records || !app.viewer_report) return;
     app.viewer_archive_filter = archive_filter;
@@ -720,6 +729,7 @@ void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
         if (archive_filter && (!has_location ||
             report.record_locations[index]->archive_index != *archive_filter)) continue;
         const auto wide_path = lowercase(utf8_to_wide(report.metadata.file_records[index].path));
+        if (app.viewer_metadata_candidates_only && !is_metadata_candidate_path(wide_path)) continue;
         if (!query.empty() && wide_path.find(query) == std::wstring::npos) continue;
         if (!app.viewer_extension_filter.empty() &&
             lowercase(std::filesystem::path(wide_path).extension().wstring()) != app.viewer_extension_filter) continue;
@@ -752,6 +762,7 @@ void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
             << L"    ARKs: " << report.archives.size()
             << L"    Visible files: " << app.viewer_record_indices.size()
             << L" / " << report.metadata.file_records.size();
+    if (app.viewer_metadata_candidates_only) summary << L"    View: metadata candidates";
     if (!app.viewer_extension_filter.empty()) summary << L"    Extension: " << app.viewer_extension_filter;
     if (archive_filter) summary << L"    Filter: ARK " << *archive_filter;
     else summary << L"    Filter: all ARKs";
@@ -833,6 +844,8 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_STRING, id_corpus_audit, L"Complete PC Corpus Audit…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_viewer_export_listing, L"Export Filtered Listing…");
+    AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(tools, MF_STRING, id_viewer_metadata_candidates, L"Show Metadata Candidates");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
     return menu;
 }
@@ -900,6 +913,12 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_viewer_export_listing: export_filtered_viewer_listing(window); return 0;
+                case id_viewer_metadata_candidates:
+                    app.viewer_metadata_candidates_only = !app.viewer_metadata_candidates_only;
+                    CheckMenuItem(GetMenu(window), id_viewer_metadata_candidates,
+                                  MF_BYCOMMAND | (app.viewer_metadata_candidates_only ? MF_CHECKED : MF_UNCHECKED));
+                    populate_file_viewer_records(app.viewer_archive_filter);
+                    return 0;
             }
             if (LOWORD(wparam) == id_viewer_copy_path) {
                 copy_selected_viewer_path(window);
@@ -959,6 +978,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
             app.viewer_details = nullptr;
             app.viewer_extension = nullptr;
             app.viewer_extension_filter.clear();
+            app.viewer_metadata_candidates_only = false;
             app.viewer_record_indices.clear();
             app.viewer_archive_filter.reset();
             return 0;
@@ -975,6 +995,7 @@ void open_file_viewer(HWND owner, const std::filesystem::path& header) {
             return;
         }
         app.viewer_report = std::make_unique<rb4pc::inspector::HeaderSetReport>(std::move(report));
+        app.viewer_metadata_candidates_only = false;
         if (!app.file_viewer) {
             app.file_viewer = CreateWindowExW(0, file_viewer_class, L"File Viewer",
                 WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 1080, 640,
@@ -984,6 +1005,7 @@ void open_file_viewer(HWND owner, const std::filesystem::path& header) {
             ShowWindow(app.file_viewer, SW_RESTORE);
             SetForegroundWindow(app.file_viewer);
         }
+        CheckMenuItem(GetMenu(app.file_viewer), id_viewer_metadata_candidates, MF_BYCOMMAND | MF_UNCHECKED);
         set_selected_pc_source(header);
         populate_file_viewer();
         set_status(L"Opened PC HDR in File Viewer: " + header.filename().wstring());
