@@ -11,6 +11,7 @@
 #include "rb4pc/builder/pc_corpus_audit.hpp"
 #include "rb4pc/builder/pc_metadata_catalog.hpp"
 #include "rb4pc/builder/texture_conversion_plan.hpp"
+#include "rb4pc/builder/texture_research.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 
@@ -19,6 +20,24 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 5 && std::string(argv[2]) == "--compare-texture-pair") {
+        try {
+            const std::filesystem::path report_path = argv[4];
+            if (std::filesystem::exists(report_path)) throw std::runtime_error("texture pair report already exists");
+            const auto report = rb4pc::builder::compare_texture_pair(argv[1], argv[3]);
+            std::ofstream output(report_path, std::ios::binary);
+            if (!output) throw std::runtime_error("could not create texture pair report");
+            output << rb4pc::builder::format_json(report);
+            if (!output) throw std::runtime_error("could not finalize texture pair report");
+            std::cout << "Texture pair report: " << report_path.string()
+                      << "\nPayload compatible: " << (report.payload_compatible ? "yes" : "no")
+                      << "\nReason: " << report.reason << '\n';
+            return report.payload_compatible ? 0 : 1;
+        } catch (const std::exception& error) {
+            std::cerr << "rb4pc-builder: " << error.what() << '\n';
+            return 1;
+        }
+    }
     if (argc == 5 && std::string(argv[2]) == "--verify-texture-batch") {
         try {
             const std::filesystem::path report_path = argv[4];
@@ -281,6 +300,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <texture-directory> --plan-texture-conversion <plan.json>\n";
         std::cerr << "   or: " << argv[0] << " <texture-directory> --convert-texture-batch <new-output-directory>\n";
         std::cerr << "   or: " << argv[0] << " <texture-directory> --verify-texture-batch <batch-directory> <report.json>\n";
+        std::cerr << "   or: " << argv[0] << " <source-texture> --compare-texture-pair <reference-texture> <report.json>\n";
         return 2;
     }
     try {

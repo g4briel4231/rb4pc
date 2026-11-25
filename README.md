@@ -57,7 +57,18 @@ new PC container plus a JSON manifest, preserves the source, and parses and
 hash-verifies the output before reporting success. Other texture families are
 rejected without creating an output.
 
-### 5. Analyze a texture folder
+### 5. Compare a PS4/PC texture pair
+
+Generate a reproducible JSON comparison without modifying either input:
+
+```text
+rb4pc-builder <source-texture> --compare-texture-pair <reference-texture> <new-report.json>
+```
+
+The report records container versions, mipmap counts, payload hashes, and the
+exact compatibility result.
+
+### 6. Analyze a texture folder
 
 Choose **Tools > Analyze Texture Conversion Folder…** to create a read-only JSON
 plan. It scans `.png_ps4` and `.texture` candidates recursively and classifies
@@ -90,7 +101,7 @@ invalid, or unexpected files.
 The same operations are available from **Tools > Convert Supported Texture Batch…**
 and **Tools > Verify Converted Texture Batch…**. The GUI shows the plan counts and
 final destination before conversion begins.
-### 6. Generate an asset catalog
+### 7. Generate an asset catalog
 
 Open **Tools > PC Asset Catalog**, then choose one `*_pc.hdr` file or a folder
 and select a destination for the JSON report.
@@ -98,7 +109,7 @@ and select a destination for the JSON report.
 The report summarizes archives, namespaces, extensions, asset categories, and
 known native, intermediate, or unknown path families without extracting assets.
 
-### 7. Generate an audio catalog
+### 8. Generate an audio catalog
 
 Open **Tools > PC Audio Catalog**, select a PC HDR or folder, and choose a JSON
 destination.
@@ -107,7 +118,7 @@ The report identifies supported MOGG/Ogg, RIFF/WAVE, RIFF/FEV, opaque,
 unreadable, and unsupported or potentially protected audio records. Recognition
 does not mean that every audio variant can already be played or converted.
 
-### 8. Generate a character and animation catalog
+### 9. Generate a character and animation catalog
 
 Open **Tools > Character/Animation Inventory**, select a PC HDR or folder, and
 choose a JSON destination.
@@ -116,7 +127,7 @@ The catalog reports aggregate structural measurements for character definitions,
 animations, clips, skeletons, bone masks, and stances. Candidate fields are
 measurements, not confirmed semantic definitions.
 
-### 9. Generate a metadata catalog
+### 10. Generate a metadata catalog
 
 Open **Tools > PC Metadata Catalog**, select a PC HDR or folder, and choose a
 JSON destination.
@@ -129,7 +140,7 @@ proprietary strings or internal paths.
 A successful result shows that every profiled field received exactly one
 structural evidence class.
 
-### 10. Run the complete PC corpus audit
+### 11. Run the complete PC corpus audit
 
 Open **Tools > Complete PC Corpus Audit**.
 
@@ -150,7 +161,7 @@ counts, no required record is unreadable, and metadata evidence classification
 is complete. Publication is transactional and does not overwrite an existing
 audit.
 
-### 11. Read warnings correctly
+### 12. Read warnings correctly
 
 A warning or an `unknown` classification does not automatically mean a file is
 damaged. It means the current implementation cannot safely confirm that

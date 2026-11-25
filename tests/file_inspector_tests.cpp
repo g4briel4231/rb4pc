@@ -51,6 +51,7 @@
 #include "rb4pc/builder/pc_corpus_audit.hpp"
 #include "rb4pc/builder/pc_metadata_catalog.hpp"
 #include "rb4pc/builder/texture_conversion_plan.hpp"
+#include "rb4pc/builder/texture_research.hpp"
 
 #include <array>
 #include <filesystem>
@@ -229,6 +230,8 @@ int main() {
     const auto legacy_texture = rb4pc::inspector::inspect_texture_container(legacy_texture_path);
     const auto opaque_texture = rb4pc::inspector::inspect_texture_container(opaque_texture_path);
     const auto texture_match = rb4pc::inspector::compare_texture_payloads(ps4_texture, pc_texture);
+    const auto texture_pair_report = rb4pc::builder::compare_texture_pair(ps4_texture_path, pc_texture_path);
+    const auto texture_pair_json = rb4pc::builder::format_json(texture_pair_report);
     const auto texture_mismatch = rb4pc::inspector::compare_texture_payloads(ps4_texture, changed_texture);
     const auto texture_corpus = rb4pc::inspector::inspect_texture_corpus(texture_directory, ".texture");
     const auto convertible_texture_path = texture_directory / "convertible.texture";
@@ -965,6 +968,9 @@ int main() {
                          !opaque_texture.individual_mipmap_payloads && opaque_texture.payload_size == 10 &&
                          ps4_texture.mipmaps.size() == 2 && ps4_texture.mipmaps[0].data_size == 8 &&
                          texture_match.compatible && !texture_mismatch.compatible &&
+                         texture_pair_report.payload_compatible && texture_pair_report.source_version == 12 &&
+                         texture_pair_report.reference_version == 9 &&
+                         texture_pair_json.find("\"payloadCompatible\": true") != std::string::npos &&
                          texture_corpus.candidate_count == 5 && texture_corpus.parsed_count == 5 &&
                          texture_corpus.families.size() == 4 && texture_corpus.rejected_signatures.empty() &&
                          texture_conversion_plan.entries.size() == 7 &&
