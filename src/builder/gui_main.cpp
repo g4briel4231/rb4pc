@@ -1207,7 +1207,7 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_corpus_audit, L"Complete PC Corpus Audit…");
-    AppendMenuW(tools, MF_STRING, id_texture_converter, L"Texture Converter…");
+    AppendMenuW(tools, MF_STRING | MF_GRAYED, id_texture_converter, L"Texture Converter (Not Yet Available)");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
 
     const auto help = CreatePopupMenu();
@@ -1382,8 +1382,10 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 WS_CHILD | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE | SS_PATHELLIPSIS,
                 0, 0, 100, 22, window, nullptr, GetModuleHandleW(nullptr), nullptr);
             SendMessageW(app.source_label, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
-            app.convert = create_button(window, id_convert, L"Convert Rock Band 4 PS4 to PC");
-            app.repair = create_button(window, id_repair, L"Repair Rock Band 4 PC");
+            app.convert = create_button(window, id_convert, L"Convert Rock Band 4 PS4 to PC — Not Yet Available");
+            EnableWindow(app.convert, FALSE);
+            app.repair = create_button(window, id_repair, L"Repair Rock Band 4 PC — Not Yet Available");
+            EnableWindow(app.repair, FALSE);
             app.open_archive = create_button(window, id_open_archive, L"Open a ForgeTool PC File…");
             app.open_folder = create_button(window, id_open_folder, L"Open a Folder…");
             DragAcceptFiles(window, TRUE);
@@ -1441,14 +1443,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
         }
         case WM_COMMAND:
             switch (LOWORD(wparam)) {
-                case id_convert:
-                    show_planned(window, L"Convert Rock Band 4 PS4 to PC",
-                        L"The full conversion wizard will be connected after native metadata, RBMID, and remaining asset formats are implemented.\n\nCurrent HDR/ARK generation and validated asset tools remain available in the command-line core.");
-                    return 0;
-                case id_repair:
-                    show_planned(window, L"Repair Rock Band 4 PC",
-                        L"Repair requires a complete native-PC manifest and is reserved for a later milestone.");
-                    return 0;
+
                 case id_open_archive: open_selected_archive(window); return 0;
                 case id_open_folder: open_selected_folder(window); return 0;
                 case id_open_file_viewer: {
@@ -1461,7 +1456,6 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
-                case id_texture_converter: show_tool(window, L"Texture Converter", L"rb4pc-texture-probe --convert-pc"); return 0;
                 case id_documentation: {
                     const auto docs = find_asset(L"docs");
                     open_path_or_url(docs.empty() ? L"https://github.com/rb4pc/rb4pc-builder/wiki" : docs.wstring());
