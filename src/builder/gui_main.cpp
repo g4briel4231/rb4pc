@@ -60,6 +60,7 @@ constexpr int id_viewer_metadata_candidates = 1405;
 constexpr int id_viewer_metadata_summary = 1406;
 constexpr int id_viewer_export_metadata_summary = 1407;
 constexpr int id_viewer_signature_summary = 1408;
+constexpr int id_viewer_export_investigation = 1409;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
@@ -820,6 +821,60 @@ void show_metadata_signature_summary(HWND window) {
     set_status(L"Metadata candidate signature sampling completed");
 }
 
+void export_metadata_investigation(HWND window) {
+    if (!app.viewer_report) return;
+    const auto destination = select_listing_destination(window, L"rb4pc-metadata-investigation.tsv");
+    if (destination.empty()) return;
+    set_status(L"Exporting metadata investigation report…");
+    try {
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create metadata investigation report");
+        output << "recordIndex\tfamily\tinternalPath\tsize\tarkIndex\tlocalOffset\tsignature\n";
+        const auto& report = *app.viewer_report;
+        std::size_t exported = 0;
+        for (std::size_t index = 0; index < report.metadata.file_records.size(); ++index) {
+            const auto& record = report.metadata.file_records[index];
+            const auto family_wide = metadata_candidate_family(utf8_to_wide(record.path));
+            if (family_wide.empty()) continue;
+            auto path = record.path;
+            std::replace(path.begin(), path.end(), '\t', ' ');
+            std::replace(path.begin(), path.end(), '\r', ' ');
+            std::replace(path.begin(), path.end(), '\n', ' ');
+            const auto family = std::string(family_wide.begin(), family_wide.end());
+            std::string signature = "unresolved";
+            try {
+                const auto preview = rb4pc::inspector::inspect_record(report, record.path);
+                if (preview) {
+                    const auto* bytes = reinterpret_cast<const unsigned char*>(preview->bytes.data());
+                    signature = rb4pc::inspector::classify_payload_signature(bytes, preview->size);
+                }
+            } catch (const std::exception&) {}
+            output << index << '\t' << family << '\t' << path << '\t' << record.size << '\t';
+            if (index < report.record_locations.size() && report.record_locations[index]) {
+                output << report.record_locations[index]->archive_index << '\t'
+                       << report.record_locations[index]->local_offset;
+            } else {
+                output << "unresolved\tunresolved";
+            }
+            output << '\t' << signature << '\n';
+            ++exported;
+        }
+        if (!output) throw std::runtime_error("could not finish metadata investigation report");
+        std::wostringstream message;
+        message << L"Metadata investigation report exported.\n\nRecords: " << exported
+                << L"\nOutput: " << destination.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Metadata investigation",
+                    MB_OK | MB_ICONINFORMATION);
+        set_status(L"Metadata investigation report exported");
+    } catch (const std::exception& error) {
+        std::wstring message = L"The metadata investigation report could not be exported.\n\n";
+        const std::string detail = error.what();
+        message.append(detail.begin(), detail.end());
+        MessageBoxW(window, message.c_str(), L"Metadata export failed", MB_OK | MB_ICONERROR);
+        set_status(L"Metadata investigation export failed");
+    }
+}
+
 bool is_metadata_candidate_path(const std::wstring& path) {
     return !metadata_candidate_family(path).empty();
 }
@@ -962,6 +1017,7 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_STRING, id_viewer_metadata_summary, L"Metadata Candidate Summary…");
     AppendMenuW(tools, MF_STRING, id_viewer_export_metadata_summary, L"Export Metadata Family Summary…");
     AppendMenuW(tools, MF_STRING, id_viewer_signature_summary, L"Metadata Signature Summary…");
+    AppendMenuW(tools, MF_STRING, id_viewer_export_investigation, L"Export Metadata Investigation…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
     return menu;
 }
@@ -1032,6 +1088,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_viewer_metadata_summary: show_metadata_candidate_summary(window); return 0;
                 case id_viewer_export_metadata_summary: export_metadata_candidate_summary(window); return 0;
                 case id_viewer_signature_summary: show_metadata_signature_summary(window); return 0;
+                case id_viewer_export_investigation: export_metadata_investigation(window); return 0;
                 case id_viewer_metadata_candidates:
                     app.viewer_metadata_candidates_only = !app.viewer_metadata_candidates_only;
                     CheckMenuItem(GetMenu(window), id_viewer_metadata_candidates,
