@@ -38,6 +38,7 @@ constexpr int id_open_archive = 1003;
 constexpr int id_open_folder = 1004;
 constexpr int id_exit = 1005;
 constexpr int id_open_file_viewer = 1006;
+constexpr int id_clear_source = 1007;
 constexpr int id_asset_catalog = 1101;
 constexpr int id_audio_catalog = 1102;
 constexpr int id_character_catalog = 1103;
@@ -64,6 +65,7 @@ constexpr int id_viewer_export_investigation = 1409;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
+    HWND main_window = nullptr;
     HWND convert = nullptr;
     HWND repair = nullptr;
     HWND open_archive = nullptr;
@@ -120,6 +122,17 @@ void set_selected_pc_source(const std::filesystem::path& path) {
     app.selected_pc_source = path;
     const std::wstring label = L"Selected PC source: " + path.wstring();
     SetWindowTextW(app.source_label, label.c_str());
+    if (app.main_window) EnableMenuItem(GetMenu(app.main_window), id_clear_source, MF_BYCOMMAND | MF_ENABLED);
+}
+
+void clear_selected_pc_source() {
+    if (app.file_viewer) DestroyWindow(app.file_viewer);
+    app.viewer_report.reset();
+    app.selected_pc_source.clear();
+    SetWindowTextW(app.source_label, L"Selected PC source: none");
+    if (app.main_window)
+        EnableMenuItem(GetMenu(app.main_window), id_clear_source, MF_BYCOMMAND | MF_GRAYED);
+    set_status(L"Selected PC source cleared");
 }
 
 std::filesystem::path select_file(HWND owner) {
@@ -1181,6 +1194,8 @@ void open_file_viewer(HWND owner, const std::filesystem::path& header) {
             ShowWindow(app.file_viewer, SW_RESTORE);
             SetForegroundWindow(app.file_viewer);
         }
+        const std::wstring viewer_title = L"File Viewer — " + header.filename().wstring();
+        SetWindowTextW(app.file_viewer, viewer_title.c_str());
         CheckMenuItem(GetMenu(app.file_viewer), id_viewer_metadata_candidates, MF_BYCOMMAND | MF_UNCHECKED);
         set_selected_pc_source(header);
         populate_file_viewer();
@@ -1196,6 +1211,7 @@ HMENU create_menu() {
     AppendMenuW(file, MF_STRING, id_open_archive, L"Open Package or Archive…");
     AppendMenuW(file, MF_STRING, id_open_folder, L"Open Folder…");
     AppendMenuW(file, MF_STRING, id_open_file_viewer, L"Open PC HDR in File Viewer…");
+    AppendMenuW(file, MF_STRING | MF_GRAYED, id_clear_source, L"Clear Selected Source");
     AppendMenuW(file, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(file, MF_STRING, id_exit, L"Exit");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(file), L"File");
@@ -1372,6 +1388,7 @@ int font_height_for_tenths_of_point(HWND window, int tenths_of_point) {
 LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
     switch (message) {
         case WM_CREATE: {
+            app.main_window = window;
             app.ui_font = CreateFontW(font_height_for_tenths_of_point(window, 120), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                                      DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                                      CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
@@ -1446,6 +1463,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
 
                 case id_open_archive: open_selected_archive(window); return 0;
                 case id_open_folder: open_selected_folder(window); return 0;
+                case id_clear_source: clear_selected_pc_source(); return 0;
                 case id_open_file_viewer: {
                     const auto header = select_pc_header(window);
                     if (!header.empty()) open_file_viewer(window, header);
@@ -1471,6 +1489,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
             }
             break;
         case WM_DESTROY:
+            app.main_window = nullptr;
             if (app.button_font) DeleteObject(app.button_font);
             if (app.ui_font) DeleteObject(app.ui_font);
             PostQuitMessage(0);
