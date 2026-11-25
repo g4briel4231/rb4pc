@@ -14,12 +14,14 @@
 #include "rb4pc/builder/pc_corpus_audit.hpp"
 #include "rb4pc/builder/pc_metadata_catalog.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
+#include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
 
 #include <algorithm>
 #include <cwctype>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -551,8 +553,28 @@ void update_viewer_record_details() {
 
 void open_selected_viewer_record(HWND window) {
     const auto index = selected_viewer_record_index();
-    if (!index) return;
-    const auto detail = viewer_record_details(*index);
+    if (!index || !app.viewer_report) return;
+    const auto& record = app.viewer_report->metadata.file_records[*index];
+    std::wstring detail = viewer_record_details(*index);
+    try {
+        const auto preview = rb4pc::inspector::inspect_record(*app.viewer_report, record.path);
+        if (preview) {
+            const auto* bytes = reinterpret_cast<const unsigned char*>(preview->bytes.data());
+            const auto signature = rb4pc::inspector::classify_payload_signature(bytes, preview->size);
+            std::wostringstream preview_text;
+            preview_text << L"\r\nDetected type: " << utf8_to_wide(signature) << L"\r\nPreview: ";
+            preview_text << std::hex << std::setfill(L'0');
+            for (std::size_t offset = 0; offset < preview->size; ++offset) {
+                if (offset) preview_text << L' ';
+                preview_text << std::setw(2) << static_cast<unsigned int>(bytes[offset]);
+            }
+            detail += preview_text.str();
+        } else {
+            detail += L"\r\nPreview unavailable: record could not be resolved.";
+        }
+    } catch (const std::exception&) {
+        detail += L"\r\nPreview unavailable: the ARK data could not be read.";
+    }
     MessageBoxW(window, detail.c_str(), L"Open — File Viewer", MB_OK | MB_ICONINFORMATION);
 }
 
