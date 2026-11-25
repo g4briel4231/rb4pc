@@ -549,12 +549,11 @@ void draw_button(const DRAWITEMSTRUCT& item) {
     const bool focused = (item.itemState & ODS_FOCUS) != 0;
     const bool hovered = app.hovered_button == item.hwndItem;
     const COLORREF fill = disabled ? RGB(247, 247, 247)
-                            : pressed ? RGB(232, 232, 232)
-                            : hovered ? RGB(246, 246, 246)
-                                      : RGB(252, 252, 252);
-    const COLORREF border = hovered ? RGB(0, 120, 215)
-                                   : focused ? RGB(112, 112, 112)
-                                             : RGB(204, 204, 204);
+                            : pressed ? RGB(229, 240, 250)
+                            : (hovered || focused) ? RGB(245, 250, 255)
+                                                   : RGB(252, 252, 252);
+    const COLORREF border = (hovered || focused) ? RGB(0, 120, 215)
+                                                 : RGB(204, 204, 204);
     const COLORREF text = disabled ? RGB(150, 150, 150) : RGB(30, 30, 30);
 
     InflateRect(&bounds, -1, -1);
