@@ -10,6 +10,7 @@
 
 #include "rb4pc/builder/pc_asset_catalog.hpp"
 #include "rb4pc/builder/audio_conversion_plan.hpp"
+#include "rb4pc/builder/asset_conversion_pipeline.hpp"
 #include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/builder/pc_corpus_audit.hpp"
@@ -52,6 +53,7 @@ constexpr int id_texture_plan = 1107;
 constexpr int id_texture_batch = 1108;
 constexpr int id_texture_verify = 1109;
 constexpr int id_audio_plan = 1110;
+constexpr int id_asset_pipeline = 1111;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
@@ -772,6 +774,18 @@ void generate_audio_conversion_plan(HWND window) {
     }
 }
 
+void run_asset_conversion_pipeline(HWND window) {
+    MessageBoxW(window,L"Select an extracted asset folder. RB4PC will plan texture and audio work before asking for confirmation.",L"Asset Conversion Pipeline",MB_OK|MB_ICONINFORMATION);
+    const auto source=select_folder(window);if(source.empty())return;
+    try{const auto textures=rb4pc::builder::plan_texture_conversions(source);const auto audio=rb4pc::builder::plan_audio_conversions(source);
+        if(textures.convertible==0&&audio.extraction_ready==0){MessageBoxW(window,L"No verified texture conversions or embedded-Ogg extractions were found. No output was created.",L"Asset Conversion Pipeline",MB_OK|MB_ICONWARNING);return;}
+        MessageBoxW(window,L"Select an existing parent folder. RB4PC will create a new rb4pc-assets folder inside it.",L"Asset Conversion Pipeline",MB_OK|MB_ICONINFORMATION);const auto parent=select_folder(window);if(parent.empty())return;const auto destination=parent/L"rb4pc-assets";
+        std::wostringstream confirm;confirm<<L"Publish this transactional asset pipeline?\n\nTextures to convert: "<<textures.convertible<<L"\nAudio streams to extract: "<<audio.extraction_ready<<L"\nTexture read-only/invalid: "<<textures.read_only<<L" / "<<textures.invalid<<L"\nAudio runtime-ready/research/invalid: "<<audio.runtime_ready<<L" / "<<audio.research_only<<L" / "<<audio.invalid<<L"\n\nNew destination: "<<destination.wstring();
+        if(MessageBoxW(window,confirm.str().c_str(),L"Asset Conversion Pipeline",MB_OKCANCEL|MB_ICONQUESTION)!=IDOK)return;set_status(L"Building transactional asset pipeline…");const auto result=rb4pc::builder::convert_asset_pipeline(source,destination);
+        std::wostringstream message;message<<L"Asset pipeline published.\n\nConverted textures: "<<result.converted_textures<<L"\nExtracted audio: "<<result.extracted_audio<<L"\nDirectory: "<<result.directory.wstring()<<L"\nSummary: "<<result.summary.wstring();MessageBoxW(window,message.str().c_str(),L"Asset Conversion Pipeline",MB_OK|MB_ICONINFORMATION);set_status(L"Published asset pipeline: "+result.directory.filename().wstring());
+    }catch(const std::exception& error){std::wstring message=L"The asset pipeline was not published.\n\n";message+=utf8_to_wide(error.what());MessageBoxW(window,message.c_str(),L"Asset Conversion Pipeline",MB_OK|MB_ICONERROR);set_status(L"Asset conversion pipeline failed");}
+}
+
 std::optional<std::size_t> selected_viewer_record_index() {
     if (!app.viewer_records) return std::nullopt;
     const auto selection = SendMessageW(app.viewer_records, LB_GETCURSEL, 0, 0);
@@ -1245,6 +1259,8 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_STRING, id_asset_catalog, L"PC Asset Catalog…");
     AppendMenuW(tools, MF_STRING, id_audio_catalog, L"PC Audio Audit…");
     AppendMenuW(tools, MF_STRING, id_audio_plan, L"Analyze Audio Conversion Folder…");
+    AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(tools, MF_STRING, id_asset_pipeline, L"Build Verified Asset Pipeline…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1321,6 +1337,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_asset_catalog: generate_asset_catalog(window); return 0;
                 case id_audio_catalog: generate_audio_catalog(window); return 0;
                 case id_audio_plan: generate_audio_conversion_plan(window); return 0;
+                case id_asset_pipeline: run_asset_conversion_pipeline(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
@@ -1447,6 +1464,8 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_STRING, id_asset_catalog, L"PC Asset Catalog…");
     AppendMenuW(tools, MF_STRING, id_audio_catalog, L"PC Audio Audit…");
     AppendMenuW(tools, MF_STRING, id_audio_plan, L"Analyze Audio Conversion Folder…");
+    AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(tools, MF_STRING, id_asset_pipeline, L"Build Verified Asset Pipeline…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1733,6 +1752,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_asset_catalog: generate_asset_catalog(window); return 0;
                 case id_audio_catalog: generate_audio_catalog(window); return 0;
                 case id_audio_plan: generate_audio_conversion_plan(window); return 0;
+                case id_asset_pipeline: run_asset_conversion_pipeline(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;

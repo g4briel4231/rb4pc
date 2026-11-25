@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.1980.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.2000.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -25,6 +25,7 @@ add_library(rb4pc_inspection
     src/builder/texture_conversion_plan.cpp
     src/builder/texture_research.cpp
     src/builder/audio_conversion_plan.cpp
+    src/builder/asset_conversion_pipeline.cpp
     src/builder/song_assembler.cpp
     src/builder/pc_archive_builder.cpp
     src/builder/pc_asset_catalog.cpp

@@ -105,7 +105,19 @@ invalid, or unexpected files.
 The same operations are available from **Tools > Convert Supported Texture Batch…**
 and **Tools > Verify Converted Texture Batch…**. The GUI shows the plan counts and
 final destination before conversion begins.
-### 7. Generate an asset catalog
+### 7. Build the verified asset pipeline
+
+Choose **Tools > Build Verified Asset Pipeline…** or run:
+
+```text
+rb4pc-builder <asset-root> --convert-asset-pipeline <new-output-directory>
+```
+
+The transactional output contains `textures/`, `audio/`, individual manifests,
+batch summaries, and `asset-pipeline-summary.json`. Only verified families are
+written; all other assets remain untouched and are counted as skipped.
+
+### 8. Generate an asset catalog
 
 Open **Tools > PC Asset Catalog**, then choose one `*_pc.hdr` file or a folder
 and select a destination for the JSON report.
@@ -113,7 +125,7 @@ and select a destination for the JSON report.
 The report summarizes archives, namespaces, extensions, asset categories, and
 known native, intermediate, or unknown path families without extracting assets.
 
-### 8. Plan extracted audio conversion
+### 9. Plan extracted audio conversion
 
 Choose **Tools > Analyze Audio Conversion Folder…** or run
 `rb4pc-builder <audio-root> --plan-audio-conversion <new-report.json>`. The
@@ -124,7 +136,7 @@ Extract one verified embedded stream with `rb4pc-builder <source.mogg>
 --extract-mogg-ogg <new-output.ogg>. The source remains unchanged and a SHA-256
 manifest accompanies the new Ogg file.
 
-### 9. Generate an audio catalog
+### 10. Generate an audio catalog
 
 Open **Tools > PC Audio Catalog**, select a PC HDR or folder, and choose a JSON
 destination.
@@ -133,7 +145,7 @@ The report identifies supported MOGG/Ogg, RIFF/WAVE, RIFF/FEV, opaque,
 unreadable, and unsupported or potentially protected audio records. Recognition
 does not mean that every audio variant can already be played or converted.
 
-### 10. Generate a character and animation catalog
+### 11. Generate a character and animation catalog
 
 Open **Tools > Character/Animation Inventory**, select a PC HDR or folder, and
 choose a JSON destination.
@@ -142,7 +154,7 @@ The catalog reports aggregate structural measurements for character definitions,
 animations, clips, skeletons, bone masks, and stances. Candidate fields are
 measurements, not confirmed semantic definitions.
 
-### 11. Generate a metadata catalog
+### 12. Generate a metadata catalog
 
 Open **Tools > PC Metadata Catalog**, select a PC HDR or folder, and choose a
 JSON destination.
@@ -155,7 +167,7 @@ proprietary strings or internal paths.
 A successful result shows that every profiled field received exactly one
 structural evidence class.
 
-### 12. Run the complete PC corpus audit
+### 13. Run the complete PC corpus audit
 
 Open **Tools > Complete PC Corpus Audit**.
 
@@ -176,7 +188,7 @@ counts, no required record is unreadable, and metadata evidence classification
 is complete. Publication is transactional and does not overwrite an existing
 audit.
 
-### 13. Read warnings correctly
+### 14. Read warnings correctly
 
 A warning or an `unknown` classification does not automatically mean a file is
 damaged. It means the current implementation cannot safely confirm that

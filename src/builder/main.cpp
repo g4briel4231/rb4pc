@@ -1,5 +1,6 @@
 #include "rb4pc/builder/build_plan.hpp"
 #include "rb4pc/builder/audio_conversion_plan.hpp"
+#include "rb4pc/builder/asset_conversion_pipeline.hpp"
 #include "rb4pc/builder/custom_song_catalog.hpp"
 #include "rb4pc/builder/install_plan.hpp"
 #include "rb4pc/builder/midi_session_plan.hpp"
@@ -21,6 +22,12 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--convert-asset-pipeline") {
+        try { const auto r=rb4pc::builder::convert_asset_pipeline(argv[1],argv[3]);
+            std::cout<<"Asset pipeline: "<<r.directory.string()<<"\nConverted textures: "<<r.converted_textures
+                     <<"\nExtracted audio: "<<r.extracted_audio<<"\nSummary: "<<r.summary.string()<<'\n';return 0;
+        }catch(const std::exception& error){std::cerr<<"rb4pc-builder: "<<error.what()<<'\n';return 1;}
+    }
     if (argc == 4 && std::string(argv[2]) == "--extract-audio-batch") {
         try { const auto result=rb4pc::builder::extract_audio_batch(argv[1],argv[3]);
             std::cout<<"Audio batch: "<<result.directory.string()<<"\nExtracted: "<<result.items.size()
@@ -378,6 +385,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <audio-root> --plan-audio-conversion <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <source.mogg> --extract-mogg-ogg <new-output.ogg>\n";
         std::cerr << "   or: " << argv[0] << " <audio-root> --extract-audio-batch <new-output-directory>\n";
+        std::cerr << "   or: " << argv[0] << " <asset-root> --convert-asset-pipeline <new-output-directory>\n";
         return 2;
     }
     try {

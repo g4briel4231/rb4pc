@@ -2,6 +2,7 @@
 #include "rb4pc/inspector/archive_layout.hpp"
 #include "rb4pc/builder/build_plan.hpp"
 #include "rb4pc/builder/audio_conversion_plan.hpp"
+#include "rb4pc/builder/asset_conversion_pipeline.hpp"
 #include "rb4pc/builder/song_layout.hpp"
 #include "rb4pc/builder/custom_song_catalog.hpp"
 #include "rb4pc/inspector/asset_converter.hpp"
@@ -291,6 +292,9 @@ int main() {
     const auto converted_texture_8bpp = rb4pc::inspector::inspect_texture_container(converted_texture_8bpp_path);
     const auto decoded_texture = rb4pc::runtime::decode_artwork_texture(converted_texture_path);
     const auto decoded_texture_8bpp = rb4pc::runtime::decode_artwork_texture(converted_texture_8bpp_path);
+    rb4pc::builder::AssetConversionPipelineResult asset_pipeline;
+    try { asset_pipeline = rb4pc::builder::convert_asset_pipeline(directory, directory / "asset-pipeline"); }
+    catch (const std::exception& error) { std::cerr << "asset pipeline fixture: " << error.what() << '\n'; }
     std::ifstream converted_texture_8bpp_stream(converted_texture_8bpp_path, std::ios::binary);
     const auto converted_texture_8bpp_header_hash = rb4pc::inspector::sha256_range(
         converted_texture_8bpp_stream, 8, 172);
@@ -1045,6 +1049,10 @@ int main() {
                          decoded_texture.width == 256 && decoded_texture.height == 256 &&
                          decoded_texture.pixels.front() == 0xffff0000U &&
                          decoded_texture_8bpp.pixels.front() == 0xffff0000U &&
+                         asset_pipeline.converted_textures == 2 && asset_pipeline.extracted_audio == 1 &&
+                         std::filesystem::is_regular_file(asset_pipeline.summary) &&
+                         std::filesystem::is_directory(asset_pipeline.directory / "textures") &&
+                         std::filesystem::is_directory(asset_pipeline.directory / "audio") &&
                          converted_texture_8bpp_header_hash ==
                              "315085bf74c6a6bc6a52a380eb8d3cffdd70d6fce5acc7688efe9cfca884f06c" &&
                          converted_texture.marker == 6 && converted_texture.mipmaps.size() == 7 &&
