@@ -14,6 +14,7 @@
 #include "rb4pc/builder/pc_corpus_audit.hpp"
 #include "rb4pc/builder/pc_metadata_catalog.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
+#include "rb4pc/inspector/record_extractor.hpp"
 
 #include <algorithm>
 #include <cwctype>
@@ -555,6 +556,49 @@ void open_selected_viewer_record(HWND window) {
     MessageBoxW(window, detail.c_str(), L"Open — File Viewer", MB_OK | MB_ICONINFORMATION);
 }
 
+std::filesystem::path select_extraction_destination(HWND owner, const std::string& internal_path) {
+    std::wstring path(32768, L'\0');
+    const auto suggested = utf8_to_wide(std::filesystem::path(internal_path).filename().string());
+    std::copy_n(suggested.begin(), std::min(suggested.size(), path.size() - 1), path.begin());
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog);
+    dialog.hwndOwner = owner;
+    dialog.lpstrFilter = L"All files\0*.*\0";
+    dialog.lpstrFile = path.data();
+    dialog.nMaxFile = static_cast<DWORD>(path.size());
+    dialog.Flags = OFN_PATHMUSTEXIST | OFN_EXPLORER;
+    if (!GetSaveFileNameW(&dialog)) return {};
+    path.resize(std::wcslen(path.c_str()));
+    if (std::filesystem::exists(path)) {
+        MessageBoxW(owner, L"Choose a new filename. File Viewer never overwrites an existing file.",
+                    L"Extract — File Viewer", MB_OK | MB_ICONWARNING);
+        return {};
+    }
+    return path;
+}
+
+void extract_selected_viewer_record(HWND window) {
+    const auto index = selected_viewer_record_index();
+    if (!index || !app.viewer_report) return;
+    const auto& record = app.viewer_report->metadata.file_records[*index];
+    const auto destination = select_extraction_destination(window, record.path);
+    if (destination.empty()) return;
+    try {
+        const auto result = rb4pc::inspector::extract_record(*app.viewer_report, record.path, destination);
+        std::wostringstream message;
+        message << L"File extracted successfully.\n\nPath: " << result.destination.wstring()
+                << L"\nSize: " << result.size << L" bytes"
+                << L"\nSHA-256: " << utf8_to_wide(result.sha256);
+        MessageBoxW(window, message.str().c_str(), L"Extract — File Viewer",
+                    MB_OK | MB_ICONINFORMATION);
+    } catch (const std::exception& error) {
+        std::wstring message = L"The selected file could not be extracted.\n\n";
+        const std::string detail = error.what();
+        message.append(detail.begin(), detail.end());
+        MessageBoxW(window, message.c_str(), L"Extract failed", MB_OK | MB_ICONERROR);
+    }
+}
+
 void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
     if (!app.viewer_records || !app.viewer_report) return;
     app.viewer_archive_filter = archive_filter;
@@ -684,7 +728,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 const auto index = selected_viewer_record_index();
                 const auto menu = CreatePopupMenu();
                 AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_open, L"Open");
-                AppendMenuW(menu, MF_STRING | MF_GRAYED, id_viewer_extract, L"Extract…");
+                AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_extract, L"Extract…");
                 const int x = GET_X_LPARAM(lparam);
                 const int y = GET_Y_LPARAM(lparam);
                 TrackPopupMenu(menu, TPM_RIGHTBUTTON, x, y, 0, window, nullptr);
@@ -693,6 +737,10 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
             }
             break;
         case WM_COMMAND:
+            if (LOWORD(wparam) == id_viewer_extract) {
+                extract_selected_viewer_record(window);
+                return 0;
+            }
             if (LOWORD(wparam) == id_viewer_open) {
                 open_selected_viewer_record(window);
                 return 0;
