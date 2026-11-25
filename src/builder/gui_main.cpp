@@ -548,17 +548,29 @@ void draw_button(const DRAWITEMSTRUCT& item) {
     const bool pressed = (item.itemState & ODS_SELECTED) != 0;
     const bool focused = (item.itemState & ODS_FOCUS) != 0;
     const bool hovered = app.hovered_button == item.hwndItem;
-    const COLORREF fill = disabled ? RGB(247, 247, 247)
-                            : pressed ? RGB(229, 240, 250)
-                            : (hovered || focused) ? RGB(245, 250, 255)
-                                                   : RGB(252, 252, 252);
-    const COLORREF border = (hovered || focused) ? GetSysColor(COLOR_HIGHLIGHT)
-                                                 : RGB(204, 204, 204);
-    const COLORREF text = disabled ? RGB(150, 150, 150) : RGB(30, 30, 30);
+    HIGHCONTRASTW contrast{sizeof(contrast)};
+    const bool high_contrast = SystemParametersInfoW(
+        SPI_GETHIGHCONTRAST, sizeof(contrast), &contrast, 0) &&
+        (contrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
+    const bool interactive = hovered || focused;
+    const COLORREF fill = high_contrast
+        ? GetSysColor(pressed ? COLOR_HIGHLIGHT : COLOR_BTNFACE)
+        : disabled ? RGB(247, 247, 247)
+        : pressed ? RGB(229, 240, 250)
+        : interactive ? RGB(245, 250, 255)
+                      : RGB(252, 252, 252);
+    const COLORREF border = high_contrast
+        ? GetSysColor((interactive || pressed) ? COLOR_HIGHLIGHT : COLOR_BTNTEXT)
+        : interactive ? GetSysColor(COLOR_HIGHLIGHT)
+                      : RGB(204, 204, 204);
+    const COLORREF text = high_contrast
+        ? GetSysColor(pressed ? COLOR_HIGHLIGHTTEXT
+                              : disabled ? COLOR_GRAYTEXT : COLOR_BTNTEXT)
+        : disabled ? RGB(150, 150, 150) : RGB(30, 30, 30);
 
     InflateRect(&bounds, -1, -1);
     const auto brush = CreateSolidBrush(fill);
-    const auto pen = CreatePen(PS_SOLID, (hovered || focused) ? 2 : 1, border);
+    const auto pen = CreatePen(PS_SOLID, 1, border);
     const auto old_brush = SelectObject(item.hDC, brush);
     const auto old_pen = SelectObject(item.hDC, pen);
     RoundRect(item.hDC, bounds.left, bounds.top, bounds.right, bounds.bottom, 6, 6);
@@ -678,6 +690,14 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
             limits->ptMinTrackSize.y = 560;
             return 0;
         }
+        case WM_SYSCOLORCHANGE:
+        case WM_SETTINGCHANGE:
+            InvalidateRect(app.convert, nullptr, TRUE);
+            InvalidateRect(app.repair, nullptr, TRUE);
+            InvalidateRect(app.open_archive, nullptr, TRUE);
+            InvalidateRect(app.open_folder, nullptr, TRUE);
+            InvalidateRect(window, nullptr, TRUE);
+            break;
         case WM_PAINT: paint_logo(window); return 0;
         case WM_DRAWITEM:
             if (wparam == id_convert || wparam == id_repair ||
