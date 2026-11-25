@@ -1,5 +1,6 @@
 #include "rb4pc/builder/texture_research.hpp"
 #include "rb4pc/inspector/texture_container.hpp"
+#include "rb4pc/builder/texture_conversion_plan.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -168,6 +169,42 @@ std::string format_json(const TextureEvidenceReport& report) {
                << ", \"mipmaps\": " << f.mipmaps << ", \"headerBytes\": " << f.header_bytes
                << ", \"mipmapEntryBytes\": " << f.mipmap_entry_bytes << ", \"marker\": " << f.marker
                << ", \"bitsPerPixel\": " << f.bits_per_pixel << ", \"files\": " << f.files << '}';
+    }
+    output << "\n  ]\n}\n"; return output.str();
+}
+TextureCoverageReport build_texture_coverage_matrix(const std::filesystem::path& root) {
+    const auto plan = plan_texture_conversions(root);
+    TextureCoverageReport report;
+    report.root = root; report.candidates = plan.entries.size(); report.convertible = plan.convertible;
+    report.read_only = plan.read_only; report.invalid = plan.invalid;
+    using Key = std::tuple<std::uint32_t, std::uint32_t, std::uint32_t, std::uint32_t,
+                           std::uint32_t, std::uint32_t, std::string, std::string>;
+    std::map<Key, std::uint64_t> rows;
+    for (const auto& entry : plan.entries) {
+        const std::string state = entry.state == TextureConversionState::convertible ? "convertible" :
+            entry.state == TextureConversionState::read_only ? "readOnly" : "invalid";
+        ++rows[{entry.magic, entry.platform_version, entry.width, entry.height,
+                entry.mipmap_count, entry.bits_per_pixel, state, entry.reason}];
+    }
+    for (const auto& [key, count] : rows) {
+        const auto& [magic, version, width, height, mipmaps, bpp, state, reason] = key;
+        report.rows.push_back({magic, version, width, height, mipmaps, bpp, state, reason, count});
+    }
+    return report;
+}
+
+std::string format_json(const TextureCoverageReport& report) {
+    std::ostringstream output;
+    output << "{\n  \"schemaVersion\": 1,\n  \"candidates\": " << report.candidates
+           << ",\n  \"convertible\": " << report.convertible << ",\n  \"readOnly\": " << report.read_only
+           << ",\n  \"invalid\": " << report.invalid << ",\n  \"coverage\": [";
+    for (std::size_t i = 0; i < report.rows.size(); ++i) {
+        const auto& row = report.rows[i]; if (i) output << ',';
+        output << "\n    {\"magic\": " << row.magic << ", \"platformVersion\": " << row.platform_version
+               << ", \"width\": " << row.width << ", \"height\": " << row.height
+               << ", \"mipmaps\": " << row.mipmaps << ", \"bitsPerPixel\": " << row.bits_per_pixel
+               << ", \"state\": \"" << escape_json(row.state) << "\", \"reason\": \""
+               << escape_json(row.reason) << "\", \"files\": " << row.files << '}';
     }
     output << "\n  ]\n}\n"; return output.str();
 }} // namespace rb4pc::builder

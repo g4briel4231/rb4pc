@@ -51,6 +51,27 @@ struct TextureEvidenceReport {
     std::vector<TextureFamilyEvidence> families;
 };
 
+struct TextureCoverageRow {
+    std::uint32_t magic = 0;
+    std::uint32_t platform_version = 0;
+    std::uint32_t width = 0;
+    std::uint32_t height = 0;
+    std::uint32_t mipmaps = 0;
+    std::uint32_t bits_per_pixel = 0;
+    std::string state;
+    std::string reason;
+    std::uint64_t files = 0;
+};
+
+struct TextureCoverageReport {
+    std::filesystem::path root;
+    std::uint64_t candidates = 0;
+    std::uint64_t convertible = 0;
+    std::uint64_t read_only = 0;
+    std::uint64_t invalid = 0;
+    std::vector<TextureCoverageRow> rows;
+};
+
 [[nodiscard]] TexturePairReport compare_texture_pair(
     const std::filesystem::path& source, const std::filesystem::path& reference);
 [[nodiscard]] std::string format_json(const TexturePairReport& report);
@@ -59,4 +80,6 @@ struct TextureEvidenceReport {
 [[nodiscard]] std::string format_json(const TextureDirectoryPairReport& report);
 [[nodiscard]] TextureEvidenceReport profile_magic4_version8(const std::filesystem::path& root);
 [[nodiscard]] std::string format_json(const TextureEvidenceReport& report);
+[[nodiscard]] TextureCoverageReport build_texture_coverage_matrix(const std::filesystem::path& root);
+[[nodiscard]] std::string format_json(const TextureCoverageReport& report);
 } // namespace rb4pc::builder

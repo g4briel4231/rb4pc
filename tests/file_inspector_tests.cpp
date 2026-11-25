@@ -254,6 +254,8 @@ int main() {
     write_convertible_ps4_texture(convertible_texture_8bpp_path, 8);
     const auto texture_conversion_plan = rb4pc::builder::plan_texture_conversions(texture_directory);
     const auto texture_conversion_plan_json = rb4pc::builder::format_json(texture_conversion_plan);
+    const auto texture_coverage = rb4pc::builder::build_texture_coverage_matrix(texture_directory);
+    const auto texture_coverage_json = rb4pc::builder::format_json(texture_coverage);
     const auto texture_batch_path = directory / "texture-batch";
     const auto texture_batch = rb4pc::builder::convert_texture_batch(texture_directory, texture_batch_path);
     bool existing_texture_batch_rejected = false;
@@ -995,6 +997,10 @@ int main() {
                          texture_conversion_plan.entries.size() == 7 &&
                          texture_conversion_plan.convertible == 2 && texture_conversion_plan.read_only == 5 &&
                          texture_conversion_plan.invalid == 0 &&
+                         texture_coverage.candidates == 7 && texture_coverage.convertible == 2 &&
+                         texture_coverage.read_only == 5 && texture_coverage.invalid == 0 &&
+                         texture_coverage_json.find("\"state\": \"convertible\"") != std::string::npos &&
+                         texture_coverage_json.find("\"state\": \"readOnly\"") != std::string::npos &&
                          texture_conversion_plan_json.find("\"state\": \"convertible\"") != std::string::npos &&
                          texture_batch.items.size() == 2 && texture_batch.skipped_read_only == 5 &&
                          texture_batch.skipped_invalid == 0 && existing_texture_batch_rejected &&
