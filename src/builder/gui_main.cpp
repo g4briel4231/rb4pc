@@ -57,6 +57,7 @@ constexpr int id_viewer_copy_path = 1403;
 constexpr int id_viewer_export_listing = 1404;
 constexpr int id_viewer_metadata_candidates = 1405;
 constexpr int id_viewer_metadata_summary = 1406;
+constexpr int id_viewer_export_metadata_summary = 1407;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
@@ -662,9 +663,9 @@ void copy_selected_viewer_path(HWND window) {
     CloseClipboard();
 }
 
-std::filesystem::path select_listing_destination(HWND owner) {
+std::filesystem::path select_listing_destination(HWND owner, const wchar_t* suggested_name = L"rb4pc-file-viewer.tsv") {
     std::wstring path(32768, L'\0');
-    const std::wstring suggested = L"rb4pc-file-viewer.tsv";
+    const std::wstring suggested = suggested_name;
     std::copy(suggested.begin(), suggested.end(), path.begin());
     OPENFILENAMEW dialog{};
     dialog.lStructSize = sizeof(dialog);
@@ -745,6 +746,43 @@ void show_metadata_candidate_summary(HWND window) {
     message << L"\nCounts are based only on measured filename suffix families.";
     MessageBoxW(window, message.str().c_str(), L"Metadata Candidate Summary",
                 MB_OK | MB_ICONINFORMATION);
+}
+
+void export_metadata_candidate_summary(HWND window) {
+    if (!app.viewer_report) return;
+    const auto destination = select_listing_destination(window, L"rb4pc-metadata-family-summary.tsv");
+    if (destination.empty()) return;
+    const std::array<std::wstring, 5> families{
+        L"moggsong_dta_pc", L"songdta_pc", L"csv_pc", L"rbsong", L"dta"};
+    std::array<std::size_t, 5> counts{};
+    std::array<std::uint64_t, 5> bytes{};
+    for (const auto& record : app.viewer_report->metadata.file_records) {
+        const auto family = metadata_candidate_family(utf8_to_wide(record.path));
+        const auto found = std::find(families.begin(), families.end(), family);
+        if (found == families.end()) continue;
+        const auto index = static_cast<std::size_t>(found - families.begin());
+        ++counts[index];
+        bytes[index] += record.size;
+    }
+    try {
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create metadata family summary");
+        output << "family\trecords\ttotalBytes\taverageBytes\n";
+        for (std::size_t index = 0; index < families.size(); ++index) {
+            const auto average = counts[index] ? bytes[index] / counts[index] : 0;
+            const auto family = std::string(families[index].begin(), families[index].end());
+            output << family << '\t' << counts[index] << '\t' << bytes[index]
+                   << '\t' << average << '\n';
+        }
+        if (!output) throw std::runtime_error("could not finish metadata family summary");
+        MessageBoxW(window, destination.wstring().c_str(), L"Metadata summary exported",
+                    MB_OK | MB_ICONINFORMATION);
+    } catch (const std::exception& error) {
+        std::wstring message = L"The metadata family summary could not be exported.\n\n";
+        const std::string detail = error.what();
+        message.append(detail.begin(), detail.end());
+        MessageBoxW(window, message.c_str(), L"Metadata export failed", MB_OK | MB_ICONERROR);
+    }
 }
 
 bool is_metadata_candidate_path(const std::wstring& path) {
@@ -887,6 +925,7 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_viewer_metadata_candidates, L"Show Metadata Candidates");
     AppendMenuW(tools, MF_STRING, id_viewer_metadata_summary, L"Metadata Candidate Summary…");
+    AppendMenuW(tools, MF_STRING, id_viewer_export_metadata_summary, L"Export Metadata Family Summary…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
     return menu;
 }
@@ -955,6 +994,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_viewer_export_listing: export_filtered_viewer_listing(window); return 0;
                 case id_viewer_metadata_summary: show_metadata_candidate_summary(window); return 0;
+                case id_viewer_export_metadata_summary: export_metadata_candidate_summary(window); return 0;
                 case id_viewer_metadata_candidates:
                     app.viewer_metadata_candidates_only = !app.viewer_metadata_candidates_only;
                     CheckMenuItem(GetMenu(window), id_viewer_metadata_candidates,
