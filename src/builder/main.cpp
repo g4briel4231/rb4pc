@@ -21,6 +21,13 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--extract-audio-batch") {
+        try { const auto result=rb4pc::builder::extract_audio_batch(argv[1],argv[3]);
+            std::cout<<"Audio batch: "<<result.directory.string()<<"\nExtracted: "<<result.items.size()
+                     <<"\nSkipped runtime/research/invalid: "<<result.skipped_runtime_ready<<'/'<<result.skipped_research_only<<'/'<<result.skipped_invalid
+                     <<"\nSummary: "<<result.summary.string()<<'\n';return result.skipped_invalid==0?0:1;
+        } catch(const std::exception& error){std::cerr<<"rb4pc-builder: "<<error.what()<<'\n';return 1;}
+    }
     if (argc == 4 && std::string(argv[2]) == "--extract-mogg-ogg") {
         try {
             const auto result = rb4pc::builder::extract_embedded_ogg(argv[1], argv[3]);
@@ -370,6 +377,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <texture-root> --texture-coverage <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <audio-root> --plan-audio-conversion <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <source.mogg> --extract-mogg-ogg <new-output.ogg>\n";
+        std::cerr << "   or: " << argv[0] << " <audio-root> --extract-audio-batch <new-output-directory>\n";
         return 2;
     }
     try {

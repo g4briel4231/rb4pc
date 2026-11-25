@@ -30,6 +30,25 @@ struct AudioExtractionResult {
     std::string source_sha256;
     std::string destination_sha256;
 };
+struct AudioBatchItem {
+    std::filesystem::path source_relative_path;
+    std::filesystem::path destination_relative_path;
+    std::uint64_t extracted_bytes = 0;
+    std::string source_sha256;
+    std::string destination_sha256;
+};
+struct AudioBatchResult {
+    std::filesystem::path directory;
+    std::filesystem::path summary;
+    std::vector<AudioBatchItem> items;
+    std::uint64_t skipped_runtime_ready = 0;
+    std::uint64_t skipped_research_only = 0;
+    std::uint64_t skipped_invalid = 0;
+};
+[[nodiscard]] AudioBatchResult extract_audio_batch(
+    const std::filesystem::path& source_root, const std::filesystem::path& destination_root);
+[[nodiscard]] std::string format_json(const AudioBatchResult& result);
+
 [[nodiscard]] AudioExtractionResult extract_embedded_ogg(
     const std::filesystem::path& source, const std::filesystem::path& destination);
 

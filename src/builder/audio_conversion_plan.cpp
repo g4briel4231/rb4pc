@@ -16,6 +16,23 @@ std::string escape(std::string_view v){std::ostringstream o;for(unsigned char c:
 const char* state_name(AudioPlanState s){switch(s){case AudioPlanState::runtime_ready:return "runtimeReady";case AudioPlanState::extraction_ready:return "extractionReady";case AudioPlanState::research_only:return "researchOnly";case AudioPlanState::invalid:return "invalid";}return "invalid";}
 void count(AudioConversionPlan& p,AudioPlanState s){if(s==AudioPlanState::runtime_ready)++p.runtime_ready;else if(s==AudioPlanState::extraction_ready)++p.extraction_ready;else if(s==AudioPlanState::research_only)++p.research_only;else ++p.invalid;}
 } // namespace
+AudioBatchResult extract_audio_batch(const std::filesystem::path& source_root,
+                                     const std::filesystem::path& destination_root) {
+    if (destination_root.empty() || std::filesystem::exists(destination_root))
+        throw std::runtime_error("audio batch destination is empty or already exists");
+    const auto parent=destination_root.has_parent_path()?destination_root.parent_path():std::filesystem::path{"."};
+    if(!std::filesystem::is_directory(parent))throw std::runtime_error("audio batch destination parent does not exist");
+    auto temporary=destination_root;temporary+=".rb4pc-part";if(std::filesystem::exists(temporary))throw std::runtime_error("audio batch temporary destination exists");
+    const auto plan=plan_audio_conversions(source_root);AudioBatchResult result;result.directory=destination_root;result.summary=destination_root/"batch-summary.json";
+    result.skipped_runtime_ready=plan.runtime_ready;result.skipped_research_only=plan.research_only;result.skipped_invalid=plan.invalid;
+    try{std::filesystem::create_directory(temporary);for(const auto& entry:plan.entries){if(entry.state!=AudioPlanState::extraction_ready)continue;
+        auto relative=entry.relative_path;auto name=relative.filename().string();auto lower_name=lower(name);const auto marker=lower_name.find(".mogg");if(marker==std::string::npos)throw std::runtime_error("extraction-ready entry has no MOGG suffix");name.replace(marker,name.size()-marker,".ogg");relative.replace_filename(name);
+        const auto output=temporary/relative;std::filesystem::create_directories(output.parent_path());const auto extraction=extract_embedded_ogg(source_root/entry.relative_path,output);
+        result.items.push_back({entry.relative_path,relative,extraction.extracted_bytes,extraction.source_sha256,extraction.destination_sha256});}
+        std::ofstream summary(temporary/"batch-summary.json",std::ios::binary|std::ios::trunc);summary<<format_json(result);summary.close();if(!summary)throw std::runtime_error("could not write audio batch summary");std::filesystem::rename(temporary,destination_root);
+    }catch(...){std::error_code ignored;std::filesystem::remove_all(temporary,ignored);throw;}return result;
+}
+std::string format_json(const AudioBatchResult& r){std::ostringstream o;o<<"{\n  \"schemaVersion\": 1,\n  \"extracted\": "<<r.items.size()<<",\n  \"skippedRuntimeReady\": "<<r.skipped_runtime_ready<<",\n  \"skippedResearchOnly\": "<<r.skipped_research_only<<",\n  \"skippedInvalid\": "<<r.skipped_invalid<<",\n  \"items\": [";for(std::size_t i=0;i<r.items.size();++i){const auto&e=r.items[i];if(i)o<<',';o<<"\n    {\"source\": \""<<escape(e.source_relative_path.generic_string())<<"\", \"destination\": \""<<escape(e.destination_relative_path.generic_string())<<"\", \"bytes\": "<<e.extracted_bytes<<", \"sourceSha256\": \""<<e.source_sha256<<"\", \"destinationSha256\": \""<<e.destination_sha256<<"\"}";}o<<"\n  ]\n}\n";return o.str();}
 AudioExtractionResult extract_embedded_ogg(const std::filesystem::path& source,
                                            const std::filesystem::path& destination) {
     if (destination.empty() || std::filesystem::exists(destination))

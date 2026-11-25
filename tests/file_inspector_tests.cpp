@@ -216,6 +216,8 @@ int main() {
     const auto audio_conversion_plan_json = rb4pc::builder::format_json(audio_conversion_plan);
     const auto audio_extraction = rb4pc::builder::extract_embedded_ogg(
         audio_plan_directory / "embedded.mogg", directory / "extracted.ogg");
+    const auto audio_batch = rb4pc::builder::extract_audio_batch(
+        audio_plan_directory, directory / "audio-batch");
     const auto hash_path = directory / "hash-test.bin";
     const auto config_path = directory / "rb4pc.ini";
     rb4pc::runtime::save_app_config(config_path, {0.5F, -25});
@@ -994,7 +996,12 @@ int main() {
                          audio_conversion_plan_json.find("\"state\": \"extractionReady\"") != std::string::npos &&
                          audio_extraction.extracted_bytes == 4 &&
                          std::filesystem::is_regular_file(audio_extraction.destination) &&
-                         std::filesystem::is_regular_file(audio_extraction.manifest),
+                         std::filesystem::is_regular_file(audio_extraction.manifest) &&
+                         audio_batch.items.size() == 1 && audio_batch.skipped_runtime_ready == 2 &&
+                         audio_batch.skipped_research_only == 1 && audio_batch.skipped_invalid == 1 &&
+                         std::filesystem::is_regular_file(audio_batch.summary) &&
+                         std::filesystem::is_regular_file(audio_batch.directory / "embedded.ogg") &&
+                         std::filesystem::is_regular_file(audio_batch.directory / "embedded.ogg.rb4pc-extraction.json"),
                      "audio conversion plan mismatch");
     passed &= expect(ps4_texture.platform_version == 12 && ps4_texture.marker == 7 &&
                          ps4_texture.header_data_size == 124 && ps4_texture.mipmap_entry_size == 20 &&
