@@ -56,6 +56,7 @@ constexpr int id_viewer_extract = 1402;
 constexpr int id_viewer_copy_path = 1403;
 constexpr int id_viewer_export_listing = 1404;
 constexpr int id_viewer_metadata_candidates = 1405;
+constexpr int id_viewer_metadata_summary = 1406;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
@@ -715,6 +716,28 @@ void export_filtered_viewer_listing(HWND window) {
     }
 }
 
+void show_metadata_candidate_summary(HWND window) {
+    if (!app.viewer_report) return;
+    const std::array<std::wstring, 5> families{
+        L"moggsong_dta_pc", L"songdta_pc", L"csv_pc", L"rbsong", L"dta"};
+    std::array<std::size_t, 5> counts{};
+    std::size_t total = 0;
+    for (const auto& record : app.viewer_report->metadata.file_records) {
+        const auto family = metadata_candidate_family(utf8_to_wide(record.path));
+        if (family.empty()) continue;
+        ++total;
+        const auto found = std::find(families.begin(), families.end(), family);
+        if (found != families.end()) ++counts[static_cast<std::size_t>(found - families.begin())];
+    }
+    std::wostringstream message;
+    message << L"Objective metadata candidates: " << total << L"\n\n";
+    for (std::size_t index = 0; index < families.size(); ++index)
+        message << families[index] << L": " << counts[index] << L'\n';
+    message << L"\nCounts are based only on measured filename suffix families.";
+    MessageBoxW(window, message.str().c_str(), L"Metadata Candidate Summary",
+                MB_OK | MB_ICONINFORMATION);
+}
+
 bool is_metadata_candidate_path(const std::wstring& path) {
     return !metadata_candidate_family(path).empty();
 }
@@ -854,6 +877,7 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_STRING, id_viewer_export_listing, L"Export Filtered Listing…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_viewer_metadata_candidates, L"Show Metadata Candidates");
+    AppendMenuW(tools, MF_STRING, id_viewer_metadata_summary, L"Metadata Candidate Summary…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
     return menu;
 }
@@ -921,6 +945,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_viewer_export_listing: export_filtered_viewer_listing(window); return 0;
+                case id_viewer_metadata_summary: show_metadata_candidate_summary(window); return 0;
                 case id_viewer_metadata_candidates:
                     app.viewer_metadata_candidates_only = !app.viewer_metadata_candidates_only;
                     CheckMenuItem(GetMenu(window), id_viewer_metadata_candidates,
