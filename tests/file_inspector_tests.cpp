@@ -244,6 +244,8 @@ int main() {
     const auto texture_pair_json = rb4pc::builder::format_json(texture_pair_report);
     const auto texture_mismatch = rb4pc::inspector::compare_texture_payloads(ps4_texture, changed_texture);
     const auto texture_corpus = rb4pc::inspector::inspect_texture_corpus(texture_directory, ".texture");
+    const auto magic4_evidence = rb4pc::builder::profile_magic4_version8(texture_directory);
+    const auto magic4_evidence_json = rb4pc::builder::format_json(magic4_evidence);
     const auto convertible_texture_path = texture_directory / "convertible.texture";
     const auto converted_texture_path = texture_directory / "converted.texture";
     const auto convertible_texture_8bpp_path = texture_directory / "convertible-8bpp.texture";
@@ -987,6 +989,9 @@ int main() {
                          texture_directory_pairs_json.find("\"pairCount\": 1") != std::string::npos &&
                          texture_corpus.candidate_count == 5 && texture_corpus.parsed_count == 5 &&
                          texture_corpus.families.size() == 4 && texture_corpus.rejected_signatures.empty() &&
+                         magic4_evidence.magic4_version8 == 1 && magic4_evidence.families.size() == 1 &&
+                         magic4_evidence.families.front().header_bytes == 164 &&
+                         magic4_evidence_json.find("\"magic4Version8\": 1") != std::string::npos &&
                          texture_conversion_plan.entries.size() == 7 &&
                          texture_conversion_plan.convertible == 2 && texture_conversion_plan.read_only == 5 &&
                          texture_conversion_plan.invalid == 0 &&

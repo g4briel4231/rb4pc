@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
+#include <tuple>
 
 namespace rb4pc::builder {
 namespace {
@@ -122,5 +123,51 @@ std::string format_json(const TextureDirectoryPairReport& report) {
     for (std::size_t i = 0; i < report.unmatched_sources.size(); ++i) { if (i) output << ','; output << "\n    \"" << escape_json(report.unmatched_sources[i].generic_string()) << '"'; }
     output << "\n  ],\n  \"unmatchedReferencePaths\": [";
     for (std::size_t i = 0; i < report.unmatched_references.size(); ++i) { if (i) output << ','; output << "\n    \"" << escape_json(report.unmatched_references[i].generic_string()) << '"'; }
+    output << "\n  ]\n}\n"; return output.str();
+}
+TextureEvidenceReport profile_magic4_version8(const std::filesystem::path& root) {
+    if (!std::filesystem::is_directory(root)) throw std::runtime_error("texture evidence root is not a directory");
+    TextureEvidenceReport report; report.root = root;
+    std::map<std::tuple<std::uint32_t, std::uint32_t, std::uint32_t, std::uint32_t,
+                        std::uint32_t, std::uint32_t, std::uint32_t>, std::uint64_t> families;
+    for (const auto& item : std::filesystem::recursive_directory_iterator(root)) {
+        if (!item.is_regular_file()) continue;
+        auto name = item.path().filename().string();
+        std::transform(name.begin(), name.end(), name.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (!name.ends_with(".texture") && !name.ends_with(".png_ps4") && !name.ends_with(".png_pc")) continue;
+        ++report.candidates;
+        try {
+            const auto texture = inspector::inspect_texture_container(item.path());
+            if (texture.magic != 4 || texture.platform_version != 8) { ++report.other_families; continue; }
+            ++report.magic4_version8;
+            const auto& first = texture.mipmaps.front();
+            const auto pixels = static_cast<std::uint64_t>(first.width) * first.height;
+            const auto bpp = pixels ? static_cast<std::uint32_t>(first.data_size * 8ULL / pixels) : 0;
+            ++families[{static_cast<std::uint32_t>(first.width), static_cast<std::uint32_t>(first.height),
+                        static_cast<std::uint32_t>(texture.mipmaps.size()), texture.header_data_size,
+                        texture.mipmap_entry_size, texture.marker, bpp}];
+        } catch (...) { ++report.unreadable; }
+    }
+    for (const auto& [key, count] : families) {
+        const auto [width, height, mipmaps, header, entry, marker, bpp] = key;
+        report.families.push_back({width, height, mipmaps, header, entry, marker, bpp, count});
+    }
+    return report;
+}
+
+std::string format_json(const TextureEvidenceReport& report) {
+    std::ostringstream output;
+    output << "{\n  \"schemaVersion\": 1,\n  \"candidates\": " << report.candidates
+           << ",\n  \"magic4Version8\": " << report.magic4_version8
+           << ",\n  \"otherFamilies\": " << report.other_families
+           << ",\n  \"unreadable\": " << report.unreadable << ",\n  \"families\": [";
+    for (std::size_t i = 0; i < report.families.size(); ++i) {
+        const auto& f = report.families[i]; if (i) output << ',';
+        output << "\n    {\"width\": " << f.width << ", \"height\": " << f.height
+               << ", \"mipmaps\": " << f.mipmaps << ", \"headerBytes\": " << f.header_bytes
+               << ", \"mipmapEntryBytes\": " << f.mipmap_entry_bytes << ", \"marker\": " << f.marker
+               << ", \"bitsPerPixel\": " << f.bits_per_pixel << ", \"files\": " << f.files << '}';
+    }
     output << "\n  ]\n}\n"; return output.str();
 }} // namespace rb4pc::builder

@@ -20,6 +20,19 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--profile-magic4-v8") {
+        try {
+            const std::filesystem::path report_path = argv[3];
+            if (std::filesystem::exists(report_path)) throw std::runtime_error("texture evidence report already exists");
+            const auto report = rb4pc::builder::profile_magic4_version8(argv[1]);
+            std::ofstream output(report_path, std::ios::binary); output << rb4pc::builder::format_json(report);
+            if (!output) throw std::runtime_error("could not write texture evidence report");
+            std::cout << "Magic-4/version-8 files: " << report.magic4_version8
+                      << "\nFamilies: " << report.families.size()
+                      << "\nOther/unreadable: " << report.other_families << '/' << report.unreadable << '\n';
+            return report.unreadable == 0 ? 0 : 1;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 5 && std::string(argv[2]) == "--compare-texture-directories") {
         try {
             const std::filesystem::path report_path = argv[4];
@@ -316,6 +329,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <texture-directory> --verify-texture-batch <batch-directory> <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <source-texture> --compare-texture-pair <reference-texture> <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <source-root> --compare-texture-directories <reference-root> <report.json>\n";
+        std::cerr << "   or: " << argv[0] << " <texture-root> --profile-magic4-v8 <report.json>\n";
         return 2;
     }
     try {

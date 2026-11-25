@@ -31,10 +31,32 @@ struct TextureDirectoryPairReport {
     std::uint64_t incompatible = 0;
 };
 
+struct TextureFamilyEvidence {
+    std::uint32_t width = 0;
+    std::uint32_t height = 0;
+    std::uint32_t mipmaps = 0;
+    std::uint32_t header_bytes = 0;
+    std::uint32_t mipmap_entry_bytes = 0;
+    std::uint32_t marker = 0;
+    std::uint32_t bits_per_pixel = 0;
+    std::uint64_t files = 0;
+};
+
+struct TextureEvidenceReport {
+    std::filesystem::path root;
+    std::uint64_t candidates = 0;
+    std::uint64_t magic4_version8 = 0;
+    std::uint64_t other_families = 0;
+    std::uint64_t unreadable = 0;
+    std::vector<TextureFamilyEvidence> families;
+};
+
 [[nodiscard]] TexturePairReport compare_texture_pair(
     const std::filesystem::path& source, const std::filesystem::path& reference);
 [[nodiscard]] std::string format_json(const TexturePairReport& report);
 [[nodiscard]] TextureDirectoryPairReport compare_texture_directories(
     const std::filesystem::path& source_root, const std::filesystem::path& reference_root);
 [[nodiscard]] std::string format_json(const TextureDirectoryPairReport& report);
+[[nodiscard]] TextureEvidenceReport profile_magic4_version8(const std::filesystem::path& root);
+[[nodiscard]] std::string format_json(const TextureEvidenceReport& report);
 } // namespace rb4pc::builder
