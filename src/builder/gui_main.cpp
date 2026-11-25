@@ -24,6 +24,7 @@
 #include <fstream>
 #include <iomanip>
 #include <memory>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -58,6 +59,7 @@ constexpr int id_viewer_export_listing = 1404;
 constexpr int id_viewer_metadata_candidates = 1405;
 constexpr int id_viewer_metadata_summary = 1406;
 constexpr int id_viewer_export_metadata_summary = 1407;
+constexpr int id_viewer_signature_summary = 1408;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
@@ -785,6 +787,39 @@ void export_metadata_candidate_summary(HWND window) {
     }
 }
 
+void show_metadata_signature_summary(HWND window) {
+    if (!app.viewer_report) return;
+    set_status(L"Sampling metadata candidate signatures…");
+    std::map<std::string, std::size_t> signatures;
+    std::size_t candidates = 0;
+    std::size_t unresolved = 0;
+    for (const auto& record : app.viewer_report->metadata.file_records) {
+        if (metadata_candidate_family(utf8_to_wide(record.path)).empty()) continue;
+        ++candidates;
+        try {
+            const auto preview = rb4pc::inspector::inspect_record(*app.viewer_report, record.path);
+            if (!preview) {
+                ++unresolved;
+                continue;
+            }
+            const auto* bytes = reinterpret_cast<const unsigned char*>(preview->bytes.data());
+            ++signatures[rb4pc::inspector::classify_payload_signature(bytes, preview->size)];
+        } catch (const std::exception&) {
+            ++unresolved;
+        }
+    }
+    std::wostringstream message;
+    message << L"Metadata candidates: " << candidates
+            << L"\nSampled: " << (candidates - unresolved)
+            << L"\nUnresolved: " << unresolved << L"\n\nDetected signatures:\n";
+    for (const auto& [signature, count] : signatures)
+        message << utf8_to_wide(signature) << L": " << count << L'\n';
+    message << L"\nOnly the first 32 bytes of each resolved candidate were read.";
+    MessageBoxW(window, message.str().c_str(), L"Metadata Signature Summary",
+                MB_OK | (unresolved ? MB_ICONWARNING : MB_ICONINFORMATION));
+    set_status(L"Metadata candidate signature sampling completed");
+}
+
 bool is_metadata_candidate_path(const std::wstring& path) {
     return !metadata_candidate_family(path).empty();
 }
@@ -926,6 +961,7 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_STRING, id_viewer_metadata_candidates, L"Show Metadata Candidates");
     AppendMenuW(tools, MF_STRING, id_viewer_metadata_summary, L"Metadata Candidate Summary…");
     AppendMenuW(tools, MF_STRING, id_viewer_export_metadata_summary, L"Export Metadata Family Summary…");
+    AppendMenuW(tools, MF_STRING, id_viewer_signature_summary, L"Metadata Signature Summary…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
     return menu;
 }
@@ -995,6 +1031,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_viewer_export_listing: export_filtered_viewer_listing(window); return 0;
                 case id_viewer_metadata_summary: show_metadata_candidate_summary(window); return 0;
                 case id_viewer_export_metadata_summary: export_metadata_candidate_summary(window); return 0;
+                case id_viewer_signature_summary: show_metadata_signature_summary(window); return 0;
                 case id_viewer_metadata_candidates:
                     app.viewer_metadata_candidates_only = !app.viewer_metadata_candidates_only;
                     CheckMenuItem(GetMenu(window), id_viewer_metadata_candidates,
