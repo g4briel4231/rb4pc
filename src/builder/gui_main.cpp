@@ -536,6 +536,15 @@ std::optional<std::size_t> selected_viewer_record_index() {
     return app.viewer_record_indices[static_cast<std::size_t>(selection)];
 }
 
+std::wstring metadata_candidate_family(const std::wstring& path) {
+    const auto value = lowercase(path);
+    for (const auto* family : {L"moggsong_dta_pc", L"songdta_pc", L"csv_pc", L"rbsong", L"dta"}) {
+        const std::wstring suffix = L"." + std::wstring(family);
+        if (value.ends_with(suffix)) return family;
+    }
+    return {};
+}
+
 std::wstring viewer_record_details(std::size_t index) {
     if (!app.viewer_report || index >= app.viewer_report->metadata.file_records.size()) return L"No file selected";
     const auto& report = *app.viewer_report;
@@ -550,6 +559,8 @@ std::wstring viewer_record_details(std::size_t index) {
     } else {
         detail << L"    ARK location: unresolved";
     }
+    const auto family = metadata_candidate_family(utf8_to_wide(record.path));
+    if (!family.empty()) detail << L"\r\nMetadata candidate family: " << family;
     return detail.str();
 }
 
@@ -705,10 +716,7 @@ void export_filtered_viewer_listing(HWND window) {
 }
 
 bool is_metadata_candidate_path(const std::wstring& path) {
-    const auto value = lowercase(path);
-    for (const auto* suffix : {L".moggsong_dta_pc", L".songdta_pc", L".csv_pc", L".rbsong", L".dta"})
-        if (value.ends_with(suffix)) return true;
-    return false;
+    return !metadata_candidate_family(path).empty();
 }
 
 void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
