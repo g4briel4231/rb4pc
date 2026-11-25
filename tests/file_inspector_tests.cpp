@@ -1,6 +1,7 @@
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/archive_layout.hpp"
 #include "rb4pc/builder/build_plan.hpp"
+#include "rb4pc/builder/audio_conversion_plan.hpp"
 #include "rb4pc/builder/song_layout.hpp"
 #include "rb4pc/builder/custom_song_catalog.hpp"
 #include "rb4pc/inspector/asset_converter.hpp"
@@ -201,6 +202,18 @@ int main() {
     const auto directory = std::filesystem::temp_directory_path() / "rb4pc-inspector-tests";
     std::filesystem::remove_all(directory);
     std::filesystem::create_directory(directory);
+    const auto audio_plan_directory = directory / "audio-plan";
+    std::filesystem::create_directory(audio_plan_directory);
+    write_file(audio_plan_directory / "native.ogg", "OggSdemo");
+    write_file(audio_plan_directory / "native.wav", std::string("RIFF\x04\0\0\0WAVE", 12));
+    std::vector<unsigned char> planned_mogg;
+    append_u32(planned_mogg, 10); append_u32(planned_mogg, 12); append_u32(planned_mogg, 0);
+    planned_mogg.insert(planned_mogg.end(), {'O','g','g','S'});
+    write_file(audio_plan_directory / "embedded.mogg", std::string(planned_mogg.begin(), planned_mogg.end()));
+    write_file(audio_plan_directory / "unknown.vgs", "VGS DATA");
+    write_file(audio_plan_directory / "truncated.wav", "x");
+    const auto audio_conversion_plan = rb4pc::builder::plan_audio_conversions(audio_plan_directory);
+    const auto audio_conversion_plan_json = rb4pc::builder::format_json(audio_conversion_plan);
     const auto hash_path = directory / "hash-test.bin";
     const auto config_path = directory / "rb4pc.ini";
     rb4pc::runtime::save_app_config(config_path, {0.5F, -25});
@@ -973,6 +986,11 @@ int main() {
                      "JSON analysis method missing");
     passed &= expect(json.find("\"version\": 10") != std::string::npos,
                      "JSON decoded HDR version missing");
+        passed &= expect(audio_conversion_plan.entries.size() == 5 && audio_conversion_plan.runtime_ready == 2 &&
+                         audio_conversion_plan.extraction_ready == 1 && audio_conversion_plan.research_only == 1 &&
+                         audio_conversion_plan.invalid == 1 &&
+                         audio_conversion_plan_json.find("\"state\": \"extractionReady\"") != std::string::npos,
+                     "audio conversion plan mismatch");
     passed &= expect(ps4_texture.platform_version == 12 && ps4_texture.marker == 7 &&
                          ps4_texture.header_data_size == 124 && ps4_texture.mipmap_entry_size == 20 &&
                          pc_texture.platform_version == 9 && pc_texture.marker == 6 &&

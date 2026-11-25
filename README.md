@@ -113,7 +113,14 @@ and select a destination for the JSON report.
 The report summarizes archives, namespaces, extensions, asset categories, and
 known native, intermediate, or unknown path families without extracting assets.
 
-### 8. Generate an audio catalog
+### 8. Plan extracted audio conversion
+
+Choose **Tools > Analyze Audio Conversion Folder…** or run
+`rb4pc-builder <audio-root> --plan-audio-conversion <new-report.json>`. The
+read-only report separates runtime-ready Ogg/WAVE, extraction-ready embedded-Ogg
+MOGG, research-only signatures, and invalid files. It performs no conversion.
+
+### 9. Generate an audio catalog
 
 Open **Tools > PC Audio Catalog**, select a PC HDR or folder, and choose a JSON
 destination.
@@ -122,7 +129,7 @@ The report identifies supported MOGG/Ogg, RIFF/WAVE, RIFF/FEV, opaque,
 unreadable, and unsupported or potentially protected audio records. Recognition
 does not mean that every audio variant can already be played or converted.
 
-### 9. Generate a character and animation catalog
+### 10. Generate a character and animation catalog
 
 Open **Tools > Character/Animation Inventory**, select a PC HDR or folder, and
 choose a JSON destination.
@@ -131,7 +138,7 @@ The catalog reports aggregate structural measurements for character definitions,
 animations, clips, skeletons, bone masks, and stances. Candidate fields are
 measurements, not confirmed semantic definitions.
 
-### 10. Generate a metadata catalog
+### 11. Generate a metadata catalog
 
 Open **Tools > PC Metadata Catalog**, select a PC HDR or folder, and choose a
 JSON destination.
@@ -144,7 +151,7 @@ proprietary strings or internal paths.
 A successful result shows that every profiled field received exactly one
 structural evidence class.
 
-### 11. Run the complete PC corpus audit
+### 12. Run the complete PC corpus audit
 
 Open **Tools > Complete PC Corpus Audit**.
 
@@ -165,7 +172,7 @@ counts, no required record is unreadable, and metadata evidence classification
 is complete. Publication is transactional and does not overwrite an existing
 audit.
 
-### 12. Read warnings correctly
+### 13. Read warnings correctly
 
 A warning or an `unknown` classification does not automatically mean a file is
 damaged. It means the current implementation cannot safely confirm that

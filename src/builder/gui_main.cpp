@@ -9,6 +9,7 @@
 #include <shellapi.h>
 
 #include "rb4pc/builder/pc_asset_catalog.hpp"
+#include "rb4pc/builder/audio_conversion_plan.hpp"
 #include "rb4pc/builder/pc_audio_catalog.hpp"
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/builder/pc_corpus_audit.hpp"
@@ -50,6 +51,7 @@ constexpr int id_metadata_catalog = 1106;
 constexpr int id_texture_plan = 1107;
 constexpr int id_texture_batch = 1108;
 constexpr int id_texture_verify = 1109;
+constexpr int id_audio_plan = 1110;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
@@ -745,6 +747,31 @@ void verify_texture_batch_gui(HWND window) {
     }
 }
 
+void generate_audio_conversion_plan(HWND window) {
+    MessageBoxW(window, L"Select a folder of extracted audio candidates. This operation is read-only.",
+                L"Audio Conversion Plan", MB_OK | MB_ICONINFORMATION);
+    const auto source = select_folder(window); if (source.empty()) return;
+    const auto destination = select_catalog_output(window, L"audio-conversion-plan.json"); if (destination.empty()) return;
+    set_status(L"Analyzing audio conversion candidates…");
+    try {
+        const auto plan = rb4pc::builder::plan_audio_conversions(source);
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc); output << rb4pc::builder::format_json(plan);
+        if (!output) throw std::runtime_error("could not write audio conversion plan");
+        std::wostringstream message;
+        message << L"Audio conversion plan generated. No audio was modified.\n\nCandidates: " << plan.entries.size()
+                << L"\nRuntime-ready: " << plan.runtime_ready << L"\nExtraction-ready: " << plan.extraction_ready
+                << L"\nResearch-only: " << plan.research_only << L"\nInvalid: " << plan.invalid
+                << L"\n\nReport: " << destination.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Audio Conversion Plan",
+                    MB_OK | (plan.invalid ? MB_ICONWARNING : MB_ICONINFORMATION));
+        set_status(L"Generated audio conversion plan: " + destination.filename().wstring());
+    } catch (const std::exception& error) {
+        std::wstring message=L"The audio conversion plan could not be generated.\n\n"; message+=utf8_to_wide(error.what());
+        MessageBoxW(window,message.c_str(),L"Audio Conversion Plan",MB_OK|MB_ICONERROR);
+        set_status(L"Audio conversion planning failed");
+    }
+}
+
 std::optional<std::size_t> selected_viewer_record_index() {
     if (!app.viewer_records) return std::nullopt;
     const auto selection = SendMessageW(app.viewer_records, LB_GETCURSEL, 0, 0);
@@ -1217,6 +1244,7 @@ HMENU create_file_viewer_menu() {
     const auto tools = CreatePopupMenu();
     AppendMenuW(tools, MF_STRING, id_asset_catalog, L"PC Asset Catalog…");
     AppendMenuW(tools, MF_STRING, id_audio_catalog, L"PC Audio Audit…");
+    AppendMenuW(tools, MF_STRING, id_audio_plan, L"Analyze Audio Conversion Folder…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1292,6 +1320,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
             switch (LOWORD(wparam)) {
                 case id_asset_catalog: generate_asset_catalog(window); return 0;
                 case id_audio_catalog: generate_audio_catalog(window); return 0;
+                case id_audio_plan: generate_audio_conversion_plan(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
@@ -1417,6 +1446,7 @@ HMENU create_menu() {
     const auto tools = CreatePopupMenu();
     AppendMenuW(tools, MF_STRING, id_asset_catalog, L"PC Asset Catalog…");
     AppendMenuW(tools, MF_STRING, id_audio_catalog, L"PC Audio Audit…");
+    AppendMenuW(tools, MF_STRING, id_audio_plan, L"Analyze Audio Conversion Folder…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1702,6 +1732,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 }
                 case id_asset_catalog: generate_asset_catalog(window); return 0;
                 case id_audio_catalog: generate_audio_catalog(window); return 0;
+                case id_audio_plan: generate_audio_conversion_plan(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
