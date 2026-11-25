@@ -54,6 +54,7 @@ struct AppState {
     ULONG_PTR gdiplus_token = 0;
     std::unique_ptr<Gdiplus::Image> logo;
     std::filesystem::path executable_directory;
+    std::filesystem::path selected_pc_source;
 };
 
 AppState app;
@@ -203,6 +204,7 @@ void open_selected_archive(HWND window) {
         }
         MessageBoxW(window, message.str().c_str(), L"ForgeTool PC file opened",
                     MB_OK | MB_ICONINFORMATION);
+        app.selected_pc_source = path;
         set_status(L"Opened ForgeTool PC file: " + path.filename().wstring());
     } catch (const std::exception&) {
         show_pc_error(window, path, L"The file could not be read or its PC structure is invalid.");
@@ -255,6 +257,7 @@ void open_selected_folder(HWND window) {
     message << L"\n\nFiles marked _ps4 were not loaded.";
     MessageBoxW(window, message.str().c_str(), L"ForgeTool PC folder opened",
                 MB_OK | MB_ICONINFORMATION);
+    app.selected_pc_source = path;
     set_status(L"Opened ForgeTool PC folder: " + path.wstring());
 }
 
