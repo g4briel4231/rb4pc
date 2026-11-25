@@ -31,6 +31,7 @@ constexpr int id_repair = 1002;
 constexpr int id_open_archive = 1003;
 constexpr int id_open_folder = 1004;
 constexpr int id_exit = 1005;
+constexpr int id_open_file_viewer = 1006;
 constexpr int id_asset_catalog = 1101;
 constexpr int id_audio_catalog = 1102;
 constexpr int id_character_catalog = 1103;
@@ -508,31 +509,18 @@ std::wstring utf8_to_wide(const std::string& value) {
     return result;
 }
 
-void populate_file_viewer() {
-    if (!app.file_viewer || !app.viewer_report) return;
+void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
+    if (!app.viewer_records || !app.viewer_report) return;
     const auto& report = *app.viewer_report;
-    std::wostringstream summary;
-    summary << L"HDR: " << report.header.path.filename().wstring()
-            << L"    Version: " << report.metadata.version
-            << L"    ARK volumes: " << report.archives.size()
-            << L"    Files: " << report.metadata.file_records.size();
-    SetWindowTextW(app.viewer_summary, summary.str().c_str());
-    SendMessageW(app.viewer_archives, LB_RESETCONTENT, 0, 0);
     SendMessageW(app.viewer_records, LB_RESETCONTENT, 0, 0);
-    for (std::size_t index = 0; index < report.archives.size(); ++index) {
-        const auto& archive = report.archives[index];
-        std::wostringstream line;
-        line << L"ARK " << index << L": " << archive.path.filename().wstring()
-             << L"  [" << (archive.exists ? L"present" : L"missing") << L"]  "
-             << archive.actual_size << L" / " << archive.declared_size << L" bytes";
-        const auto value = line.str();
-        SendMessageW(app.viewer_archives, LB_ADDSTRING, 0,
-                     reinterpret_cast<LPARAM>(value.c_str()));
-    }
     for (std::size_t index = 0; index < report.metadata.file_records.size(); ++index) {
+        const auto has_location = index < report.record_locations.size() &&
+                                  report.record_locations[index].has_value();
+        if (archive_filter && (!has_location ||
+            report.record_locations[index]->archive_index != *archive_filter)) continue;
         const auto& record = report.metadata.file_records[index];
         std::wostringstream line;
-        if (index < report.record_locations.size() && report.record_locations[index]) {
+        if (has_location) {
             line << L"[ARK " << report.record_locations[index]->archive_index
                  << L" @ " << report.record_locations[index]->local_offset << L"] ";
         } else {
@@ -543,6 +531,32 @@ void populate_file_viewer() {
         SendMessageW(app.viewer_records, LB_ADDSTRING, 0,
                      reinterpret_cast<LPARAM>(value.c_str()));
     }
+}
+
+void populate_file_viewer() {
+    if (!app.file_viewer || !app.viewer_report) return;
+    const auto& report = *app.viewer_report;
+    std::wostringstream summary;
+    summary << L"HDR: " << report.header.path.filename().wstring()
+            << L"    Version: " << report.metadata.version
+            << L"    ARK volumes: " << report.archives.size()
+            << L"    Files: " << report.metadata.file_records.size();
+    SetWindowTextW(app.viewer_summary, summary.str().c_str());
+    SendMessageW(app.viewer_archives, LB_RESETCONTENT, 0, 0);
+    SendMessageW(app.viewer_archives, LB_ADDSTRING, 0,
+                 reinterpret_cast<LPARAM>(L"All ARK volumes"));
+    for (std::size_t index = 0; index < report.archives.size(); ++index) {
+        const auto& archive = report.archives[index];
+        std::wostringstream line;
+        line << L"ARK " << index << L": " << archive.path.filename().wstring()
+             << L"  [" << (archive.exists ? L"present" : L"missing") << L"]  "
+             << archive.actual_size << L" / " << archive.declared_size << L" bytes";
+        const auto value = line.str();
+        SendMessageW(app.viewer_archives, LB_ADDSTRING, 0,
+                     reinterpret_cast<LPARAM>(value.c_str()));
+    }
+    SendMessageW(app.viewer_archives, LB_SETCURSEL, 0, 0);
+    populate_file_viewer_records(std::nullopt);
 }
 
 void layout_file_viewer(HWND window) {
@@ -568,12 +582,12 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 WS_CHILD | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE | SS_PATHELLIPSIS,
                 0, 0, 100, 28, window, nullptr, GetModuleHandleW(nullptr), nullptr);
             app.viewer_archives = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", nullptr,
-                WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT,
+                WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT | LBS_NOTIFY,
                 0, 0, 100, 100, window,
                 reinterpret_cast<HMENU>(static_cast<INT_PTR>(id_viewer_archives)),
                 GetModuleHandleW(nullptr), nullptr);
             app.viewer_records = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", nullptr,
-                WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT,
+                WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT | LBS_NOTIFY,
                 0, 0, 100, 100, window,
                 reinterpret_cast<HMENU>(static_cast<INT_PTR>(id_viewer_records)),
                 GetModuleHandleW(nullptr), nullptr);
@@ -583,6 +597,14 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
             layout_file_viewer(window);
             return 0;
         case WM_SIZE: layout_file_viewer(window); return 0;
+        case WM_COMMAND:
+            if (LOWORD(wparam) == id_viewer_archives && HIWORD(wparam) == LBN_SELCHANGE) {
+                const auto selection = SendMessageW(app.viewer_archives, LB_GETCURSEL, 0, 0);
+                if (selection <= 0) populate_file_viewer_records(std::nullopt);
+                else populate_file_viewer_records(static_cast<std::size_t>(selection - 1));
+                return 0;
+            }
+            break;
         case WM_GETMINMAXINFO: {
             auto* limits = reinterpret_cast<MINMAXINFO*>(lparam);
             limits->ptMinTrackSize.x = 760;
@@ -630,6 +652,7 @@ HMENU create_menu() {
     const auto file = CreatePopupMenu();
     AppendMenuW(file, MF_STRING, id_open_archive, L"Open Package or Archive…");
     AppendMenuW(file, MF_STRING, id_open_folder, L"Open Folder…");
+    AppendMenuW(file, MF_STRING, id_open_file_viewer, L"Open PC HDR in File Viewer…");
     AppendMenuW(file, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(file, MF_STRING, id_exit, L"Exit");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(file), L"File");
@@ -885,6 +908,11 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                     return 0;
                 case id_open_archive: open_selected_archive(window); return 0;
                 case id_open_folder: open_selected_folder(window); return 0;
+                case id_open_file_viewer: {
+                    const auto header = select_pc_header(window);
+                    if (!header.empty()) open_file_viewer(window, header);
+                    return 0;
+                }
                 case id_asset_catalog: generate_asset_catalog(window); return 0;
                 case id_audio_catalog: generate_audio_catalog(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
