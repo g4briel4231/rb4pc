@@ -663,6 +663,14 @@ void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
         SendMessageW(app.viewer_records, LB_ADDSTRING, 0,
                      reinterpret_cast<LPARAM>(value.c_str()));
     }
+    std::wostringstream summary;
+    summary << L"HDR: " << report.header.path.filename().wstring()
+            << L"    ARKs: " << report.archives.size()
+            << L"    Visible files: " << app.viewer_record_indices.size()
+            << L" / " << report.metadata.file_records.size();
+    if (archive_filter) summary << L"    Filter: ARK " << *archive_filter;
+    else summary << L"    Filter: all ARKs";
+    SetWindowTextW(app.viewer_summary, summary.str().c_str());
 }
 void populate_file_viewer() {
     if (!app.file_viewer || !app.viewer_report) return;
