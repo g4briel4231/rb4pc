@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cwctype>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -52,6 +53,7 @@ constexpr int id_viewer_details = 1304;
 constexpr int id_viewer_extension = 1305;
 constexpr int id_viewer_open = 1401;
 constexpr int id_viewer_extract = 1402;
+constexpr int id_viewer_copy_path = 1403;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
@@ -624,6 +626,27 @@ void extract_selected_viewer_record(HWND window) {
     }
 }
 
+void copy_selected_viewer_path(HWND window) {
+    const auto index = selected_viewer_record_index();
+    if (!index || !app.viewer_report) return;
+    const auto text = utf8_to_wide(app.viewer_report->metadata.file_records[*index].path);
+    if (!OpenClipboard(window)) return;
+    EmptyClipboard();
+    const auto bytes = (text.size() + 1) * sizeof(wchar_t);
+    const auto memory = GlobalAlloc(GMEM_MOVEABLE, bytes);
+    if (memory) {
+        const auto destination = static_cast<wchar_t*>(GlobalLock(memory));
+        if (destination) {
+            std::memcpy(destination, text.c_str(), bytes);
+            GlobalUnlock(memory);
+            if (!SetClipboardData(CF_UNICODETEXT, memory)) GlobalFree(memory);
+        } else {
+            GlobalFree(memory);
+        }
+    }
+    CloseClipboard();
+}
+
 void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
     if (!app.viewer_records || !app.viewer_report) return;
     app.viewer_archive_filter = archive_filter;
@@ -803,6 +826,8 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 const auto menu = CreatePopupMenu();
                 AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_open, L"Open");
                 AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_extract, L"Extract…");
+                AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+                AppendMenuW(menu, MF_STRING | (index ? MF_ENABLED : MF_GRAYED), id_viewer_copy_path, L"Copy Internal Path");
                 const int x = GET_X_LPARAM(lparam);
                 const int y = GET_Y_LPARAM(lparam);
                 TrackPopupMenu(menu, TPM_RIGHTBUTTON, x, y, 0, window, nullptr);
@@ -817,6 +842,10 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
+            }
+            if (LOWORD(wparam) == id_viewer_copy_path) {
+                copy_selected_viewer_path(window);
+                return 0;
             }
             if (LOWORD(wparam) == id_viewer_extract) {
                 extract_selected_viewer_record(window);
