@@ -54,6 +54,7 @@ constexpr int id_viewer_extension = 1305;
 constexpr int id_viewer_open = 1401;
 constexpr int id_viewer_extract = 1402;
 constexpr int id_viewer_copy_path = 1403;
+constexpr int id_viewer_export_listing = 1404;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
 
 struct AppState {
@@ -647,6 +648,60 @@ void copy_selected_viewer_path(HWND window) {
     CloseClipboard();
 }
 
+std::filesystem::path select_listing_destination(HWND owner) {
+    std::wstring path(32768, L'\0');
+    const std::wstring suggested = L"rb4pc-file-viewer.tsv";
+    std::copy(suggested.begin(), suggested.end(), path.begin());
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog);
+    dialog.hwndOwner = owner;
+    dialog.lpstrFilter = L"Tab-separated values (*.tsv)\0*.tsv\0";
+    dialog.lpstrFile = path.data();
+    dialog.nMaxFile = static_cast<DWORD>(path.size());
+    dialog.lpstrDefExt = L"tsv";
+    dialog.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+    if (!GetSaveFileNameW(&dialog)) return {};
+    path.resize(std::wcslen(path.c_str()));
+    return path;
+}
+
+void export_filtered_viewer_listing(HWND window) {
+    if (!app.viewer_report || app.viewer_record_indices.empty()) return;
+    const auto destination = select_listing_destination(window);
+    if (destination.empty()) return;
+    try {
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create listing");
+        output << "recordIndex\tinternalPath\tsize\tarkIndex\tlocalOffset\n";
+        const auto& report = *app.viewer_report;
+        for (const auto index : app.viewer_record_indices) {
+            auto path = report.metadata.file_records[index].path;
+            std::replace(path.begin(), path.end(), '\t', ' ');
+            std::replace(path.begin(), path.end(), '\r', ' ');
+            std::replace(path.begin(), path.end(), '\n', ' ');
+            output << index << '\t' << path << '\t' << report.metadata.file_records[index].size << '\t';
+            if (index < report.record_locations.size() && report.record_locations[index]) {
+                output << report.record_locations[index]->archive_index << '\t'
+                       << report.record_locations[index]->local_offset;
+            } else {
+                output << "unresolved\tunresolved";
+            }
+            output << '\n';
+        }
+        if (!output) throw std::runtime_error("could not finish listing");
+        std::wostringstream message;
+        message << L"Filtered listing exported.\n\nRecords: " << app.viewer_record_indices.size()
+                << L"\nOutput: " << destination.wstring();
+        MessageBoxW(window, message.str().c_str(), L"File Viewer listing",
+                    MB_OK | MB_ICONINFORMATION);
+    } catch (const std::exception& error) {
+        std::wstring message = L"The filtered listing could not be exported.\n\n";
+        const std::string detail = error.what();
+        message.append(detail.begin(), detail.end());
+        MessageBoxW(window, message.c_str(), L"Listing export failed", MB_OK | MB_ICONERROR);
+    }
+}
+
 void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
     if (!app.viewer_records || !app.viewer_report) return;
     app.viewer_archive_filter = archive_filter;
@@ -776,6 +831,8 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_corpus_audit, L"Complete PC Corpus Audit…");
+    AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(tools, MF_STRING, id_viewer_export_listing, L"Export Filtered Listing…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
     return menu;
 }
@@ -842,6 +899,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
+                case id_viewer_export_listing: export_filtered_viewer_listing(window); return 0;
             }
             if (LOWORD(wparam) == id_viewer_copy_path) {
                 copy_selected_viewer_path(window);
