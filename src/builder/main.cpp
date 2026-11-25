@@ -10,6 +10,7 @@
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/builder/pc_corpus_audit.hpp"
 #include "rb4pc/builder/pc_metadata_catalog.hpp"
+#include "rb4pc/builder/texture_conversion_plan.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 
@@ -18,6 +19,26 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--plan-texture-conversion") {
+        try {
+            const std::filesystem::path output_path = argv[3];
+            if (std::filesystem::exists(output_path)) throw std::runtime_error("plan destination already exists");
+            const auto plan = rb4pc::builder::plan_texture_conversions(argv[1]);
+            std::ofstream output(output_path, std::ios::binary);
+            if (!output) throw std::runtime_error("could not create texture conversion plan");
+            output << rb4pc::builder::format_json(plan);
+            if (!output) throw std::runtime_error("could not finalize texture conversion plan");
+            std::cout << "Texture conversion plan: " << output_path.string()
+                      << "\nCandidates: " << plan.entries.size()
+                      << "\nConvertible: " << plan.convertible
+                      << "\nRead-only: " << plan.read_only
+                      << "\nInvalid: " << plan.invalid << '\n';
+            return plan.invalid == 0 ? 0 : 1;
+        } catch (const std::exception& error) {
+            std::cerr << "rb4pc-builder: " << error.what() << '\n';
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[2]) == "--catalog-pc-metadata") {
         try {
             const std::filesystem::path output_path = argv[3];
@@ -222,6 +243,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --catalog-pc-characters <catalog.json>\n";
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --catalog-pc-metadata <catalog.json>\n";
         std::cerr << "   or: " << argv[0] << " <hdr-or-directory> --audit-pc-corpus <output-directory>\n";
+        std::cerr << "   or: " << argv[0] << " <texture-directory> --plan-texture-conversion <plan.json>\n";
         return 2;
     }
     try {

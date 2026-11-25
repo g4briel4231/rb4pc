@@ -131,6 +131,29 @@ TextureContainer inspect_texture_container(const std::filesystem::path& path) {
     return result;
 }
 
+TextureCompatibility assess_linear_ps4_texture_conversion(const TextureContainer& texture) {
+    if (texture.magic != 6 || texture.platform_version != 0x0c)
+        return {false, "requires magic 6 and PS4 platform version 12"};
+    if (!texture.individual_mipmap_payloads || texture.mipmaps.size() != 7)
+        return {false, "requires seven individually stored mipmaps"};
+    std::uint32_t expected_dimension = 256;
+    std::uint32_t bits_per_pixel = 0;
+    for (const auto& mip : texture.mipmaps) {
+        if (mip.width != static_cast<std::int32_t>(expected_dimension) ||
+            mip.height != static_cast<std::int32_t>(expected_dimension) || mip.flags != 1)
+            return {false, "requires a 256x256 square mipmap chain with flag 1"};
+        const auto pixels = static_cast<std::uint64_t>(expected_dimension) * expected_dimension;
+        const auto level_bpp = static_cast<std::uint32_t>(mip.data_size * 8ULL / pixels);
+        if ((level_bpp != 4 && level_bpp != 8) || mip.data_size * 8ULL != pixels * level_bpp)
+            return {false, "requires linear 4bpp or 8bpp mipmap payloads"};
+        if (bits_per_pixel == 0) bits_per_pixel = level_bpp;
+        if (level_bpp != bits_per_pixel)
+            return {false, "mipmap storage rate changes between levels"};
+        expected_dimension /= 2;
+    }
+    return {true, bits_per_pixel == 4 ? "verified linear 4bpp family" : "verified linear 8bpp family"};
+}
+
 TextureCompatibility compare_texture_payloads(const TextureContainer& source,
                                                const TextureContainer& reference) {
     if (source.mipmaps.size() != reference.mipmaps.size()) return {false, "mipmap count differs"};
@@ -257,23 +280,11 @@ TextureConversionResult convert_linear_ps4_texture_to_pc(
     const auto parent = destination.has_parent_path() ? destination.parent_path() : std::filesystem::path{"."};
     if (!std::filesystem::is_directory(parent)) throw std::runtime_error("texture conversion directory does not exist");
     const auto texture = inspect_texture_container(source);
-    if (texture.magic != 6 || texture.platform_version != 0x0c ||
-        !texture.individual_mipmap_payloads || texture.mipmaps.size() != 7)
-        throw std::runtime_error("conversion supports only linear magic-6/version-12 textures with seven mipmaps");
-    std::uint32_t expected_dimension = 256;
-    std::uint32_t bits_per_pixel = 0;
-    for (const auto& mip : texture.mipmaps) {
-        if (mip.width != static_cast<std::int32_t>(expected_dimension) ||
-            mip.height != static_cast<std::int32_t>(expected_dimension) || mip.flags != 1)
-            throw std::runtime_error("texture does not match the supported 256x256 square mipmap chain");
-        const auto pixels = static_cast<std::uint64_t>(expected_dimension) * expected_dimension;
-        const auto level_bpp = static_cast<std::uint32_t>(mip.data_size * 8ULL / pixels);
-        if ((level_bpp != 4 && level_bpp != 8) || mip.data_size * 8ULL != pixels * level_bpp)
-            throw std::runtime_error("texture mipmap is not a supported linear 4bpp or 8bpp payload");
-        if (bits_per_pixel == 0) bits_per_pixel = level_bpp;
-        if (level_bpp != bits_per_pixel) throw std::runtime_error("texture mipmap storage rate changes between levels");
-        expected_dimension /= 2;
-    }
+    const auto compatibility = assess_linear_ps4_texture_conversion(texture);
+    if (!compatibility.compatible) throw std::runtime_error(compatibility.reason);
+    const auto& first_mip = texture.mipmaps.front();
+    const auto first_pixels = static_cast<std::uint64_t>(first_mip.width) * first_mip.height;
+    const auto bits_per_pixel = static_cast<std::uint32_t>(first_mip.data_size * 8ULL / first_pixels);
 
     std::ifstream input(source, std::ios::binary);
     input.seekg(0, std::ios::end);

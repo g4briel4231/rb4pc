@@ -72,6 +72,8 @@ struct TextureConversionResult {
 };
 
 [[nodiscard]] TextureContainer inspect_texture_container(const std::filesystem::path& path);
+[[nodiscard]] TextureCompatibility assess_linear_ps4_texture_conversion(
+    const TextureContainer& texture);
 [[nodiscard]] TextureCompatibility compare_texture_payloads(
     const TextureContainer& source, const TextureContainer& reference);
 [[nodiscard]] std::string format_texture_report(const TextureContainer& texture);

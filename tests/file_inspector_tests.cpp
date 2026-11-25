@@ -50,6 +50,7 @@
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/builder/pc_corpus_audit.hpp"
 #include "rb4pc/builder/pc_metadata_catalog.hpp"
+#include "rb4pc/builder/texture_conversion_plan.hpp"
 
 #include <array>
 #include <filesystem>
@@ -236,6 +237,8 @@ int main() {
     const auto converted_texture_8bpp_path = texture_directory / "converted-8bpp.texture";
     write_convertible_ps4_texture(convertible_texture_path, 4);
     write_convertible_ps4_texture(convertible_texture_8bpp_path, 8);
+    const auto texture_conversion_plan = rb4pc::builder::plan_texture_conversions(texture_directory);
+    const auto texture_conversion_plan_json = rb4pc::builder::format_json(texture_conversion_plan);
     const auto texture_conversion = rb4pc::inspector::convert_linear_ps4_texture_to_pc(
         convertible_texture_path, converted_texture_path);
     const auto converted_texture = rb4pc::inspector::inspect_texture_container(converted_texture_path);
@@ -954,6 +957,10 @@ int main() {
                          texture_match.compatible && !texture_mismatch.compatible &&
                          texture_corpus.candidate_count == 5 && texture_corpus.parsed_count == 5 &&
                          texture_corpus.families.size() == 4 && texture_corpus.rejected_signatures.empty() &&
+                         texture_conversion_plan.entries.size() == 7 &&
+                         texture_conversion_plan.convertible == 2 && texture_conversion_plan.read_only == 5 &&
+                         texture_conversion_plan.invalid == 0 &&
+                         texture_conversion_plan_json.find("\"state\": \"convertible\"") != std::string::npos &&
                          texture_conversion.bits_per_pixel == 4 && converted_texture.platform_version == 9 &&
                          texture_conversion_8bpp.bits_per_pixel == 8 && converted_texture_8bpp.platform_version == 9 &&
                          decoded_texture.width == 256 && decoded_texture.height == 256 &&

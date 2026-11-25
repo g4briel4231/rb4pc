@@ -13,6 +13,7 @@
 #include "rb4pc/builder/pc_character_catalog.hpp"
 #include "rb4pc/builder/pc_corpus_audit.hpp"
 #include "rb4pc/builder/pc_metadata_catalog.hpp"
+#include "rb4pc/builder/texture_conversion_plan.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
@@ -46,6 +47,7 @@ constexpr int id_character_catalog = 1103;
 constexpr int id_texture_converter = 1104;
 constexpr int id_corpus_audit = 1105;
 constexpr int id_metadata_catalog = 1106;
+constexpr int id_texture_plan = 1107;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
@@ -590,11 +592,8 @@ void convert_supported_texture(HWND window) {
 
     try {
         const auto texture = rb4pc::inspector::inspect_texture_container(source);
-        if (texture.magic != 6 || texture.platform_version != 0x0c ||
-            !texture.individual_mipmap_payloads || texture.mipmaps.size() != 7) {
-            throw std::runtime_error(
-                "supported conversion requires a linear magic-6/version-12 texture with seven mipmaps");
-        }
+        const auto compatibility = rb4pc::inspector::assess_linear_ps4_texture_conversion(texture);
+        if (!compatibility.compatible) throw std::runtime_error(compatibility.reason);
 
         const auto destination = select_pc_texture_destination(window, source);
         if (destination.empty()) return;
@@ -624,6 +623,39 @@ void convert_supported_texture(HWND window) {
         MessageBoxW(window, message.c_str(), L"Unsupported Texture Family",
                     MB_OK | MB_ICONWARNING);
         set_status(L"Texture conversion was not performed");
+    }
+}
+
+void generate_texture_conversion_plan(HWND window) {
+    MessageBoxW(window,
+        L"Select a folder containing extracted texture candidates. This analysis is read-only and creates only the JSON report you choose.",
+        L"Texture Conversion Plan", MB_OK | MB_ICONINFORMATION);
+    const auto source = select_folder(window);
+    if (source.empty()) return;
+    const auto destination = select_catalog_output(window, L"texture-conversion-plan.json");
+    if (destination.empty()) return;
+
+    set_status(L"Analyzing texture conversion candidates…");
+    try {
+        const auto plan = rb4pc::builder::plan_texture_conversions(source);
+        std::ofstream output(destination, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("could not create the texture conversion plan");
+        output << rb4pc::builder::format_json(plan);
+        if (!output) throw std::runtime_error("could not finish the texture conversion plan");
+        std::wostringstream message;
+        message << L"Texture conversion plan generated. No assets were modified.\n\nCandidates: "
+                << plan.entries.size() << L"\nConvertible: " << plan.convertible
+                << L"\nRead-only: " << plan.read_only << L"\nInvalid: " << plan.invalid
+                << L"\n\nReport: " << destination.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Texture Conversion Plan",
+                    MB_OK | (plan.invalid ? MB_ICONWARNING : MB_ICONINFORMATION));
+        set_status(L"Generated texture conversion plan: " + destination.filename().wstring());
+    } catch (const std::exception& error) {
+        std::wstring message = L"The texture conversion plan could not be generated.\n\n";
+        message += utf8_to_wide(error.what());
+        MessageBoxW(window, message.c_str(), L"Texture Conversion Plan",
+                    MB_OK | MB_ICONERROR);
+        set_status(L"Texture conversion planning failed");
     }
 }
 
@@ -1304,6 +1336,7 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_corpus_audit, L"Complete PC Corpus Audit…");
     AppendMenuW(tools, MF_STRING, id_texture_converter, L"Convert Supported PS4 Texture…");
+    AppendMenuW(tools, MF_STRING, id_texture_plan, L"Analyze Texture Conversion Folder…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
 
     const auto help = CreatePopupMenu();
@@ -1585,6 +1618,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_texture_converter: convert_supported_texture(window); return 0;
+                case id_texture_plan: generate_texture_conversion_plan(window); return 0;
                 case id_documentation: {
                     const auto docs = find_asset(L"docs");
                     open_path_or_url(docs.empty() ? L"https://github.com/rb4pc/rb4pc-builder/wiki" : docs.wstring());

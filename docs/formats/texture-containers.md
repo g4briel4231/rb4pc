@@ -144,3 +144,13 @@ The runtime decodes the first mipmap of the supported PC texture family as BC1
 for 4bpp payloads and BC3 for 8bpp payloads. Decoded pixels use the runtime's
 32-bit framebuffer format and can be scaled into the song browser. Automated
 fixtures cover both compression modes with a known opaque-red result.
+
+## v0.158 batch conversion planning
+
+The Builder GUI and CLI can recursively analyze `.png_ps4` and `.texture`
+candidates without modifying them. The JSON plan records each relative path,
+classification (`convertible`, `readOnly`, or `invalid`), exact reason, magic,
+platform version, dimensions, mipmap count, and measured storage rate. Both the
+single-file converter and batch planner use the same compatibility assessment.
+This plan is the safety boundary for a later batch writer; it is not itself a
+conversion operation.
