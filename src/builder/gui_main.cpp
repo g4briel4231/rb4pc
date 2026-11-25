@@ -721,18 +721,27 @@ void show_metadata_candidate_summary(HWND window) {
     const std::array<std::wstring, 5> families{
         L"moggsong_dta_pc", L"songdta_pc", L"csv_pc", L"rbsong", L"dta"};
     std::array<std::size_t, 5> counts{};
+    std::array<std::uint64_t, 5> bytes{};
     std::size_t total = 0;
     for (const auto& record : app.viewer_report->metadata.file_records) {
         const auto family = metadata_candidate_family(utf8_to_wide(record.path));
         if (family.empty()) continue;
         ++total;
         const auto found = std::find(families.begin(), families.end(), family);
-        if (found != families.end()) ++counts[static_cast<std::size_t>(found - families.begin())];
+        if (found != families.end()) {
+            const auto family_index = static_cast<std::size_t>(found - families.begin());
+            ++counts[family_index];
+            bytes[family_index] += record.size;
+        }
     }
     std::wostringstream message;
     message << L"Objective metadata candidates: " << total << L"\n\n";
-    for (std::size_t index = 0; index < families.size(); ++index)
-        message << families[index] << L": " << counts[index] << L'\n';
+    for (std::size_t index = 0; index < families.size(); ++index) {
+        const auto average = counts[index] ? bytes[index] / counts[index] : 0;
+        message << families[index] << L": " << counts[index]
+                << L" records, " << bytes[index] << L" bytes total, "
+                << average << L" bytes average\n";
+    }
     message << L"\nCounts are based only on measured filename suffix families.";
     MessageBoxW(window, message.str().c_str(), L"Metadata Candidate Summary",
                 MB_OK | MB_ICONINFORMATION);
