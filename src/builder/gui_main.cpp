@@ -49,6 +49,7 @@ constexpr int id_viewer_archives = 1301;
 constexpr int id_viewer_records = 1302;
 constexpr int id_viewer_search = 1303;
 constexpr int id_viewer_details = 1304;
+constexpr int id_viewer_extension = 1305;
 constexpr int id_viewer_open = 1401;
 constexpr int id_viewer_extract = 1402;
 constexpr wchar_t file_viewer_class[] = L"RB4PCFileViewerWindow";
@@ -66,6 +67,7 @@ struct AppState {
     HWND viewer_records = nullptr;
     HWND viewer_search = nullptr;
     HWND viewer_details = nullptr;
+    HWND viewer_extension = nullptr;
     HWND hovered_button = nullptr;
     WNDPROC button_window_proc = nullptr;
     HFONT ui_font = nullptr;
@@ -77,6 +79,7 @@ struct AppState {
     std::unique_ptr<rb4pc::inspector::HeaderSetReport> viewer_report;
     std::vector<std::size_t> viewer_record_indices;
     std::optional<std::size_t> viewer_archive_filter;
+    std::wstring viewer_extension_filter;
 };
 
 AppState app;
@@ -638,7 +641,10 @@ void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
                                   report.record_locations[index].has_value();
         if (archive_filter && (!has_location ||
             report.record_locations[index]->archive_index != *archive_filter)) continue;
-        if (!query.empty() && lowercase(utf8_to_wide(report.metadata.file_records[index].path)).find(query) == std::wstring::npos) continue;
+        const auto wide_path = lowercase(utf8_to_wide(report.metadata.file_records[index].path));
+        if (!query.empty() && wide_path.find(query) == std::wstring::npos) continue;
+        if (!app.viewer_extension_filter.empty() &&
+            lowercase(std::filesystem::path(wide_path).extension().wstring()) != app.viewer_extension_filter) continue;
         app.viewer_record_indices.push_back(index);
     }
     std::sort(app.viewer_record_indices.begin(), app.viewer_record_indices.end(),
@@ -668,6 +674,7 @@ void populate_file_viewer_records(std::optional<std::size_t> archive_filter) {
             << L"    ARKs: " << report.archives.size()
             << L"    Visible files: " << app.viewer_record_indices.size()
             << L" / " << report.metadata.file_records.size();
+    if (!app.viewer_extension_filter.empty()) summary << L"    Extension: " << app.viewer_extension_filter;
     if (archive_filter) summary << L"    Filter: ARK " << *archive_filter;
     else summary << L"    Filter: all ARKs";
     SetWindowTextW(app.viewer_summary, summary.str().c_str());
@@ -681,6 +688,20 @@ void populate_file_viewer() {
             << L"    ARK volumes: " << report.archives.size()
             << L"    Files: " << report.metadata.file_records.size();
     SetWindowTextW(app.viewer_summary, summary.str().c_str());
+    SendMessageW(app.viewer_extension, CB_RESETCONTENT, 0, 0);
+    SendMessageW(app.viewer_extension, CB_ADDSTRING, 0,
+                 reinterpret_cast<LPARAM>(L"All extensions"));
+    std::vector<std::wstring> extensions;
+    for (const auto& record : report.metadata.file_records) {
+        auto extension = lowercase(std::filesystem::path(utf8_to_wide(record.path)).extension().wstring());
+        if (!extension.empty() && std::find(extensions.begin(), extensions.end(), extension) == extensions.end())
+            extensions.push_back(std::move(extension));
+    }
+    std::sort(extensions.begin(), extensions.end());
+    for (const auto& extension : extensions)
+        SendMessageW(app.viewer_extension, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(extension.c_str()));
+    SendMessageW(app.viewer_extension, CB_SETCURSEL, 0, 0);
+    app.viewer_extension_filter.clear();
     SendMessageW(app.viewer_archives, LB_RESETCONTENT, 0, 0);
     SendMessageW(app.viewer_archives, LB_ADDSTRING, 0,
                  reinterpret_cast<LPARAM>(L"All ARK volumes"));
@@ -711,7 +732,11 @@ void layout_file_viewer(HWND window) {
     const int archive_width = std::max(220, (static_cast<int>(client.right) - margin * 2 - gap) / 3);
     MoveWindow(app.viewer_summary, margin, margin, client.right - margin * 2,
                summary_height, TRUE);
-    MoveWindow(app.viewer_search, margin, margin + summary_height + gap, client.right - margin * 2, search_height, TRUE);
+    const int extension_width = 210;
+    MoveWindow(app.viewer_search, margin, margin + summary_height + gap,
+               client.right - margin * 2 - gap - extension_width, search_height, TRUE);
+    MoveWindow(app.viewer_extension, client.right - margin - extension_width,
+               margin + summary_height + gap, extension_width, 240, TRUE);
     MoveWindow(app.viewer_archives, margin, content_y, archive_width, content_height, TRUE);
     MoveWindow(app.viewer_records, margin + archive_width + gap, content_y,
                client.right - margin * 2 - archive_width - gap, content_height, TRUE);
@@ -743,6 +768,11 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 0, 0, 100, 26, window,
                 reinterpret_cast<HMENU>(static_cast<INT_PTR>(id_viewer_search)),
                 GetModuleHandleW(nullptr), nullptr);
+            app.viewer_extension = CreateWindowExW(0, L"COMBOBOX", nullptr,
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL,
+                0, 0, 100, 240, window,
+                reinterpret_cast<HMENU>(static_cast<INT_PTR>(id_viewer_extension)),
+                GetModuleHandleW(nullptr), nullptr);
             app.viewer_archives = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", nullptr,
                 WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | LBS_NOINTEGRALHEIGHT | LBS_NOTIFY,
                 0, 0, 100, 100, window,
@@ -760,6 +790,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 GetModuleHandleW(nullptr), nullptr);
             SendMessageW(app.viewer_summary, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
             SendMessageW(app.viewer_search, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
+            SendMessageW(app.viewer_extension, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
             SendMessageW(app.viewer_archives, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
             SendMessageW(app.viewer_records, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
             SendMessageW(app.viewer_details, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
@@ -803,6 +834,18 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 update_viewer_record_details();
                 return 0;
             }
+            if (LOWORD(wparam) == id_viewer_extension && HIWORD(wparam) == CBN_SELCHANGE) {
+                const auto selection = SendMessageW(app.viewer_extension, CB_GETCURSEL, 0, 0);
+                app.viewer_extension_filter.clear();
+                if (selection > 0) {
+                    const auto length = SendMessageW(app.viewer_extension, CB_GETLBTEXTLEN, selection, 0);
+                    app.viewer_extension_filter.resize(static_cast<std::size_t>(length));
+                    SendMessageW(app.viewer_extension, CB_GETLBTEXT, selection,
+                                 reinterpret_cast<LPARAM>(app.viewer_extension_filter.data()));
+                }
+                populate_file_viewer_records(app.viewer_archive_filter);
+                return 0;
+            }
             if (LOWORD(wparam) == id_viewer_search && HIWORD(wparam) == EN_CHANGE) {
                 populate_file_viewer_records(app.viewer_archive_filter);
                 return 0;
@@ -827,6 +870,8 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
             app.viewer_records = nullptr;
             app.viewer_search = nullptr;
             app.viewer_details = nullptr;
+            app.viewer_extension = nullptr;
+            app.viewer_extension_filter.clear();
             app.viewer_record_indices.clear();
             app.viewer_archive_filter.reset();
             return 0;
