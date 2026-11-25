@@ -552,7 +552,7 @@ void draw_button(const DRAWITEMSTRUCT& item) {
                             : pressed ? RGB(229, 240, 250)
                             : (hovered || focused) ? RGB(245, 250, 255)
                                                    : RGB(252, 252, 252);
-    const COLORREF border = (hovered || focused) ? RGB(0, 120, 215)
+    const COLORREF border = (hovered || focused) ? GetSysColor(COLOR_HIGHLIGHT)
                                                  : RGB(204, 204, 204);
     const COLORREF text = disabled ? RGB(150, 150, 150) : RGB(30, 30, 30);
 
