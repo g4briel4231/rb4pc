@@ -156,6 +156,24 @@ std::filesystem::path select_folder(HWND owner) {
     return result;
 }
 
+std::filesystem::path choose_pc_source(HWND window, const wchar_t* title) {
+    if (!app.selected_pc_source.empty()) {
+        std::wstring prompt = L"Use the selected PC source?\n\n";
+        prompt += app.selected_pc_source.wstring();
+        prompt += L"\n\nYes: use selected source\nNo: choose another source\nCancel: return";
+        const auto choice = MessageBoxW(window, prompt.c_str(), title,
+                                        MB_YESNOCANCEL | MB_ICONQUESTION);
+        if (choice == IDYES) return app.selected_pc_source;
+        if (choice == IDCANCEL) return {};
+    }
+    const auto choice = MessageBoxW(window,
+        L"Choose a PC source.\n\nYes: select one *_pc.hdr file\n"
+        L"No: select a folder recursively\nCancel: return",
+        title, MB_YESNOCANCEL | MB_ICONQUESTION);
+    if (choice == IDCANCEL) return {};
+    return choice == IDYES ? select_pc_header(window) : select_folder(window);
+}
+
 std::wstring lowercase(std::wstring value) {
     std::transform(value.begin(), value.end(), value.begin(),
                    [](wchar_t character) { return static_cast<wchar_t>(std::towlower(character)); });
@@ -269,12 +287,7 @@ void open_selected_folder(HWND window) {
 }
 
 void generate_asset_catalog(HWND window) {
-    const auto choice = MessageBoxW(window,
-        L"Choose the PC source for the asset catalog.\n\n"
-        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
-        L"PC Asset Catalog", MB_YESNOCANCEL | MB_ICONQUESTION);
-    if (choice == IDCANCEL) return;
-    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    const auto source = choose_pc_source(window, L"PC Asset Catalog");
     if (source.empty()) return;
     const auto destination = select_catalog_output(window, L"pc-asset-catalog.json");
     if (destination.empty()) return;
@@ -307,12 +320,7 @@ void generate_asset_catalog(HWND window) {
 }
 
 void generate_audio_catalog(HWND window) {
-    const auto choice = MessageBoxW(window,
-        L"Choose the PC source for the audio audit.\n\n"
-        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
-        L"PC Audio Audit", MB_YESNOCANCEL | MB_ICONQUESTION);
-    if (choice == IDCANCEL) return;
-    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    const auto source = choose_pc_source(window, L"PC Audio Audit");
     if (source.empty()) return;
     const auto destination = select_catalog_output(window, L"pc-audio-audit.json");
     if (destination.empty()) return;
@@ -346,12 +354,7 @@ void generate_audio_catalog(HWND window) {
 }
 
 void generate_metadata_catalog(HWND window) {
-    const auto choice = MessageBoxW(window,
-        L"Choose the PC source for the metadata catalog.\n\n"
-        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
-        L"PC Metadata Catalog", MB_YESNOCANCEL | MB_ICONQUESTION);
-    if (choice == IDCANCEL) return;
-    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    const auto source = choose_pc_source(window, L"PC Metadata Catalog");
     if (source.empty()) return;
     const auto destination = select_catalog_output(window, L"pc-metadata-catalog.json");
     if (destination.empty()) return;
@@ -395,12 +398,7 @@ void generate_metadata_catalog(HWND window) {
 }
 
 void generate_corpus_audit(HWND window) {
-    const auto choice = MessageBoxW(window,
-        L"Choose the PC source for the complete corpus audit.\n\n"
-        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
-        L"Complete PC Corpus Audit", MB_YESNOCANCEL | MB_ICONQUESTION);
-    if (choice == IDCANCEL) return;
-    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    const auto source = choose_pc_source(window, L"Complete PC Corpus Audit");
     if (source.empty()) return;
     MessageBoxW(window,
         L"Select an existing parent folder. RB4PC will create a new rb4pc-pc-audit folder inside it.",
@@ -443,12 +441,7 @@ void generate_corpus_audit(HWND window) {
 }
 
 void generate_character_catalog(HWND window) {
-    const auto choice = MessageBoxW(window,
-        L"Choose the PC source for the character/animation catalog.\n\n"
-        L"Yes: select one *_pc.hdr file\nNo: select a folder recursively\nCancel: return",
-        L"Character/Animation Structural Profile", MB_YESNOCANCEL | MB_ICONQUESTION);
-    if (choice == IDCANCEL) return;
-    const auto source = choice == IDYES ? select_pc_header(window) : select_folder(window);
+    const auto source = choose_pc_source(window, L"Character/Animation Structural Profile");
     if (source.empty()) return;
     const auto destination = select_catalog_output(window, L"pc-character-catalog.json");
     if (destination.empty()) return;
