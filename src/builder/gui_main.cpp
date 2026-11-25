@@ -16,6 +16,7 @@
 #include "rb4pc/inspector/file_inspector.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
+#include "rb4pc/inspector/texture_container.hpp"
 
 #include <algorithm>
 #include <cwctype>
@@ -146,6 +147,54 @@ std::filesystem::path select_file(HWND owner) {
     dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
     if (!GetOpenFileNameW(&dialog)) return {};
     path.resize(std::wcslen(path.c_str()));
+    return path;
+}
+
+std::filesystem::path select_ps4_texture(HWND owner) {
+    std::wstring path(32768, L'\0');
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog);
+    dialog.hwndOwner = owner;
+    dialog.lpstrTitle = L"Select a supported PS4 texture container";
+    dialog.lpstrFilter = L"PS4 texture containers (*.png_ps4;*.texture)\0*.png_ps4;*.texture\0All files\0*.*\0";
+    dialog.lpstrFile = path.data();
+    dialog.nMaxFile = static_cast<DWORD>(path.size());
+    dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+    if (!GetOpenFileNameW(&dialog)) return {};
+    path.resize(std::wcslen(path.c_str()));
+    return path;
+}
+
+std::filesystem::path select_pc_texture_destination(HWND owner,
+                                                    const std::filesystem::path& source) {
+    std::wstring suggested = source.filename().wstring();
+    std::wstring suggested_lower = suggested;
+    std::transform(suggested_lower.begin(), suggested_lower.end(), suggested_lower.begin(),
+                   [](wchar_t character) { return static_cast<wchar_t>(std::towlower(character)); });
+    const auto suffix = suggested_lower.rfind(L"_ps4");
+    if (suffix != std::wstring::npos && suffix + 4 == suggested.size())
+        suggested.replace(suffix, 4, L"_pc");
+    else
+        suggested += L"_pc";
+
+    std::wstring path(32768, L'\0');
+    std::copy_n(suggested.begin(), std::min(suggested.size(), path.size() - 1), path.begin());
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog);
+    dialog.hwndOwner = owner;
+    dialog.lpstrTitle = L"Save the converted PC texture";
+    dialog.lpstrFilter = L"PC texture containers (*.png_pc)\0*.png_pc\0All files\0*.*\0";
+    dialog.lpstrFile = path.data();
+    dialog.nMaxFile = static_cast<DWORD>(path.size());
+    dialog.Flags = OFN_PATHMUSTEXIST | OFN_EXPLORER;
+    if (!GetSaveFileNameW(&dialog)) return {};
+    path.resize(std::wcslen(path.c_str()));
+    if (std::filesystem::exists(path)) {
+        MessageBoxW(owner,
+                    L"Choose a new filename. Texture conversion never overwrites an existing file.",
+                    L"Texture Converter", MB_OK | MB_ICONWARNING);
+        return {};
+    }
     return path;
 }
 
@@ -533,6 +582,49 @@ std::wstring utf8_to_wide(const std::string& value) {
     MultiByteToWideChar(CP_UTF8, 0, value.data(), static_cast<int>(value.size()),
                         result.data(), size);
     return result;
+}
+
+void convert_supported_texture(HWND window) {
+    const auto source = select_ps4_texture(window);
+    if (source.empty()) return;
+
+    try {
+        const auto texture = rb4pc::inspector::inspect_texture_container(source);
+        if (texture.magic != 6 || texture.platform_version != 0x0c ||
+            !texture.individual_mipmap_payloads || texture.mipmaps.size() != 7) {
+            throw std::runtime_error(
+                "supported conversion requires a linear magic-6/version-12 texture with seven mipmaps");
+        }
+
+        const auto destination = select_pc_texture_destination(window, source);
+        if (destination.empty()) return;
+        std::wostringstream confirmation;
+        confirmation << L"Convert this supported texture container?\n\nSource: "
+                     << source.wstring() << L"\nDestination: " << destination.wstring()
+                     << L"\n\nThe source will not be changed. RB4PC will create the PC texture and a JSON manifest, then parse and verify the result.";
+        if (MessageBoxW(window, confirmation.str().c_str(), L"Texture Converter",
+                        MB_OKCANCEL | MB_ICONQUESTION) != IDOK) return;
+
+        set_status(L"Converting and verifying texture…");
+        const auto result = rb4pc::inspector::convert_linear_ps4_texture_to_pc(source, destination);
+        std::wostringstream message;
+        message << L"Texture converted and verified successfully.\n\nStorage: "
+                << result.bits_per_pixel << L" bpp\nOutput: " << result.destination.wstring()
+                << L"\nManifest: " << result.manifest.wstring()
+                << L"\n\nSource SHA-256: " << utf8_to_wide(result.source_sha256)
+                << L"\nDestination SHA-256: " << utf8_to_wide(result.destination_sha256)
+                << L"\nPayload SHA-256: " << utf8_to_wide(result.payload_sha256);
+        MessageBoxW(window, message.str().c_str(), L"Texture Converter",
+                    MB_OK | MB_ICONINFORMATION);
+        set_status(L"Converted and verified texture: " + destination.filename().wstring());
+    } catch (const std::exception& error) {
+        std::wstring message = L"This texture was not converted.\n\n";
+        message += utf8_to_wide(error.what());
+        message += L"\n\nCurrently supported: magic 6, PS4 version 12, 256×256, seven square mipmaps, flag 1, and consistent linear 4bpp or 8bpp storage.";
+        MessageBoxW(window, message.c_str(), L"Unsupported Texture Family",
+                    MB_OK | MB_ICONWARNING);
+        set_status(L"Texture conversion was not performed");
+    }
 }
 
 std::optional<std::size_t> selected_viewer_record_index() {
@@ -1211,7 +1303,7 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_corpus_audit, L"Complete PC Corpus Audit…");
-    AppendMenuW(tools, MF_STRING | MF_GRAYED, id_texture_converter, L"Texture Converter (Not Yet Available)");
+    AppendMenuW(tools, MF_STRING, id_texture_converter, L"Convert Supported PS4 Texture…");
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
 
     const auto help = CreatePopupMenu();
@@ -1492,6 +1584,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
+                case id_texture_converter: convert_supported_texture(window); return 0;
                 case id_documentation: {
                     const auto docs = find_asset(L"docs");
                     open_path_or_url(docs.empty() ? L"https://github.com/rb4pc/rb4pc-builder/wiki" : docs.wstring());

@@ -48,7 +48,16 @@ selected internal path. See the Wiki for the complete guide.
 Keep original game data in a separate, backed-up folder. Save reports and other
 output to a different location whenever possible.
 
-### 4. Generate an asset catalog
+### 4. Convert a supported PS4 texture
+
+Choose **Tools > Convert Supported PS4 Texture…**. The current write path accepts
+only the verified linear magic-6/version-12 family with a 256×256 base image,
+seven square mipmaps, flag 1, and consistent 4bpp or 8bpp storage. It writes a
+new PC container plus a JSON manifest, preserves the source, and parses and
+hash-verifies the output before reporting success. Other texture families are
+rejected without creating an output.
+
+### 5. Generate an asset catalog
 
 Open **Tools > PC Asset Catalog**, then choose one `*_pc.hdr` file or a folder
 and select a destination for the JSON report.
@@ -56,7 +65,7 @@ and select a destination for the JSON report.
 The report summarizes archives, namespaces, extensions, asset categories, and
 known native, intermediate, or unknown path families without extracting assets.
 
-### 5. Generate an audio catalog
+### 6. Generate an audio catalog
 
 Open **Tools > PC Audio Catalog**, select a PC HDR or folder, and choose a JSON
 destination.
@@ -65,7 +74,7 @@ The report identifies supported MOGG/Ogg, RIFF/WAVE, RIFF/FEV, opaque,
 unreadable, and unsupported or potentially protected audio records. Recognition
 does not mean that every audio variant can already be played or converted.
 
-### 6. Generate a character and animation catalog
+### 7. Generate a character and animation catalog
 
 Open **Tools > Character/Animation Inventory**, select a PC HDR or folder, and
 choose a JSON destination.
@@ -74,7 +83,7 @@ The catalog reports aggregate structural measurements for character definitions,
 animations, clips, skeletons, bone masks, and stances. Candidate fields are
 measurements, not confirmed semantic definitions.
 
-### 7. Generate a metadata catalog
+### 8. Generate a metadata catalog
 
 Open **Tools > PC Metadata Catalog**, select a PC HDR or folder, and choose a
 JSON destination.
@@ -87,7 +96,7 @@ proprietary strings or internal paths.
 A successful result shows that every profiled field received exactly one
 structural evidence class.
 
-### 8. Run the complete PC corpus audit
+### 9. Run the complete PC corpus audit
 
 Open **Tools > Complete PC Corpus Audit**.
 
@@ -108,7 +117,7 @@ counts, no required record is unreadable, and metadata evidence classification
 is complete. Publication is transactional and does not overwrite an existing
 audit.
 
-### 9. Read warnings correctly
+### 10. Read warnings correctly
 
 A warning or an `unknown` classification does not automatically mean a file is
 damaged. It means the current implementation cannot safely confirm that
