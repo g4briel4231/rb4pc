@@ -711,6 +711,19 @@ void layout_file_viewer(HWND window) {
                client.right - margin * 2, details_height, TRUE);
 }
 
+HMENU create_file_viewer_menu() {
+    const auto menu = CreateMenu();
+    const auto tools = CreatePopupMenu();
+    AppendMenuW(tools, MF_STRING, id_asset_catalog, L"PC Asset Catalog…");
+    AppendMenuW(tools, MF_STRING, id_audio_catalog, L"PC Audio Audit…");
+    AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
+    AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
+    AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(tools, MF_STRING, id_corpus_audit, L"Complete PC Corpus Audit…");
+    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(tools), L"Tools");
+    return menu;
+}
+
 LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
     switch (message) {
         case WM_CREATE:
@@ -759,6 +772,13 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
             }
             break;
         case WM_COMMAND:
+            switch (LOWORD(wparam)) {
+                case id_asset_catalog: generate_asset_catalog(window); return 0;
+                case id_audio_catalog: generate_audio_catalog(window); return 0;
+                case id_character_catalog: generate_character_catalog(window); return 0;
+                case id_metadata_catalog: generate_metadata_catalog(window); return 0;
+                case id_corpus_audit: generate_corpus_audit(window); return 0;
+            }
             if (LOWORD(wparam) == id_viewer_extract) {
                 extract_selected_viewer_record(window);
                 return 0;
@@ -818,7 +838,7 @@ void open_file_viewer(HWND owner, const std::filesystem::path& header) {
         if (!app.file_viewer) {
             app.file_viewer = CreateWindowExW(0, file_viewer_class, L"File Viewer",
                 WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 1080, 640,
-                owner, nullptr, GetModuleHandleW(nullptr), nullptr);
+                owner, create_file_viewer_menu(), GetModuleHandleW(nullptr), nullptr);
             if (!app.file_viewer) throw std::runtime_error("could not create File Viewer window");
         } else {
             ShowWindow(app.file_viewer, SW_RESTORE);
