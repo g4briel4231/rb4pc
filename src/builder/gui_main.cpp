@@ -47,6 +47,7 @@ struct AppState {
     HWND open_archive = nullptr;
     HWND open_folder = nullptr;
     HWND status = nullptr;
+    HWND source_label = nullptr;
     HWND hovered_button = nullptr;
     WNDPROC button_window_proc = nullptr;
     HFONT ui_font = nullptr;
@@ -79,6 +80,12 @@ std::filesystem::path find_asset(const std::filesystem::path& relative) {
 
 void set_status(std::wstring text) {
     SetWindowTextW(app.status, text.c_str());
+}
+
+void set_selected_pc_source(const std::filesystem::path& path) {
+    app.selected_pc_source = path;
+    const std::wstring label = L"Selected PC source: " + path.wstring();
+    SetWindowTextW(app.source_label, label.c_str());
 }
 
 std::filesystem::path select_file(HWND owner) {
@@ -204,7 +211,7 @@ void open_selected_archive(HWND window) {
         }
         MessageBoxW(window, message.str().c_str(), L"ForgeTool PC file opened",
                     MB_OK | MB_ICONINFORMATION);
-        app.selected_pc_source = path;
+        set_selected_pc_source(path);
         set_status(L"Opened ForgeTool PC file: " + path.filename().wstring());
     } catch (const std::exception&) {
         show_pc_error(window, path, L"The file could not be read or its PC structure is invalid.");
@@ -257,7 +264,7 @@ void open_selected_folder(HWND window) {
     message << L"\n\nFiles marked _ps4 were not loaded.";
     MessageBoxW(window, message.str().c_str(), L"ForgeTool PC folder opened",
                 MB_OK | MB_ICONINFORMATION);
-    app.selected_pc_source = path;
+    set_selected_pc_source(path);
     set_status(L"Opened ForgeTool PC folder: " + path.wstring());
 }
 
@@ -619,6 +626,7 @@ void layout(HWND window) {
     const int preferred_width = 720;
     const int full_width = std::max(100, std::min(preferred_width, width - margin * 2));
     const int content_x = (width - full_width) / 2;
+    MoveWindow(app.source_label, content_x, first_y - 30, full_width, 22, TRUE);
     MoveWindow(app.convert, content_x, first_y, full_width, button_height, TRUE);
     MoveWindow(app.repair, content_x, first_y + button_height + gap, full_width, button_height, TRUE);
     const int half_width = (full_width - gap) / 2;
@@ -675,6 +683,10 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
             app.button_font = CreateFontW(font_height_for_tenths_of_point(window, 135), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                                          DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                                          CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+            app.source_label = CreateWindowExW(0, L"STATIC", L"Selected PC source: none",
+                WS_CHILD | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE | SS_PATHELLIPSIS,
+                0, 0, 100, 22, window, nullptr, GetModuleHandleW(nullptr), nullptr);
+            SendMessageW(app.source_label, WM_SETFONT, reinterpret_cast<WPARAM>(app.ui_font), TRUE);
             app.convert = create_button(window, id_convert, L"Convert Rock Band 4 PS4 to PC");
             app.repair = create_button(window, id_repair, L"Repair Rock Band 4 PC");
             app.open_archive = create_button(window, id_open_archive, L"Open a ForgeTool PC File…");
