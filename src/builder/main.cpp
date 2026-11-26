@@ -23,6 +23,25 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 5 && std::string(argv[2]) == "--write-native-moggsong") {
+        try {
+            const rb4pc::builder::NativeMoggsongMetadata metadata{argv[1], argv[3]};
+            const auto result = rb4pc::builder::write_native_moggsong_metadata(metadata, argv[4]);
+            std::cout << "Native moggsong metadata: " << result.destination.string()
+                      << "\nSHA-256: " << result.destination_sha256
+                      << "\nManifest: " << result.manifest.string() << '\n';
+            return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
+    if (argc == 4 && std::string(argv[2]) == "--convert-song-metadata-batch") {
+        try {
+            const auto result = rb4pc::builder::convert_song_metadata_batch(argv[1], argv[3]);
+            std::cout << "Song metadata batch: " << result.directory.string()
+                      << "\nConverted and verified: " << result.items.size()
+                      << "\nSummary: " << result.summary.string() << '\n';
+            return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 4 && std::string(argv[2]) == "--convert-song-metadata") {
         try {
             const auto result = rb4pc::builder::convert_song_ini_metadata(argv[1], argv[3]);
@@ -401,6 +420,8 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <audio-root> --extract-audio-batch <new-output-directory>\n";
         std::cerr << "   or: " << argv[0] << " <asset-root> --convert-asset-pipeline <new-output-directory>\n";
         std::cerr << "   or: " << argv[0] << " <song.ini> --convert-song-metadata <new-metadata.json>\n";
+        std::cerr << "   or: " << argv[0] << " <song-root> --convert-song-metadata-batch <new-output-directory>\n";
+        std::cerr << "   or: " << argv[0] << " <file.mogg> --write-native-moggsong <file.rbmid> <new-output.moggsong_dta_pc>\n";
         return 2;
     }
     try {

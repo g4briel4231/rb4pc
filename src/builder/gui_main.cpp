@@ -56,6 +56,8 @@ constexpr int id_texture_verify = 1109;
 constexpr int id_audio_plan = 1110;
 constexpr int id_asset_pipeline = 1111;
 constexpr int id_song_metadata = 1112;
+constexpr int id_song_metadata_batch = 1113;
+constexpr int id_native_moggsong = 1114;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
@@ -222,6 +224,25 @@ std::filesystem::path select_pc_header(HWND owner) {
     return path;
 }
 
+std::filesystem::path select_metadata_input(HWND owner, const wchar_t* title, const wchar_t* filter) {
+    std::wstring path(32768, L'\0'); OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = owner; dialog.lpstrTitle = title;
+    dialog.lpstrFilter = filter; dialog.lpstrFile = path.data(); dialog.nMaxFile = static_cast<DWORD>(path.size());
+    dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+    if (!GetOpenFileNameW(&dialog)) return {}; path.resize(std::wcslen(path.c_str())); return path;
+}
+
+std::filesystem::path select_native_moggsong_output(HWND owner) {
+    std::wstring path(32768, L'\0'); const std::wstring suggested = L"song.moggsong_dta_pc";
+    std::copy(suggested.begin(), suggested.end(), path.begin()); OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = owner; dialog.lpstrTitle = L"Write native PC moggsong metadata";
+    dialog.lpstrFilter = L"Native PC moggsong (*.moggsong_dta_pc)\0*.moggsong_dta_pc\0";
+    dialog.lpstrFile = path.data(); dialog.nMaxFile = static_cast<DWORD>(path.size());
+    dialog.Flags = OFN_PATHMUSTEXIST | OFN_EXPLORER;
+    if (!GetSaveFileNameW(&dialog)) return {}; path.resize(std::wcslen(path.c_str()));
+    if (std::filesystem::exists(path)) { MessageBoxW(owner, L"Choose a new filename. Native metadata writing never overwrites files.", L"Native Moggsong Metadata", MB_OK | MB_ICONWARNING); return {}; }
+    return path;
+}
 std::filesystem::path select_song_ini(HWND owner) {
     std::wstring path(32768, L'\0');
     OPENFILENAMEW dialog{};
@@ -813,6 +834,42 @@ void convert_song_metadata_gui(HWND window) {
         set_status(L"Song metadata conversion failed");
     }
 }
+void convert_song_metadata_batch_gui(HWND window) {
+    MessageBoxW(window, L"Select a folder containing one or more song.ini files.", L"Song Metadata Batch", MB_OK | MB_ICONINFORMATION);
+    const auto source = select_folder(window); if (source.empty()) return;
+    MessageBoxW(window, L"Select a parent folder. RB4PC will create a new rb4pc-song-metadata folder inside it.", L"Song Metadata Batch", MB_OK | MB_ICONINFORMATION);
+    const auto parent = select_folder(window); if (parent.empty()) return;
+    const auto destination = parent / L"rb4pc-song-metadata";
+    if (MessageBoxW(window, L"Preflight every song.ini, then publish only if every written file passes field and SHA-256 verification?", L"Song Metadata Batch", MB_OKCANCEL | MB_ICONQUESTION) != IDOK) return;
+    try {
+        set_status(L"Converting song metadata batch transactionally…");
+        const auto result = rb4pc::builder::convert_song_metadata_batch(source, destination);
+        std::wostringstream message; message << L"Verified metadata batch published.\n\nConverted: " << result.items.size() << L"\nSummary: " << result.summary.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Song Metadata Batch", MB_OK | MB_ICONINFORMATION);
+        set_status(L"Published verified song metadata batch");
+    } catch (const std::exception& error) {
+        std::wstring message = L"The metadata batch was not published.\n\n"; message += utf8_to_wide(error.what());
+        MessageBoxW(window, message.c_str(), L"Song Metadata Batch", MB_OK | MB_ICONERROR); set_status(L"Song metadata batch failed");
+    }
+}
+
+void write_native_moggsong_gui(HWND window) {
+    const auto mogg = select_metadata_input(window, L"Select the song MOGG", L"MOGG files (*.mogg)\0*.mogg\0"); if (mogg.empty()) return;
+    const auto rbmid = select_metadata_input(window, L"Select the song RBMID", L"RBMID files (*.rbmid;*.rbmid_pc)\0*.rbmid;*.rbmid_pc\0"); if (rbmid.empty()) return;
+    const auto destination = select_native_moggsong_output(window); if (destination.empty()) return;
+    try {
+        auto midi_name = rbmid.filename().string(); if (midi_name.ends_with("_pc")) midi_name.resize(midi_name.size() - 3);
+        const rb4pc::builder::NativeMoggsongMetadata metadata{mogg.filename().string(), midi_name};
+        const auto result = rb4pc::builder::write_native_moggsong_metadata(metadata, destination);
+        std::wostringstream message; message << L"Native moggsong metadata was written and reread successfully.\n\nSHA-256: "
+                                             << utf8_to_wide(result.destination_sha256) << L"\nManifest: " << result.manifest.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Native Moggsong Metadata", MB_OK | MB_ICONINFORMATION);
+        set_status(L"Wrote verified native moggsong metadata");
+    } catch (const std::exception& error) {
+        std::wstring message = L"Native moggsong metadata was not written.\n\n"; message += utf8_to_wide(error.what());
+        MessageBoxW(window, message.c_str(), L"Native Moggsong Metadata", MB_OK | MB_ICONERROR); set_status(L"Native moggsong writing failed");
+    }
+}
 void run_asset_conversion_pipeline(HWND window) {
     MessageBoxW(window,L"Select an extracted asset folder. RB4PC will plan texture and audio work before asking for confirmation.",L"Asset Conversion Pipeline",MB_OK|MB_ICONINFORMATION);
     const auto source=select_folder(window);if(source.empty())return;
@@ -1301,6 +1358,8 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_asset_pipeline, L"Build Verified Asset Pipeline…");
     AppendMenuW(tools, MF_STRING, id_song_metadata, L"Convert song.ini Metadata…");
+    AppendMenuW(tools, MF_STRING, id_song_metadata_batch, L"Convert song.ini Metadata Batch…");
+    AppendMenuW(tools, MF_STRING, id_native_moggsong, L"Write Native Moggsong Metadata…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1379,6 +1438,8 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_audio_plan: generate_audio_conversion_plan(window); return 0;
                 case id_asset_pipeline: run_asset_conversion_pipeline(window); return 0;
                 case id_song_metadata: convert_song_metadata_gui(window); return 0;
+                case id_song_metadata_batch: convert_song_metadata_batch_gui(window); return 0;
+                case id_native_moggsong: write_native_moggsong_gui(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
@@ -1508,6 +1569,8 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(tools, MF_STRING, id_asset_pipeline, L"Build Verified Asset Pipeline…");
     AppendMenuW(tools, MF_STRING, id_song_metadata, L"Convert song.ini Metadata…");
+    AppendMenuW(tools, MF_STRING, id_song_metadata_batch, L"Convert song.ini Metadata Batch…");
+    AppendMenuW(tools, MF_STRING, id_native_moggsong, L"Write Native Moggsong Metadata…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1796,6 +1859,8 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_audio_plan: generate_audio_conversion_plan(window); return 0;
                 case id_asset_pipeline: run_asset_conversion_pipeline(window); return 0;
                 case id_song_metadata: convert_song_metadata_gui(window); return 0;
+                case id_song_metadata_batch: convert_song_metadata_batch_gui(window); return 0;
+                case id_native_moggsong: write_native_moggsong_gui(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;

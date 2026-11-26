@@ -162,7 +162,19 @@ Choose **Tools > Convert song.ini Metadata…** or run:
 rb4pc-builder <song.ini> --convert-song-metadata <new-metadata.json>
 ```
 
-RB4PC writes canonical JSON to a temporary file, rereads and compares every supported field, hashes both files, and publishes a conversion manifest. Existing destinations are never overwritten. This is an RB4PC interchange format, not native `songdta_pc`, `moggsong_dta_pc`, `csv_pc`, or `rbsong` output. See [the format note](docs/formats/song-metadata-writing.md).
+RB4PC writes canonical JSON to a temporary file, rereads and compares every supported field, hashes both files, and publishes a conversion manifest. Existing destinations are never overwritten. A transactional batch is also available:
+
+```text
+rb4pc-builder <song-root> --convert-song-metadata-batch <new-output-directory>
+```
+
+The first limited native writer encodes the independently reproduced `mogg_path`/`midi_path` structure:
+
+```text
+rb4pc-builder <file.mogg> --write-native-moggsong <file.rbmid> <new-output.moggsong_dta_pc>
+```
+
+The installed RBVR fixture, ForgeTool output, and RB4PC output were byte-identical. Complete `songdta_pc`, `csv_pc`, and `rbsong` writing remains research work. See [the metadata guide](docs/formats/song-metadata-writing.md) and [native evidence](docs/formats/native-moggsong-metadata.md).
 ### 12. Generate a metadata catalog
 
 Open **Tools > PC Metadata Catalog**, select a PC HDR or folder, and choose a

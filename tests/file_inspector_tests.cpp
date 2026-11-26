@@ -212,7 +212,21 @@ int main() {
     const auto canonical_metadata = rb4pc::builder::read_canonical_song_metadata(metadata_conversion.destination);
     bool metadata_overwrite_rejected = false;
     try { static_cast<void>(rb4pc::builder::convert_song_ini_metadata(song_ini_path, metadata_conversion.destination)); }
-    catch (const std::runtime_error&) { metadata_overwrite_rejected = true; }    const auto audio_plan_directory = directory / "audio-plan";
+    catch (const std::runtime_error&) { metadata_overwrite_rejected = true; }
+    const auto batch_song_directory = directory / "Batch Song";
+    std::filesystem::create_directory(batch_song_directory);
+    write_file(batch_song_directory / "song.ini", "[song]\nname = Batch Song\nartist = Batch Artist\nshortname = batch_song\n");
+    const auto metadata_batch = rb4pc::builder::convert_song_metadata_batch(directory, directory / "metadata-batch");
+    const auto duplicate_root = directory / "duplicate-metadata";
+    std::filesystem::create_directories(duplicate_root / "a"); std::filesystem::create_directories(duplicate_root / "b");
+    write_file(duplicate_root / "a" / "song.ini", "[song]\nname = A\nartist = Artist\nshortname = duplicate\n");
+    write_file(duplicate_root / "b" / "song.ini", "[song]\nname = B\nartist = Artist\nshortname = DUPLICATE\n");
+    bool duplicate_batch_rejected = false;
+    try { static_cast<void>(rb4pc::builder::convert_song_metadata_batch(duplicate_root, directory / "duplicate-output")); }
+    catch (const std::runtime_error&) { duplicate_batch_rejected = true; }    const rb4pc::builder::NativeMoggsongMetadata native_moggsong_expected{"o161437539_thememoryremain.mogg", "o161437539_thememoryremain.rbmid"};
+    const auto native_moggsong = rb4pc::builder::write_native_moggsong_metadata(native_moggsong_expected, directory / "test.moggsong_dta_pc");
+    const auto native_moggsong_read = rb4pc::builder::read_native_moggsong_metadata(native_moggsong.destination);
+    const auto audio_plan_directory = directory / "audio-plan";
     std::filesystem::create_directory(audio_plan_directory);
     write_file(audio_plan_directory / "native.ogg", "OggSdemo");
     write_file(audio_plan_directory / "native.wav", std::string("RIFF\x04\0\0\0WAVE", 12));
@@ -1217,6 +1231,17 @@ int main() {
                          !metadata_conversion.source_sha256.empty() && !metadata_conversion.destination_sha256.empty() &&
                          metadata_overwrite_rejected,
                      "song metadata conversion writes, rereads, hashes, and refuses overwrite");
+    passed &= expect(metadata_batch.items.size() == 2 && std::filesystem::is_regular_file(metadata_batch.summary) &&
+                         std::all_of(metadata_batch.items.begin(), metadata_batch.items.end(), [&](const auto& item) {
+                             return rb4pc::builder::read_canonical_song_metadata(metadata_batch.directory / item.metadata_relative_path) == item.metadata;
+                         }),
+                     "song metadata batch publishes only verified canonical metadata");
+    passed &= expect(duplicate_batch_rejected && !std::filesystem::exists(directory / "duplicate-output"),
+                     "song metadata batch rejects duplicate short names before publishing");
+    passed &= expect(native_moggsong_read == native_moggsong_expected &&
+                         native_moggsong.destination_sha256 == "beacd4d195d286473d0cd3601834be9339d1ab8074b4d19aa1aabf0be0f5771f" &&
+                         std::filesystem::is_regular_file(native_moggsong.manifest),
+                     "native moggsong writer matches the independently generated ForgeTool fixture");
     std::filesystem::remove_all(directory);
     return passed ? 0 : 1;
 }
