@@ -174,7 +174,14 @@ The first limited native writer encodes the independently reproduced `mogg_path`
 rb4pc-builder <file.mogg> --write-native-moggsong <file.rbmid> <new-output.moggsong_dta_pc>
 ```
 
-The installed RBVR fixture, ForgeTool output, and RB4PC output were byte-identical. Complete `songdta_pc`, `csv_pc`, and `rbsong` writing remains research work. See [the metadata guide](docs/formats/song-metadata-writing.md) and [native evidence](docs/formats/native-moggsong-metadata.md).
+The installed RBVR fixture, ForgeTool output, and RB4PC output were byte-identical. The observed fixed-size `songdta_pc` layout can also be inspected and reproduced byte for byte:
+
+```text
+rb4pc-builder <input.songdta_pc> --inspect-native-songdata <report.json>
+rb4pc-builder <input.songdta_pc> --roundtrip-native-songdata <new-output.songdta_pc>
+```
+
+New-record conversion still needs explicit values for native-only fields; `csv_pc` and `rbsong` remain research work. See [the metadata guide](docs/formats/song-metadata-writing.md), [moggsong evidence](docs/formats/native-moggsong-metadata.md), and [songdata evidence](docs/formats/native-songdata-pc.md).
 ### 12. Generate a metadata catalog
 
 Open **Tools > PC Metadata Catalog**, select a PC HDR or folder, and choose a

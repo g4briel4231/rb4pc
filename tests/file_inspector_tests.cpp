@@ -46,6 +46,7 @@
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
 #include "rb4pc/builder/song_metadata_writer.hpp"
+#include "rb4pc/builder/native_songdata.hpp"
 #include "rb4pc/builder/song_assembler.hpp"
 #include "rb4pc/builder/pc_archive_builder.hpp"
 #include "rb4pc/builder/pc_asset_catalog.hpp"
@@ -226,7 +227,22 @@ int main() {
     catch (const std::runtime_error&) { duplicate_batch_rejected = true; }    const rb4pc::builder::NativeMoggsongMetadata native_moggsong_expected{"o161437539_thememoryremain.mogg", "o161437539_thememoryremain.rbmid"};
     const auto native_moggsong = rb4pc::builder::write_native_moggsong_metadata(native_moggsong_expected, directory / "test.moggsong_dta_pc");
     const auto native_moggsong_read = rb4pc::builder::read_native_moggsong_metadata(native_moggsong.destination);
-    const auto audio_plan_directory = directory / "audio-plan";
+    rb4pc::builder::NativeSongData native_songdata_expected;
+    native_songdata_expected.type = 11; native_songdata_expected.song_id = 95999865; native_songdata_expected.version = -1;
+    native_songdata_expected.game_origin = "ugc_plus"; native_songdata_expected.preview_start = 50806.0F; native_songdata_expected.preview_end = 80806.0F;
+    native_songdata_expected.name = "The Memory Remains"; native_songdata_expected.artist = "Metallica"; native_songdata_expected.album_name = "ReLoad";
+    native_songdata_expected.album_track_number = 0; native_songdata_expected.album_year = 1997; native_songdata_expected.original_year = 1997;
+    native_songdata_expected.genre = "metal"; native_songdata_expected.song_length = 293601.0F;
+    native_songdata_expected.guitar_rank = 221.0F; native_songdata_expected.bass_rank = 181.0F; native_songdata_expected.vocals_rank = 218.0F;
+    native_songdata_expected.drum_rank = 151.0F; native_songdata_expected.band_rank = 215.0F;
+    native_songdata_expected.keys_rank = 0.0F; native_songdata_expected.real_keys_rank = 0.0F;
+    native_songdata_expected.tutorial = false; native_songdata_expected.album_art = true; native_songdata_expected.cover = false;
+    native_songdata_expected.vocal_gender = 1; native_songdata_expected.medium = ""; native_songdata_expected.has_freestyle_vocals = false;
+    native_songdata_expected.vocal_parts = 3; native_songdata_expected.flags = 0; native_songdata_expected.fake = false;
+    native_songdata_expected.short_name = "o161437539_thememoryremain";
+    const auto native_songdata_written = rb4pc::builder::write_native_songdata(native_songdata_expected, directory / "test.songdta_pc");
+    const auto native_songdata_read = rb4pc::builder::read_native_songdata(native_songdata_written.destination);
+    const auto native_songdata_roundtrip = rb4pc::builder::roundtrip_native_songdata(native_songdata_written.destination, directory / "roundtrip.songdta_pc");    const auto audio_plan_directory = directory / "audio-plan";
     std::filesystem::create_directory(audio_plan_directory);
     write_file(audio_plan_directory / "native.ogg", "OggSdemo");
     write_file(audio_plan_directory / "native.wav", std::string("RIFF\x04\0\0\0WAVE", 12));
@@ -1242,7 +1258,11 @@ int main() {
                          native_moggsong.destination_sha256 == "beacd4d195d286473d0cd3601834be9339d1ab8074b4d19aa1aabf0be0f5771f" &&
                          std::filesystem::is_regular_file(native_moggsong.manifest),
                      "native moggsong writer matches the independently generated ForgeTool fixture");
-    std::filesystem::remove_all(directory);
+    passed &= expect(native_songdata_read == native_songdata_expected &&
+                         native_songdata_written.destination_sha256 == "fdae74acf355f97f50c01b5342f0774cece050c4dd7529f9554167d554aea3f7" &&
+                         native_songdata_roundtrip.destination_sha256 == native_songdata_written.destination_sha256 &&
+                         rb4pc::builder::format_json(native_songdata_read).find("The Memory Remains") != std::string::npos,
+                     "native songdata writer matches the independently reproduced 1202-byte fixture");    std::filesystem::remove_all(directory);
     return passed ? 0 : 1;
 }
 

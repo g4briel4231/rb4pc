@@ -6,6 +6,7 @@
 #include "rb4pc/builder/midi_session_plan.hpp"
 #include "rb4pc/builder/song_session_plan.hpp"
 #include "rb4pc/builder/song_metadata_writer.hpp"
+#include "rb4pc/builder/native_songdata.hpp"
 #include "rb4pc/builder/song_assembler.hpp"
 #include "rb4pc/builder/pc_archive_builder.hpp"
 #include "rb4pc/builder/pc_asset_catalog.hpp"
@@ -23,6 +24,21 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--roundtrip-native-songdata") {
+        try {
+            const auto result = rb4pc::builder::roundtrip_native_songdata(argv[1], argv[3]);
+            std::cout << "Byte-exact native songdata: " << result.destination.string()
+                      << "\nSHA-256: " << result.destination_sha256 << "\nManifest: " << result.manifest.string() << '\n'; return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
+    if (argc == 4 && std::string(argv[2]) == "--inspect-native-songdata") {
+        try {
+            const std::filesystem::path output_path = argv[3]; if (std::filesystem::exists(output_path)) throw std::runtime_error("native songdata report already exists");
+            const auto metadata = rb4pc::builder::read_native_songdata(argv[1]); std::ofstream output(output_path, std::ios::binary);
+            output << rb4pc::builder::format_json(metadata); if (!output) throw std::runtime_error("could not write native songdata report");
+            std::cout << "Native songdata report: " << output_path.string() << "\nTitle: " << metadata.name << "\nArtist: " << metadata.artist << '\n'; return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 5 && std::string(argv[2]) == "--write-native-moggsong") {
         try {
             const rb4pc::builder::NativeMoggsongMetadata metadata{argv[1], argv[3]};
@@ -422,6 +438,8 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <song.ini> --convert-song-metadata <new-metadata.json>\n";
         std::cerr << "   or: " << argv[0] << " <song-root> --convert-song-metadata-batch <new-output-directory>\n";
         std::cerr << "   or: " << argv[0] << " <file.mogg> --write-native-moggsong <file.rbmid> <new-output.moggsong_dta_pc>\n";
+        std::cerr << "   or: " << argv[0] << " <input.songdta_pc> --inspect-native-songdata <report.json>\n";
+        std::cerr << "   or: " << argv[0] << " <input.songdta_pc> --roundtrip-native-songdata <new-output.songdta_pc>\n";
         return 2;
     }
     try {

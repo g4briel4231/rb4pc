@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(RB4PC VERSION 0.2160.0 LANGUAGES CXX)
+project(RB4PC VERSION 0.2200.0 LANGUAGES CXX)
 
 option(RB4PC_BUILD_TESTS "Build RB4PC tests" ON)
 
@@ -23,6 +23,7 @@ add_library(rb4pc_inspection
     src/builder/midi_session_plan.cpp
     src/builder/song_session_plan.cpp
     src/builder/song_metadata_writer.cpp
+    src/builder/native_songdata.cpp
     src/builder/texture_conversion_plan.cpp
     src/builder/texture_research.cpp
     src/builder/audio_conversion_plan.cpp
