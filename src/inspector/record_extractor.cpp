@@ -2,6 +2,7 @@
 
 #include "rb4pc/inspector/archive_layout.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
+#include "rb4pc/inspector/protected_ark.hpp"
 #include "rb4pc/inspector/sha256.hpp"
 
 #include <algorithm>
@@ -91,25 +92,9 @@ ExtractionResult extract_record(const HeaderSetReport& report,
     }
 
     try {
-        std::ifstream input(archive.path, std::ios::binary);
-        if (!input) throw std::runtime_error("could not open record's ARK volume");
-        input.seekg(static_cast<std::streamoff>(location.local_offset));
-        if (!input) throw std::runtime_error("could not seek to record in ARK volume");
         std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
         if (!output) throw std::runtime_error("could not create temporary extraction file");
-
-        std::array<char, 64 * 1024> buffer{};
-        std::uint64_t remaining = record.size;
-        while (remaining != 0) {
-            const auto chunk = static_cast<std::size_t>(std::min<std::uint64_t>(remaining, buffer.size()));
-            input.read(buffer.data(), static_cast<std::streamsize>(chunk));
-            if (static_cast<std::size_t>(input.gcount()) != chunk) {
-                throw std::runtime_error("unexpected end of ARK during extraction");
-            }
-            output.write(buffer.data(), static_cast<std::streamsize>(chunk));
-            if (!output) throw std::runtime_error("could not write temporary extraction file");
-            remaining -= chunk;
-        }
+        copy_ark_range(archive.path, location.local_offset, record.size, output);
         output.close();
         if (!output) throw std::runtime_error("could not finalize temporary extraction file");
         std::filesystem::rename(temporary, destination);

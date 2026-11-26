@@ -181,7 +181,14 @@ rb4pc-builder <input.songdta_pc> --inspect-native-songdata <report.json>
 rb4pc-builder <input.songdta_pc> --roundtrip-native-songdata <new-output.songdta_pc>
 ```
 
-New native records can be created from `song.ini` with explicit `song_id` and `song_length` using `--convert-native-songdata`; optional defaults are deterministic and listed in the manifest. `csv_pc` and `rbsong` remain research work. See [the metadata guide](docs/formats/song-metadata-writing.md), [moggsong evidence](docs/formats/native-moggsong-metadata.md), and [songdata evidence](docs/formats/native-songdata-pc.md).
+New native records can be created from `song.ini` with explicit `song_id` and `song_length` using `--convert-native-songdata`; optional defaults are deterministic and listed in the manifest. Versions 0.2280.0–0.2320.0 decode the verified protected PC ARK storage layer during extraction, read logical `csv_pc` tables, and inspect the verified single-layer entity tree of entity-resource `rbsong` versions 12–17:
+
+```text
+rb4pc-builder <input.csv_pc> --inspect-native-csv <report.json>
+rb4pc-builder <input.rbsong> --inspect-native-rbsong <report.json>
+```
+
+These two formats remain read-only research targets. The `rbsong` report includes layers, objects, components, and recursive property type shapes, but RB4PC does not yet claim inline-resource decoding, property-value semantics, or logical writers. See [the metadata guide](docs/formats/song-metadata-writing.md), [moggsong evidence](docs/formats/native-moggsong-metadata.md), [songdata evidence](docs/formats/native-songdata-pc.md), and [`csv_pc`/`rbsong` evidence](docs/formats/csv-rbsong-research.md).
 ### 12. Generate a metadata catalog
 
 Open **Tools > PC Metadata Catalog**, select a PC HDR or folder, and choose a

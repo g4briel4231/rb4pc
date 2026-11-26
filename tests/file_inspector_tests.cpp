@@ -1,4 +1,6 @@
 #include "rb4pc/inspector/file_inspector.hpp"
+#include "rb4pc/inspector/native_csv.hpp"
+#include "rb4pc/inspector/native_rbsong.hpp"
 #include "rb4pc/inspector/archive_layout.hpp"
 #include "rb4pc/builder/build_plan.hpp"
 #include "rb4pc/builder/audio_conversion_plan.hpp"
@@ -8,6 +10,7 @@
 #include "rb4pc/inspector/asset_converter.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 #include "rb4pc/inspector/record_extractor.hpp"
+#include "rb4pc/inspector/protected_ark.hpp"
 #include "rb4pc/inspector/riff_parser.hpp"
 #include "rb4pc/inspector/sha256.hpp"
 #include "rb4pc/inspector/texture_container.hpp"
@@ -205,6 +208,48 @@ int main() {
     const auto directory = std::filesystem::temp_directory_path() / "rb4pc-inspector-tests";
     std::filesystem::remove_all(directory);
     std::filesystem::create_directory(directory);
+    const auto native_rbsong_path = directory / "test.rbsong";
+    std::vector<unsigned char> native_rbsong_bytes;
+    append_u32(native_rbsong_bytes, 14); append_u32(native_rbsong_bytes, 1);
+    append_u32(native_rbsong_bytes, 0); append_u32(native_rbsong_bytes, 20);
+    append_u32(native_rbsong_bytes, 1); append_u32(native_rbsong_bytes, 20); append_u32(native_rbsong_bytes, 0);
+    native_rbsong_bytes.push_back(1); native_rbsong_bytes.push_back(0);
+    append_u32(native_rbsong_bytes, 1); append_u32(native_rbsong_bytes, 0xffffffffU);
+    write_file(native_rbsong_path, std::string(native_rbsong_bytes.begin(), native_rbsong_bytes.end()));
+    const auto native_rbsong = rb4pc::inspector::read_native_rbsong_header(native_rbsong_path);
+    const auto native_rbsong_tree = rb4pc::inspector::read_native_rbsong_tree(native_rbsong_path);
+    const auto native_rbsong_json = rb4pc::inspector::format_native_rbsong_tree_json(native_rbsong_tree);
+
+    const auto native_csv_path = directory / "test.csv_pc";
+    std::vector<unsigned char> native_csv_bytes;
+    append_u32(native_csv_bytes, 1); append_u32(native_csv_bytes, 2); native_csv_bytes.push_back(',');
+    const std::string native_csv_table("A\0B\0x\0y\0", 8);
+    append_u32(native_csv_bytes, static_cast<std::uint32_t>(native_csv_table.size()));
+    native_csv_bytes.insert(native_csv_bytes.end(), native_csv_table.begin(), native_csv_table.end());
+    append_u32(native_csv_bytes, 2); append_u32(native_csv_bytes, 0); append_u32(native_csv_bytes, 2);
+    append_u32(native_csv_bytes, 1); append_u32(native_csv_bytes, 2); append_u32(native_csv_bytes, 4); append_u32(native_csv_bytes, 6);
+    write_file(native_csv_path, std::string(native_csv_bytes.begin(), native_csv_bytes.end()));
+    const auto native_csv = rb4pc::inspector::read_native_csv(native_csv_path);
+    const auto native_csv_json = rb4pc::inspector::format_native_csv_summary_json(native_csv);
+
+    const auto protected_ark_path = directory / "protected.ark";
+    const std::string protected_plain = "logical protected ARK bytes";
+    std::vector<unsigned char> protected_footer(60, 0);
+    protected_footer[24] = 60; // Key-material size descriptor is 36 bytes from EOF.
+    write_file(protected_ark_path, protected_plain + std::string(protected_footer.begin(), protected_footer.end()));
+    const auto protected_info = rb4pc::inspector::inspect_protected_ark(protected_ark_path);
+    if (!protected_info) throw std::runtime_error("synthetic protected ARK was not detected");
+    std::string protected_stored = protected_plain;
+    std::uint8_t protected_key = protected_info->initial_key;
+    for (std::size_t index = 0; index < protected_stored.size(); ++index) {
+        const auto stored = static_cast<std::uint8_t>(protected_plain[index]) ^ protected_key;
+        protected_stored[index] = static_cast<char>(stored);
+        protected_key = static_cast<std::uint8_t>((protected_info->initial_key ^ stored) - index);
+    }
+    write_file(protected_ark_path, protected_stored + std::string(protected_footer.begin(), protected_footer.end()));
+    std::ostringstream protected_decoded;
+    rb4pc::inspector::copy_ark_range(protected_ark_path, 0, protected_plain.size(), protected_decoded);
+
     const auto metadata_song_directory = directory / "Metadata Song";
     std::filesystem::create_directory(metadata_song_directory);
     const auto song_ini_path = metadata_song_directory / "song.ini";
@@ -881,6 +926,24 @@ int main() {
                          payload_catalog.signatures.at("unknown") == 1 &&
                          payload_catalog.extensions.at(".bin") == 1,
                      "payload catalog mismatch");
+    passed &= expect(native_rbsong.resource_version == 14 && native_rbsong.entity_version == 20 &&
+                         native_rbsong.entity_offset == 12 && native_rbsong.inline_layer_names.size() == 1 &&
+                         native_rbsong.inline_layer_names[0].empty() && !native_rbsong.version_15_field &&
+                         !native_rbsong.version_16_field &&
+                         native_rbsong_tree.layers.size() == 1 && native_rbsong_tree.layers[0].objects.size() == 1 &&
+                         native_rbsong_tree.layers[0].objects[0].sentinel &&
+                         native_rbsong_json.find("\"entityVersion\": 20") != std::string::npos,
+                     "native rbsong structural header reader mismatch");
+    passed &= expect(native_csv.version == 1 && native_csv.encoding == 2 && native_csv.separator == ',' &&
+                         native_csv.headers == std::vector<std::string>({"A", "B"}) && native_csv.rows.size() == 1 &&
+                         native_csv.rows[0] == std::vector<std::string>({"x", "y"}) &&
+                         native_csv_json.find("\"rowCount\": 1") != std::string::npos,
+                     "native CSV reader mismatch");
+    passed &= expect(protected_info->stored_size == protected_plain.size() + protected_footer.size() &&
+                         protected_info->logical_size == protected_plain.size() &&
+                         protected_info->key_material_size == protected_footer.size() &&
+                         protected_decoded.str() == protected_plain,
+                     "protected ARK detection and logical decoding mismatch");
     passed &= expect(extraction.size == 3 && extraction.destination == extraction_path &&
                          extraction.sha256 ==
                              "3fc4ccfe745870e2c0d99f71f30ff0656c8dedd41cc1d7d3d376b0dbe685e2f3" &&

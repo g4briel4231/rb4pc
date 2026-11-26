@@ -17,6 +17,8 @@
 #include "rb4pc/builder/texture_conversion_plan.hpp"
 #include "rb4pc/builder/texture_research.hpp"
 #include "rb4pc/inspector/file_inspector.hpp"
+#include "rb4pc/inspector/native_csv.hpp"
+#include "rb4pc/inspector/native_rbsong.hpp"
 #include "rb4pc/inspector/payload_catalog.hpp"
 
 #include <filesystem>
@@ -24,6 +26,35 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--inspect-native-rbsong") {
+        try {
+            const std::filesystem::path output_path = argv[3];
+            if (std::filesystem::exists(output_path)) throw std::runtime_error("native rbsong report already exists");
+            const auto tree = rb4pc::inspector::read_native_rbsong_tree(argv[1]);
+            const auto& header = tree.header;
+            std::ofstream output(output_path, std::ios::binary);
+            output << rb4pc::inspector::format_native_rbsong_tree_json(tree);
+            if (!output) throw std::runtime_error("could not write native rbsong report");
+            std::cout << "Native rbsong report: " << output_path.string()
+                      << "\nResource version: " << header.resource_version
+                      << "\nEntity version: " << header.entity_version
+                      << "\nLayers: " << tree.layers.size() << '\n';
+            return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
+    if (argc == 4 && std::string(argv[2]) == "--inspect-native-csv") {
+        try {
+            const std::filesystem::path output_path = argv[3];
+            if (std::filesystem::exists(output_path)) throw std::runtime_error("native CSV report already exists");
+            const auto csv = rb4pc::inspector::read_native_csv(argv[1]);
+            std::ofstream output(output_path, std::ios::binary);
+            output << rb4pc::inspector::format_native_csv_summary_json(csv);
+            if (!output) throw std::runtime_error("could not write native CSV report");
+            std::cout << "Native CSV report: " << output_path.string()
+                      << "\nHeaders: " << csv.headers.size() << "\nRows: " << csv.rows.size() << '\n';
+            return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 4 && std::string(argv[2]) == "--convert-native-songdata") {
         try {
             const auto result = rb4pc::builder::convert_song_ini_to_native_songdata(argv[1], argv[3]);
@@ -447,6 +478,8 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <song.ini> --convert-song-metadata <new-metadata.json>\n";
         std::cerr << "   or: " << argv[0] << " <song-root> --convert-song-metadata-batch <new-output-directory>\n";
         std::cerr << "   or: " << argv[0] << " <file.mogg> --write-native-moggsong <file.rbmid> <new-output.moggsong_dta_pc>\n";
+        std::cerr << "   or: " << argv[0] << " <input.rbsong> --inspect-native-rbsong <report.json>\n";
+        std::cerr << "   or: " << argv[0] << " <input.csv_pc> --inspect-native-csv <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <input.songdta_pc> --inspect-native-songdata <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <input.songdta_pc> --roundtrip-native-songdata <new-output.songdta_pc>\n";
         std::cerr << "   or: " << argv[0] << " <song.ini> --convert-native-songdata <new-output.songdta_pc>\n";
