@@ -242,7 +242,14 @@ int main() {
     native_songdata_expected.short_name = "o161437539_thememoryremain";
     const auto native_songdata_written = rb4pc::builder::write_native_songdata(native_songdata_expected, directory / "test.songdta_pc");
     const auto native_songdata_read = rb4pc::builder::read_native_songdata(native_songdata_written.destination);
-    const auto native_songdata_roundtrip = rb4pc::builder::roundtrip_native_songdata(native_songdata_written.destination, directory / "roundtrip.songdta_pc");    const auto audio_plan_directory = directory / "audio-plan";
+    const auto native_songdata_roundtrip = rb4pc::builder::roundtrip_native_songdata(native_songdata_written.destination, directory / "roundtrip.songdta_pc");    const auto native_ini_directory = directory / "Native Ini Song"; std::filesystem::create_directory(native_ini_directory);
+    const auto native_ini = native_ini_directory / "song.ini";
+    write_file(native_ini, "[song]\nname = Native Test\nartist = Test Artist\nalbum = Test Album\ngenre = rock\nyear = 2026\nshortname = native_test\nsong_id = 424242\nsong_length = 180000\npreview_start_time = 10000\npreview_end_time = 40000\ndiff_guitar = 150\nvocal_parts = 2\ncover = true\n");
+    const auto native_ini_conversion = rb4pc::builder::convert_song_ini_to_native_songdata(native_ini, directory / "native-from-ini.songdta_pc");
+    const auto native_ini_read = rb4pc::builder::read_native_songdata(native_ini_conversion.write.destination);
+    bool missing_native_required_rejected = false;
+    try { static_cast<void>(rb4pc::builder::convert_song_ini_to_native_songdata(song_ini_path, directory / "invalid-native.songdta_pc")); }
+    catch (const std::runtime_error&) { missing_native_required_rejected = true; }    const auto audio_plan_directory = directory / "audio-plan";
     std::filesystem::create_directory(audio_plan_directory);
     write_file(audio_plan_directory / "native.ogg", "OggSdemo");
     write_file(audio_plan_directory / "native.wav", std::string("RIFF\x04\0\0\0WAVE", 12));
@@ -1262,7 +1269,14 @@ int main() {
                          native_songdata_written.destination_sha256 == "fdae74acf355f97f50c01b5342f0774cece050c4dd7529f9554167d554aea3f7" &&
                          native_songdata_roundtrip.destination_sha256 == native_songdata_written.destination_sha256 &&
                          rb4pc::builder::format_json(native_songdata_read).find("The Memory Remains") != std::string::npos,
-                     "native songdata writer matches the independently reproduced 1202-byte fixture");    std::filesystem::remove_all(directory);
+                     "native songdata writer matches the independently reproduced 1202-byte fixture");    passed &= expect(native_ini_read.name == "Native Test" && native_ini_read.artist == "Test Artist" &&
+                         native_ini_read.song_id == 424242 && native_ini_read.song_length == 180000.0F &&
+                         native_ini_read.preview_start == 10000.0F && native_ini_read.preview_end == 40000.0F &&
+                         native_ini_read.guitar_rank == 150.0F && native_ini_read.vocal_parts == 2 && native_ini_read.cover &&
+                         native_ini_read.type == 11 && native_ini_read.version == -1 && native_ini_read.game_origin == "ugc_plus" &&
+                         !native_ini_conversion.source_sha256.empty() && !native_ini_conversion.defaulted_fields.empty() &&
+                         missing_native_required_rejected && !std::filesystem::exists(directory / "invalid-native.songdta_pc"),
+                     "song.ini native conversion requires identity/timing and records deterministic defaults");    std::filesystem::remove_all(directory);
     return passed ? 0 : 1;
 }
 

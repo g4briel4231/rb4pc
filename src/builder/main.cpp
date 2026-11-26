@@ -24,6 +24,15 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    if (argc == 4 && std::string(argv[2]) == "--convert-native-songdata") {
+        try {
+            const auto result = rb4pc::builder::convert_song_ini_to_native_songdata(argv[1], argv[3]);
+            std::cout << "Native songdata: " << result.write.destination.string()
+                      << "\nSHA-256: " << result.write.destination_sha256
+                      << "\nDefaulted fields: " << result.defaulted_fields.size()
+                      << "\nManifest: " << result.write.manifest.string() << '\n'; return 0;
+        } catch (const std::exception& error) { std::cerr << "rb4pc-builder: " << error.what() << '\n'; return 1; }
+    }
     if (argc == 4 && std::string(argv[2]) == "--roundtrip-native-songdata") {
         try {
             const auto result = rb4pc::builder::roundtrip_native_songdata(argv[1], argv[3]);
@@ -440,6 +449,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "   or: " << argv[0] << " <file.mogg> --write-native-moggsong <file.rbmid> <new-output.moggsong_dta_pc>\n";
         std::cerr << "   or: " << argv[0] << " <input.songdta_pc> --inspect-native-songdata <report.json>\n";
         std::cerr << "   or: " << argv[0] << " <input.songdta_pc> --roundtrip-native-songdata <new-output.songdta_pc>\n";
+        std::cerr << "   or: " << argv[0] << " <song.ini> --convert-native-songdata <new-output.songdta_pc>\n";
         return 2;
     }
     try {

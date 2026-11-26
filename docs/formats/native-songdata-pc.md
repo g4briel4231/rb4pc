@@ -21,4 +21,13 @@ A user-owned Rock Band VR fixture was read and rewritten independently by LibFor
 
 ## Boundary
 
-This proves reading and writing for the observed fixed-size layout. Creating a complete new native record from `song.ini` still requires explicit rules for song IDs, ranks, duration, flags, and other fields. `rbsong` and `csv_pc` are separate formats.
+This proves reading and writing for the observed fixed-size layout. Version 0.2240.0 adds explicit new-record rules below. `rbsong` and `csv_pc` remain separate formats.
+## New-record conversion rules (v0.2240.0)
+
+```text
+rb4pc-builder <song.ini> --convert-native-songdata <new-output.songdta_pc>
+```
+
+Required keys are `name`/`title`, `artist`, `song_id`, and `song_length` (milliseconds). `shortname` may be supplied or is derived from the directory. Supported optional keys include `album`, `genre`, `year`, `original_year`, `preview_start_time`, `preview_end_time`, `album_track_number`, `type`, `version`, `game_origin`, `diff_guitar`, `diff_bass`, `diff_vocals`, `diff_drums`, `diff_band`, `diff_keys`, `diff_real_keys`, `tutorial`, `album_art`, `cover`, `vocal_gender`, `medium`, `freestyle_vocals`, `vocal_parts`, `flags`, and `fake`.
+
+Defaults are deterministic: type 11, version -1, origin `ugc_plus`, numeric ranks/flags zero, album art true, other booleans false, and preview end `min(preview start + 30000, song length)`. The preview range must fit inside the song. Every defaulted field is listed in the manifest. The generated file is reread by RB4PC; an independent LibForge read of the validation fixture recovered the same identity, timing, ranks, type, and origin.

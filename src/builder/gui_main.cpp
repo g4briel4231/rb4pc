@@ -60,6 +60,7 @@ constexpr int id_song_metadata = 1112;
 constexpr int id_song_metadata_batch = 1113;
 constexpr int id_native_moggsong = 1114;
 constexpr int id_native_songdata = 1115;
+constexpr int id_convert_native_songdata = 1116;
 constexpr int id_documentation = 1201;
 constexpr int id_repository = 1202;
 constexpr int id_about = 1203;
@@ -865,6 +866,22 @@ void convert_song_metadata_batch_gui(HWND window) {
     }
 }
 
+void convert_native_songdata_gui(HWND window) {
+    const auto source = select_song_ini(window); if (source.empty()) return; const auto destination = select_native_songdata_output(window); if (destination.empty()) return;
+    try {
+        const auto canonical = rb4pc::builder::parse_song_ini(source); std::wostringstream confirmation;
+        confirmation << L"Create verified native songdata?\n\nTitle: " << utf8_to_wide(canonical.title) << L"\nArtist: " << utf8_to_wide(canonical.artist)
+                     << L"\n\nRequired song.ini fields: song_id and song_length. Missing optional fields use documented defaults recorded in the manifest.";
+        if (MessageBoxW(window, confirmation.str().c_str(), L"Native Songdata Conversion", MB_OKCANCEL | MB_ICONQUESTION) != IDOK) return;
+        set_status(L"Converting song.ini to native songdata…"); const auto result = rb4pc::builder::convert_song_ini_to_native_songdata(source, destination);
+        std::wostringstream message; message << L"Native songdata was written and reread successfully.\n\nDefaulted fields: " << result.defaulted_fields.size()
+            << L"\nSHA-256: " << utf8_to_wide(result.write.destination_sha256) << L"\nManifest: " << result.write.manifest.wstring();
+        MessageBoxW(window, message.str().c_str(), L"Native Songdata Conversion", MB_OK | MB_ICONINFORMATION); set_status(L"Created verified native songdata");
+    } catch (const std::exception& error) {
+        std::wstring message = L"Native songdata was not created.\n\n"; message += utf8_to_wide(error.what());
+        MessageBoxW(window, message.c_str(), L"Native Songdata Conversion", MB_OK | MB_ICONERROR); set_status(L"Native songdata conversion failed");
+    }
+}
 void roundtrip_native_songdata_gui(HWND window) {
     const auto source = select_metadata_input(window, L"Select native PC songdata", L"Native PC songdata (*.songdta_pc)\0*.songdta_pc\0"); if (source.empty()) return;
     const auto destination = select_native_songdata_output(window); if (destination.empty()) return;
@@ -1390,6 +1407,7 @@ HMENU create_file_viewer_menu() {
     AppendMenuW(tools, MF_STRING, id_song_metadata_batch, L"Convert song.ini Metadata Batch…");
     AppendMenuW(tools, MF_STRING, id_native_moggsong, L"Write Native Moggsong Metadata…");
     AppendMenuW(tools, MF_STRING, id_native_songdata, L"Verify Native Songdata Round-trip…");
+    AppendMenuW(tools, MF_STRING, id_convert_native_songdata, L"Convert song.ini to Native Songdata…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1471,6 +1489,7 @@ LRESULT CALLBACK file_viewer_proc(HWND window, UINT message, WPARAM wparam, LPAR
                 case id_song_metadata_batch: convert_song_metadata_batch_gui(window); return 0;
                 case id_native_moggsong: write_native_moggsong_gui(window); return 0;
                 case id_native_songdata: roundtrip_native_songdata_gui(window); return 0;
+                case id_convert_native_songdata: convert_native_songdata_gui(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
@@ -1603,6 +1622,7 @@ HMENU create_menu() {
     AppendMenuW(tools, MF_STRING, id_song_metadata_batch, L"Convert song.ini Metadata Batch…");
     AppendMenuW(tools, MF_STRING, id_native_moggsong, L"Write Native Moggsong Metadata…");
     AppendMenuW(tools, MF_STRING, id_native_songdata, L"Verify Native Songdata Round-trip…");
+    AppendMenuW(tools, MF_STRING, id_convert_native_songdata, L"Convert song.ini to Native Songdata…");
     AppendMenuW(tools, MF_STRING, id_character_catalog, L"Character/Animation Inventory…");
     AppendMenuW(tools, MF_STRING, id_metadata_catalog, L"PC Metadata Catalog…");
     AppendMenuW(tools, MF_SEPARATOR, 0, nullptr);
@@ -1894,6 +1914,7 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lp
                 case id_song_metadata_batch: convert_song_metadata_batch_gui(window); return 0;
                 case id_native_moggsong: write_native_moggsong_gui(window); return 0;
                 case id_native_songdata: roundtrip_native_songdata_gui(window); return 0;
+                case id_convert_native_songdata: convert_native_songdata_gui(window); return 0;
                 case id_character_catalog: generate_character_catalog(window); return 0;
                 case id_corpus_audit: generate_corpus_audit(window); return 0;
                 case id_metadata_catalog: generate_metadata_catalog(window); return 0;

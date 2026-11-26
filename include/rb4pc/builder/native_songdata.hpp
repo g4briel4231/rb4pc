@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace rb4pc::builder {
 struct NativeSongData {
@@ -47,10 +48,17 @@ struct NativeSongDataWriteResult {
     std::string destination_sha256;
 };
 
+struct NativeSongDataConversionResult {
+    NativeSongDataWriteResult write;
+    std::string source_sha256;
+    std::vector<std::string> defaulted_fields;
+};
 [[nodiscard]] NativeSongData read_native_songdata(const std::filesystem::path& path);
 [[nodiscard]] NativeSongDataWriteResult write_native_songdata(
     const NativeSongData& metadata, const std::filesystem::path& destination);
 [[nodiscard]] NativeSongDataWriteResult roundtrip_native_songdata(
+    const std::filesystem::path& source, const std::filesystem::path& destination);
+[[nodiscard]] NativeSongDataConversionResult convert_song_ini_to_native_songdata(
     const std::filesystem::path& source, const std::filesystem::path& destination);
 [[nodiscard]] std::string format_json(const NativeSongData& metadata);
 } // namespace rb4pc::builder

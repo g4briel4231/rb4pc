@@ -181,7 +181,7 @@ rb4pc-builder <input.songdta_pc> --inspect-native-songdata <report.json>
 rb4pc-builder <input.songdta_pc> --roundtrip-native-songdata <new-output.songdta_pc>
 ```
 
-New-record conversion still needs explicit values for native-only fields; `csv_pc` and `rbsong` remain research work. See [the metadata guide](docs/formats/song-metadata-writing.md), [moggsong evidence](docs/formats/native-moggsong-metadata.md), and [songdata evidence](docs/formats/native-songdata-pc.md).
+New native records can be created from `song.ini` with explicit `song_id` and `song_length` using `--convert-native-songdata`; optional defaults are deterministic and listed in the manifest. `csv_pc` and `rbsong` remain research work. See [the metadata guide](docs/formats/song-metadata-writing.md), [moggsong evidence](docs/formats/native-moggsong-metadata.md), and [songdata evidence](docs/formats/native-songdata-pc.md).
 ### 12. Generate a metadata catalog
 
 Open **Tools > PC Metadata Catalog**, select a PC HDR or folder, and choose a

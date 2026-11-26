@@ -1,7 +1,11 @@
 #include "rb4pc/builder/native_songdata.hpp"
 #include "rb4pc/inspector/sha256.hpp"
+#include "rb4pc/builder/song_metadata_writer.hpp"
 
+#include <algorithm>
 #include <bit>
+#include <cctype>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iterator>
@@ -9,6 +13,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <vector>
+#include <unordered_map>
 
 namespace rb4pc::builder {
 namespace {
@@ -59,6 +64,23 @@ void expect_zeroes(const std::vector<unsigned char>& bytes, std::size_t& offset,
     if (offset + count > bytes.size()) throw std::runtime_error("truncated native songdata padding");
     for (std::size_t index = 0; index < count; ++index) if (bytes[offset++] != 0) throw std::runtime_error("unsupported native songdata padding");
 }
+std::string trim(std::string value) { while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front()))) value.erase(value.begin()); while (!value.empty() && std::isspace(static_cast<unsigned char>(value.back()))) value.pop_back(); return value; }
+std::string lower(std::string value) { std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); }); return value; }
+std::unordered_map<std::string, std::string> read_ini_values(const std::filesystem::path& path) {
+    std::ifstream input(path); if (!input) throw std::runtime_error("could not open song.ini"); std::unordered_map<std::string, std::string> values; std::string line;
+    while (std::getline(input, line)) { line = trim(line); if (line.empty() || line[0] == ';' || line[0] == '#' || line[0] == '[') continue; const auto equals = line.find('='); if (equals != std::string::npos) values[lower(trim(line.substr(0, equals)))] = trim(line.substr(equals + 1)); } return values;
+}
+template <typename T> T required_integer(const std::unordered_map<std::string, std::string>& values, const char* key) {
+    const auto found = values.find(key); if (found == values.end() || found->second.empty()) throw std::runtime_error(std::string("song.ini requires ") + key + " for native songdata"); std::size_t used = 0; const auto parsed = std::stoll(found->second, &used);
+    if (used != found->second.size() || parsed < static_cast<long long>(std::numeric_limits<T>::min()) || static_cast<unsigned long long>(parsed) > static_cast<unsigned long long>(std::numeric_limits<T>::max())) throw std::runtime_error(std::string(key) + " is outside its native range"); return static_cast<T>(parsed);
+}
+template <typename T> T optional_integer(const std::unordered_map<std::string, std::string>& values, const char* key, T fallback, std::vector<std::string>& defaults) {
+    const auto found = values.find(key); if (found == values.end() || found->second.empty()) { defaults.emplace_back(key); return fallback; } std::size_t used = 0; const auto parsed = std::stoll(found->second, &used);
+    if (used != found->second.size() || parsed < static_cast<long long>(std::numeric_limits<T>::min()) || static_cast<unsigned long long>(parsed) > static_cast<unsigned long long>(std::numeric_limits<T>::max())) throw std::runtime_error(std::string(key) + " is outside its native range"); return static_cast<T>(parsed);
+}
+float required_float(const std::unordered_map<std::string, std::string>& values, const char* key) { const auto found = values.find(key); if (found == values.end() || found->second.empty()) throw std::runtime_error(std::string("song.ini requires ") + key + " for native songdata"); std::size_t used = 0; const auto parsed = std::stof(found->second, &used); if (used != found->second.size() || !std::isfinite(parsed) || parsed < 0.0F) throw std::runtime_error(std::string(key) + " must be finite and nonnegative"); return parsed; }
+float optional_float(const std::unordered_map<std::string, std::string>& values, const char* key, float fallback, std::vector<std::string>& defaults) { const auto found = values.find(key); if (found == values.end() || found->second.empty()) { defaults.emplace_back(key); return fallback; } std::size_t used = 0; const auto parsed = std::stof(found->second, &used); if (used != found->second.size() || !std::isfinite(parsed) || parsed < 0.0F) throw std::runtime_error(std::string(key) + " must be finite and nonnegative"); return parsed; }
+bool optional_bool(const std::unordered_map<std::string, std::string>& values, const char* key, bool fallback, std::vector<std::string>& defaults) { const auto found = values.find(key); if (found == values.end() || found->second.empty()) { defaults.emplace_back(key); return fallback; } const auto value = lower(found->second); if (value == "1" || value == "true" || value == "yes") return true; if (value == "0" || value == "false" || value == "no") return false; throw std::runtime_error(std::string(key) + " must be true/false or 1/0"); }
 } // namespace
 
 NativeSongData read_native_songdata(const std::filesystem::path& path) {
@@ -124,6 +146,26 @@ NativeSongDataWriteResult roundtrip_native_songdata(const std::filesystem::path&
     return result;
 }
 
+NativeSongDataConversionResult convert_song_ini_to_native_songdata(const std::filesystem::path& source, const std::filesystem::path& destination) {
+    const auto canonical = parse_song_ini(source); const auto values = read_ini_values(source); NativeSongDataConversionResult result; auto& data = result.write.metadata;
+    data.type = optional_integer<std::uint32_t>(values, "type", 11, result.defaulted_fields); data.song_id = required_integer<std::uint32_t>(values, "song_id"); data.version = optional_integer<std::int16_t>(values, "version", -1, result.defaulted_fields);
+    data.game_origin = values.contains("game_origin") ? values.at("game_origin") : "ugc_plus"; if (!values.contains("game_origin")) result.defaulted_fields.emplace_back("game_origin");
+    data.name = canonical.title; data.artist = canonical.artist; data.album_name = canonical.album; data.genre = canonical.genre; data.short_name = canonical.short_name; data.song_length = required_float(values, "song_length");
+    data.preview_start = canonical.preview_start_ms ? static_cast<float>(*canonical.preview_start_ms) : 0.0F; if (!canonical.preview_start_ms) result.defaulted_fields.emplace_back("preview_start_time");
+    data.preview_end = optional_float(values, "preview_end_time", std::min(data.preview_start + 30000.0F, data.song_length), result.defaulted_fields);
+    if (data.preview_start > data.song_length || data.preview_end < data.preview_start || data.preview_end > data.song_length) throw std::runtime_error("native preview range must fit within song_length");
+    data.album_track_number = optional_integer<std::int16_t>(values, "album_track_number", 0, result.defaulted_fields); data.album_year = canonical.year.value_or(0); if (!canonical.year) result.defaulted_fields.emplace_back("year");
+    data.original_year = optional_integer<std::int32_t>(values, "original_year", data.album_year, result.defaulted_fields);
+    data.guitar_rank = optional_float(values, "diff_guitar", 0.0F, result.defaulted_fields); data.bass_rank = optional_float(values, "diff_bass", 0.0F, result.defaulted_fields); data.vocals_rank = optional_float(values, "diff_vocals", 0.0F, result.defaulted_fields);
+    data.drum_rank = optional_float(values, "diff_drums", 0.0F, result.defaulted_fields); data.band_rank = optional_float(values, "diff_band", 0.0F, result.defaulted_fields); data.keys_rank = optional_float(values, "diff_keys", 0.0F, result.defaulted_fields); data.real_keys_rank = optional_float(values, "diff_real_keys", 0.0F, result.defaulted_fields);
+    data.tutorial = optional_bool(values, "tutorial", false, result.defaulted_fields); data.album_art = optional_bool(values, "album_art", true, result.defaulted_fields); data.cover = optional_bool(values, "cover", false, result.defaulted_fields);
+    data.vocal_gender = optional_integer<std::uint8_t>(values, "vocal_gender", 0, result.defaulted_fields); data.medium = values.contains("medium") ? values.at("medium") : ""; if (!values.contains("medium")) result.defaulted_fields.emplace_back("medium");
+    data.has_freestyle_vocals = optional_bool(values, "freestyle_vocals", false, result.defaulted_fields); data.vocal_parts = optional_integer<std::int32_t>(values, "vocal_parts", 0, result.defaulted_fields); data.flags = optional_integer<std::int32_t>(values, "flags", 0, result.defaulted_fields); data.fake = optional_bool(values, "fake", false, result.defaulted_fields);
+    result.source_sha256 = inspector::sha256_file(source); const auto written = write_native_songdata(data, destination); result.write.destination = written.destination; result.write.manifest = written.manifest; result.write.destination_sha256 = written.destination_sha256;
+    auto temporary = result.write.manifest; temporary += ".rb4pc-part"; std::ofstream manifest(temporary, std::ios::binary | std::ios::trunc); manifest << "{\n  \"schemaVersion\": 1,\n  \"operation\": \"song-ini-to-native-songdta-pc\",\n  \"sourceSha256\": \"" << result.source_sha256 << "\",\n  \"destinationSha256\": \"" << result.write.destination_sha256 << "\",\n  \"defaultedFields\": [";
+    for (std::size_t index = 0; index < result.defaulted_fields.size(); ++index) { if (index) manifest << ", "; manifest << '"' << escape_json(result.defaulted_fields[index]) << '"'; } manifest << "]\n}\n"; manifest.close(); if (!manifest) throw std::runtime_error("could not write native songdata conversion manifest");
+    std::error_code ignored; std::filesystem::remove(result.write.manifest, ignored); std::filesystem::rename(temporary, result.write.manifest); return result;
+}
 std::string format_json(const NativeSongData& data) {
     std::ostringstream output; output << std::setprecision(std::numeric_limits<float>::max_digits10)
         << "{\n  \"schemaVersion\": 1,\n  \"type\": " << data.type << ",\n  \"songId\": " << data.song_id
